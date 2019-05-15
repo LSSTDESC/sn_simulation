@@ -1,7 +1,7 @@
 import numpy as np
 from lsst.sims.maf.metrics import BaseMetric
-from sn_catalog_simulations.sn_simulation.sn_simulation import SN_Simulation
-from sn_maf.sn_stackers.coadd_stacker import CoaddStacker
+from sn_simulation.sn_simulation import SN_Simulation
+from sn_stackers.coadd_stacker import CoaddStacker
 import healpy as hp
 
 
@@ -12,7 +12,7 @@ class SNMetric:
 
     def __init__(self, mjdCol='observationStartMJD', RaCol='fieldRA', DecCol='fieldDec',
                  filterCol='filter', m5Col='fiveSigmaDepth', exptimeCol='visitExposureTime',
-                 nightCol='night', obsidCol='observationId', nexpCol='numExposures', vistimeCol='visitTime', config=None):
+                 nightCol='night', obsidCol='observationId', nexpCol='numExposures', vistimeCol='visitTime', seeingEffCol='seeingFwhmEff', seeingGeomCol='seeingFwhmGeom', config=None):
 
         self.mjdCol = mjdCol
         self.m5Col = m5Col
@@ -25,6 +25,8 @@ class SNMetric:
         self.obsidCol = obsidCol
         self.nexpCol = nexpCol
         self.vistimeCol = vistimeCol
+        self.seeingEffCol = seeingEffCol
+        self.seeingGeomCol = seeingGeomCol
 
         self.config = config
 
@@ -55,6 +57,7 @@ class SNMetric:
                                   DecCol=self.DecCol,
                                   filterCol=self.filterCol, exptimeCol=self.exptimeCol,
                                   m5Col=self.m5Col, seasonCol=self.seasonCol,
+                                  seeingEffCol=self.seeingEffCol, seeingGeomCol=self.seeingGeomCol,
                                   nproc=config['Multiprocessing']['nproc'])
 
     def run(self, dataSlice):
