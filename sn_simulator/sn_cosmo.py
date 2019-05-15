@@ -16,18 +16,6 @@ from sn_tools.sn_throughputs import Throughputs
 
 
 class SN(SN_Object):
-    """ SN class - inherits from SN_Object
-          Input parameters (as given in the input yaml file):
-          - SN parameters (x1, color, daymax, z, ...)
-          - simulation parameters
-
-         Output:
-         - astropy table with the simulated light curve:
-               - columns : band, flux, fluxerr, snr_m5,flux_e,zp,zpsys,time
-               - metadata : SNID,Ra,Dec,daymax,x1,color,z
-
-    """
-
     def __init__(self, param, simu_param):
         super().__init__(param.name, param.sn_parameters, param.gen_parameters,
                          param.cosmology, param.telescope, param.SNID, param.area,
@@ -37,6 +25,18 @@ class SN(SN_Object):
                          m5Col=param.m5Col, seasonCol=param.seasonCol,
                          seeingEffCol=param.seeingEffCol, seeingGeomCol=param.seeingGeomCol)
 
+        """ SN class - inherits from SN_Object
+
+            Parameters
+            --------------
+            param: dict
+              parameters requested for the simulation (SN_Object)
+            simu_param : dict
+              parameters for the simulation:
+               name: simulator name (str)
+               model: model name for SN (exempla: salt2-extended) (str) 
+               version: version of the model (str)
+      """
         model = simu_param['model']
         version = str(simu_param['version'])
         self.model = model
@@ -96,16 +96,53 @@ class SN(SN_Object):
     def __call__(self, obs, index_hdf5, display=False, time_display=0.):
         """ Simulation of the light curve
 
-        Input
-        ---------
-        a set of observations
-
+        Parameters
+        --------------
+        obs: array
+          a set of observations
+        index_hdf5: int
+          index of the light curve in the hdf5 file
+        display: bool,opt
+          if True: the simulated LC is displayed
+          default: False
+        time_display: float
+          duration (sec) for which the display is visible
+          default: 0
 
         Returns
-        ---------
-        astropy table with:
-        columns: band, flux, fluxerr, snr_m5,flux_e,zp,zpsys,time
-        metadata : SNID,Ra,Dec,DayMax,X1,Color,z
+        -----------
+        astropy table:
+        metadata:
+          SNID: ID of the supernova (int)
+          Ra: SN RA (float)
+          Dec: SN Dec (float)
+          daymax: day of the max luminosity (float)
+          x0: SN x0 (float)
+          epsilon_x0: epsilon added to x0 for simulation (float)
+          x1: SN x1 (float)
+          epsilon_x1: epsilon added to x1 for simulation (float)
+          color: SN color (float)
+          epsilon_color: epsilon added to color for simulation (float)
+          z: SN redshift (float)
+          survey_area: survey area for this SN (float)
+          index_hdf5: SN index in the hdf5 file
+        fields:
+          flux: SN flux (Jy)
+          fluxerr: EN error flux (Jy)
+          snr_m5: Signal-to-Noise Ratio (float)
+          gamma: gamma parameter (see LSST: From Science...data products eq. 5) (float)
+          m5: five-sigma depth (float)
+          seeingFwhmEff: seeing eff (float)
+          seeingFwhmGeom: seeing geom (float)
+          flux_e: flux in pe.s-1 (float)
+          mag: magnitude (float)
+          exptime: exposure time (float)
+          magerr: magg error (float)
+          band: filter (str)
+          zp: zeropoint (float)
+          zpsys: zeropoint system (float)
+          time: time (days) (float)
+          phase: phase (float)
         """
         #assert (len(np.unique(obs[self.RaCol])) == 1)
         #assert (len(np.unique(obs[self.DecCol])) == 1)
@@ -113,6 +150,7 @@ class SN(SN_Object):
         dec = np.mean(obs[self.DecCol])
         area = self.area
 
+        # Metadata
         metadata = dict(zip(['SNID', 'Ra', 'Dec',
                              'daymax', 'x0', 'epsilon_x0', 'x1', 'epsilon_x1', 'color', 'epsilon_color', 'z', 'survey_area', 'index_hdf5'], [
             self.SNID, ra, dec, self.sn_parameters['daymax'],
@@ -120,7 +158,7 @@ class SN(SN_Object):
                 'epsilon_x1'], self.sn_parameters['color'], self.gen_parameters['epsilon_color'],
             self.sn_parameters['z'], area, index_hdf5]))
 
-        # print('Simulating SNID', self.SNID)
+        # Select obs depending on min and max phases
         obs = self.cutoff(obs, self.sn_parameters['daymax'],
                           self.sn_parameters['z'],
                           self.sn_parameters['min_rf_phase'],
@@ -137,6 +175,7 @@ class SN(SN_Object):
         # set metadata
         table_lc.meta = metadata
 
+        # Sort data according to mjd
         obs.sort(order=self.mjdCol)
 
         # apply dust here since Ra, Dec is known
@@ -146,6 +185,7 @@ class SN(SN_Object):
                 [[ra], [dec]]))[0]
         self.SN.set(mwebv = ebvofMW)
         """
+        # Get the fluxes (vs wavelength) for each obs
         fluxes = 10.*self.SN.flux(obs[self.mjdCol], self.wave)
 
         wavelength = self.wave/10.
@@ -156,42 +196,41 @@ class SN(SN_Object):
         fluxes = []
         transes = []
         nvals = range(len(SED_time.wavelen))
+        # Arrays of SED, transmissions to estimate integrated fluxes
         seds = [Sed(wavelen=SED_time.wavelen[i], flambda=SED_time.flambda[i])
                 for i in nvals]
         transes = np.asarray([self.telescope.atmosphere[obs[self.filterCol][i][-1]]
                               for i in nvals])
-        fluxes = np.asarray(
+        int_fluxes = np.asarray(
             [seds[i].calcFlux(bandpass=transes[i]) for i in nvals])
 
-        idx = fluxes > 0
-        fluxes = fluxes[idx]
+        #
+        idx = int_fluxes > 0
+        int_fluxes = int_fluxes[idx]
         transes = transes[idx]
         obs = obs[idx]
         nvals = range(len(obs))
 
+        # Get photometric parameters to estimate SNR
         photParams = [PhotometricParameters(exptime=obs[self.exptimeCol][i]/obs[self.nexpCol][i],
                                             nexp=obs[self.nexpCol][i]) for i in nvals]
-        mag_SN = -2.5 * np.log10(fluxes / 3631.0)  # fluxes are in Jy
-        #print('mags',mag_SN,photParams, obs[self.m5Col])
+        # magnitude - integrated fluxes are in Jy
+        mag_SN = -2.5 * np.log10(int_fluxes / 3631.0)  # fluxes are in Jy
+        # estimate SNR
         calc = [SignalToNoise.calcSNR_m5(
             mag_SN[i], transes[i], obs[self.m5Col][i],
             photParams[i]) for i in nvals]
         snr_m5_opsim = [calc[i][0] for i in nvals]
         gamma_opsim = [calc[i][1] for i in nvals]
         exptime = [obs[self.exptimeCol][i] for i in nvals]
-        """
-        e_per_sec = [seds[i].calcADU(bandpass=transes[i],
-                                     photParams=photParams[i]) /
-                     obs[self.exptimeCol][i]*photParams[i].gain for i in nvals]
-        """
+
+        # estimate the flux in elec.sec-1
         e_per_sec = self.telescope.mag_to_flux_e_sec(
             mag_SN, obs[self.filterCol], [30.]*len(mag_SN))
-        # print(e_per_sec,e_per_sec_b)
-        # table_lc=Table(obs)
 
-        # table_lc.remove_column('band')
-        table_lc.add_column(Column(fluxes, name='flux'))
-        table_lc.add_column(Column(fluxes/snr_m5_opsim, name='fluxerr'))
+        # Fill the astopy table
+        table_lc.add_column(Column(int_fluxes, name='flux'))
+        table_lc.add_column(Column(int_fluxes/snr_m5_opsim, name='fluxerr'))
         table_lc.add_column(Column(snr_m5_opsim, name='snr_m5'))
         table_lc.add_column(Column(gamma_opsim, name='gamma'))
         table_lc.add_column(Column(obs[self.m5Col], name='m5'))
@@ -220,19 +259,25 @@ class SN(SN_Object):
         phases = (table_lc['time']-self.sn_parameters['daymax']
                   )/(1.+self.sn_parameters['z'])
         table_lc.add_column(Column(phases, name='phase'))
-        #idx = table_lc['flux'] >= 0.
-        #table_lc = table_lc[idx]
 
-        # print(table_lc.dtype,table_lc['band'])
+        # if the user chooses to display the results...
         if display:
             self.plotLC(table_lc['time', 'band',
-                                 'flux', 'fluxerr', 'zp', 'zpsys'], time_display, self.sn_parameters['z'], self.sn_parameters['daymax'], 1)
+                                 'flux', 'fluxerr', 'zp', 'zpsys'], time_display)
 
         return table_lc, metadata
 
     def X0_norm(self):
         """ Extimate X0 from flux at 10pc
         using Vega spectrum
+
+        Parameters
+        --------------
+
+        Returns
+        ----------
+        x0: float
+          x0 from flux at 10pc
         """
 
         from lsst.sims.photUtils import Sed
@@ -253,7 +298,7 @@ class SN(SN_Object):
                                      wave_min=3559,
                                      wave_max=5559)
 
-        mag, spectrum_file = self.Get_Mag(
+        mag, spectrum_file = self.getMag(
             thedir+'/MagSys/VegaBD17-2008-11-28.dat',
             np.string_(name),
             np.string_(band))
@@ -300,8 +345,25 @@ class SN(SN_Object):
 
         return flux_at_10pc * 1.E-4 / e_per_sec
 
-    def Get_Mag(self, filename, name, band):
+    def getMag(self, filename, name, band):
         """ Get magnitude in filename
+
+        Parameters
+        --------------
+        filename: str
+          name of the file to scan
+        name: str
+           throughtput used
+        band: str
+          band to consider
+
+        Returns
+        ----------
+        mag: float
+         mag
+        spectrum_file: str
+         spectrum file
+
         """
         sfile = open(filename, 'rb')
         spectrum_file = 'unknown'
@@ -316,6 +378,19 @@ class SN(SN_Object):
     def calcInteg(self, bandpass, signal, wavelen):
         """ Estimate integral of signal
         over wavelength using bandpass
+
+        Parameters
+        --------------
+        bandpass: list(float)
+          bandpass
+        signal:  list(float)
+          signal to integrate (flux)
+        wavelength: list(float)
+          wavelength used for integration
+
+        Returns
+        -----------
+        integrated signal (float)
         """
 
         fa = interpolate.interp1d(bandpass.wavelen, bandpass.sb)
@@ -340,8 +415,21 @@ class SN(SN_Object):
     def readSED_fnu(self, filename, name=None):
         """
         Read a file containing [lambda Fnu] (lambda in nm) (Fnu in Jansky).
-
         Extracted from sims/photUtils/Sed.py which does not seem to work
+
+        Parameters
+        --------------
+        filename: str
+          name of the file to process
+        name: str,opt
+          default: None
+
+        Returns
+        ----------
+        sourcewavelen: list(float)
+         wavelength with lambda in nm
+        sourcefnu: list(float)
+         signal with Fnu in Jansky
         """
         # Try to open the data file.
         try:

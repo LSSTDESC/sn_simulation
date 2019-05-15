@@ -1,0 +1,372 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>sn_simulation.sn_simclass module &#8212; sn_simulation 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-sn_simulation.sn_simclass">
+<span id="sn-simulation-sn-simclass-module"></span><h1>sn_simulation.sn_simclass module<a class="headerlink" href="#module-sn_simulation.sn_simclass" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="sn_simulation.sn_simclass.SN_Simulation">
+<em class="property">class </em><code class="descclassname">sn_simulation.sn_simclass.</code><code class="descname">SN_Simulation</code><span class="sig-paren">(</span><em>cosmo_par</em>, <em>tel_par</em>, <em>sn_parameters</em>, <em>save_status</em>, <em>outdir</em>, <em>prodid</em>, <em>simu_config</em>, <em>display_lc=False</em>, <em>time_display=0.0</em>, <em>area=9.6</em>, <em>mjdCol='mjd'</em>, <em>RaCol='pixRa'</em>, <em>DecCol='pixDec'</em>, <em>filterCol='band'</em>, <em>exptimeCol='exptime'</em>, <em>nexpCol='numExposures'</em>, <em>m5Col='fiveSigmaDepth'</em>, <em>seasonCol='season'</em>, <em>seeingEffCol='seeingFwhmEff'</em>, <em>seeingGeomCol='seeingFwhmGeom'</em>, <em>nproc=1</em><span class="sig-paren">)</span><a class="headerlink" href="#sn_simulation.sn_simclass.SN_Simulation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>Main class for simulation</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>cosmo_par: dict</strong></p>
+<blockquote>
+<div><p>cosmology parameters
+ex: {‘Model’: ‘w0waCDM’, ‘Omega_m’: 0.3,</p>
+<blockquote>
+<div><p>‘Omega_l’: 0.7, ‘H0’: 72.0, ‘w0’: -1.0, ‘wa’: 0.0}</p>
+</div></blockquote>
+</div></blockquote>
+<p><strong>tel_par: dict</strong></p>
+<blockquote>
+<div><p>telescope parameters
+ex: {‘name’: ‘LSST’, ‘throughput_dir’: ‘LSST_THROUGHPUTS_BASELINE’,</p>
+<blockquote>
+<div><p>‘atmos_dir’: ‘THROUGHPUTS_DIR’, ‘airmass’: 1.2, ‘atmos’: True, ‘aerosol’: False}</p>
+</div></blockquote>
+</div></blockquote>
+<p><strong>sn_parameters: dict</strong></p>
+<blockquote>
+<div><dl class="docutils">
+<dt>supernova parameters</dt>
+<dd><dl class="first last docutils">
+<dt>ex:  {‘Id’: 100, ‘x1_color’: {‘type’: ‘fixed’, ‘min’: [-2.0, 0.2], ‘max’: [0.2, 0.2], ‘rate’: ‘JLA’}, ‘z’: {‘type’: ‘uniform’, ‘min’: 0.01, ‘max’: 0.9, ‘step’: 0.05, ‘rate’: ‘Perrett’}, ‘daymax’: {</dt>
+<dd><p class="first last">‘type’: ‘unique’, ‘step’: 1}, ‘min_rf_phase’: -20.0, ‘max_rf_phase’: 60.0, ‘absmag’: -19.0906, ‘band’: ‘bessellB’, ‘magsys’: ‘vega’, ‘differential_flux’: False}</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</div></blockquote>
+<p><strong>save_status: bool</strong></p>
+<blockquote>
+<div><p>to save (True) or not (False) LC on disk</p>
+</div></blockquote>
+<p><strong>outdir: str</strong></p>
+<blockquote>
+<div><p>output directory (used if save_status=True)</p>
+</div></blockquote>
+<p><strong>prodid: str</strong></p>
+<blockquote>
+<div><p>production id (ie output file name)</p>
+</div></blockquote>
+<p><strong>simu_config: dict</strong></p>
+<blockquote>
+<div><p>Simulator configuration
+ex: {‘name’: ‘sn_simulator.sn_cosmo’, ‘model’: ‘salt2-extended’,</p>
+<blockquote>
+<div><p>‘version’: 1.0, ‘Reference File’: ‘LC_Test_today.hdf5’}</p>
+</div></blockquote>
+</div></blockquote>
+<p><strong>display_lc: bool,opt</strong></p>
+<blockquote>
+<div><p>to display (True) or not (False-default) LC during generation</p>
+</div></blockquote>
+<p><strong>time_display: float,opt</strong></p>
+<blockquote>
+<div><p>duration of display LC window persistency (sec)</p>
+</div></blockquote>
+<p><strong>area: float,opt</strong></p>
+<blockquote>
+<div><p>observed area (default: 9.6 deg2)</p>
+</div></blockquote>
+<p><strong>mjdCol: str, opt</strong></p>
+<blockquote>
+<div><p>mjd col name in observations (default: ‘mjd’)</p>
+</div></blockquote>
+<p><strong>RaCol: str, opt</strong></p>
+<blockquote>
+<div><p>RA col name in observations (default: ‘pixRa’)</p>
+</div></blockquote>
+<p><strong>DecCol:str, opt</strong></p>
+<blockquote>
+<div><p>Dec col name in observations (default: ‘pixDec’)</p>
+</div></blockquote>
+<p><strong>filterCol: str, opt</strong></p>
+<blockquote>
+<div><p>filter col name in observations (default: band’)</p>
+</div></blockquote>
+<p><strong>exptimeCol: str, opt</strong></p>
+<blockquote>
+<div><p>exposure time  col name in observations (default: ‘exptime’)</p>
+</div></blockquote>
+<p><strong>nexpCol: str, opt</strong></p>
+<blockquote>
+<div><p>number of exposures col name in observations (default: ‘numExposures’)</p>
+</div></blockquote>
+<p><strong>m5Col: str, opt</strong></p>
+<blockquote>
+<div><p>5-sigma depth col name in observations (default: ‘fiveSigmaDepth’)</p>
+</div></blockquote>
+<p><strong>seasonCol: str, opt</strong></p>
+<blockquote>
+<div><p>season col name in observations (default: ‘season’)</p>
+</div></blockquote>
+<p><strong>seeingEffCol: str, opt</strong></p>
+<blockquote>
+<div><p>seeing eff col name in observations (default: ‘seeingFwhmEff’)</p>
+</div></blockquote>
+<p><strong>seeingGeomCol: str, opt</strong></p>
+<blockquote>
+<div><p>seeing geom  col name in observations (default: ‘seeingFwhmGeom’)</p>
+</div></blockquote>
+<p><strong>nproc: int,opt</strong></p>
+<blockquote class="last">
+<div><p>number of multiprocess (default: 1)</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Methods</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="#sn_simulation.sn_simclass.SN_Simulation.Finish" title="sn_simulation.sn_simclass.SN_Simulation.Finish"><code class="xref py py-obj docutils literal"><span class="pre">Finish</span></code></a>()</td>
+<td>Copy data to disk</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal"><span class="pre">__call__</span></code>(obs,&nbsp;fieldname,&nbsp;fieldid,&nbsp;season)</td>
+<td>LC simulations</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#sn_simulation.sn_simclass.SN_Simulation.prepareSave" title="sn_simulation.sn_simclass.SN_Simulation.prepareSave"><code class="xref py py-obj docutils literal"><span class="pre">prepareSave</span></code></a>(outdir,&nbsp;prodid)</td>
+<td>Prepare output directories for data</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#sn_simulation.sn_simclass.SN_Simulation.processFast" title="sn_simulation.sn_simclass.SN_Simulation.processFast"><code class="xref py py-obj docutils literal"><span class="pre">processFast</span></code></a>(obs,&nbsp;fieldname,&nbsp;fieldid)</td>
+<td>SN fast simulator</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#sn_simulation.sn_simclass.SN_Simulation.processSeason" title="sn_simulation.sn_simclass.SN_Simulation.processSeason"><code class="xref py py-obj docutils literal"><span class="pre">processSeason</span></code></a>(obs,&nbsp;season)</td>
+<td>Generate LC for one season (multiprocessing available) and all simu parameters</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#sn_simulation.sn_simclass.SN_Simulation.processSeasonSingle" title="sn_simulation.sn_simclass.SN_Simulation.processSeasonSingle"><code class="xref py py-obj docutils literal"><span class="pre">processSeasonSingle</span></code></a>(obs,&nbsp;season,&nbsp;gen_params,&nbsp;…)</td>
+<td>Generate LC for one season and a set of simu parameters</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="sn_simulation.sn_simclass.SN_Simulation.Finish">
+<code class="descname">Finish</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sn_simulation.sn_simclass.SN_Simulation.Finish" title="Permalink to this definition">¶</a></dt>
+<dd><p>Copy data to disk</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="sn_simulation.sn_simclass.SN_Simulation.prepareSave">
+<code class="descname">prepareSave</code><span class="sig-paren">(</span><em>outdir</em>, <em>prodid</em><span class="sig-paren">)</span><a class="headerlink" href="#sn_simulation.sn_simclass.SN_Simulation.prepareSave" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prepare output directories for data</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>outdir: str</strong></p>
+<blockquote>
+<div><p>output directory where to copy the data</p>
+</div></blockquote>
+<p><strong>prodid: str</strong></p>
+<blockquote>
+<div><p>production id (label for input files)</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Two output files are open:</p>
+<ul class="simple">
+<li>astropy table with (SNID,Ra,Dec,X1,Color,z) parameters</li>
+</ul>
+<p>-&gt; name: Simu_prodid.hdf5</p>
+<ul class="simple">
+<li>astropy tables with LC</li>
+</ul>
+<p class="last"><strong>-&gt; name</strong> : LC_prodid.hdf5</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="sn_simulation.sn_simclass.SN_Simulation.processFast">
+<code class="descname">processFast</code><span class="sig-paren">(</span><em>obs</em>, <em>fieldname</em>, <em>fieldid</em><span class="sig-paren">)</span><a class="headerlink" href="#sn_simulation.sn_simclass.SN_Simulation.processFast" title="Permalink to this definition">¶</a></dt>
+<dd><p>SN fast simulator</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>obs: array</strong></p>
+<blockquote>
+<div><p>array of observations</p>
+</div></blockquote>
+<p><strong>fieldname: str</strong></p>
+<blockquote>
+<div><p>name of the field</p>
+</div></blockquote>
+<p><strong>fieldid: int</strong></p>
+<blockquote class="last">
+<div><p>int label for the field</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="sn_simulation.sn_simclass.SN_Simulation.processSeason">
+<code class="descname">processSeason</code><span class="sig-paren">(</span><em>obs</em>, <em>season</em><span class="sig-paren">)</span><a class="headerlink" href="#sn_simulation.sn_simclass.SN_Simulation.processSeason" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate LC for one season (multiprocessing available) and all simu parameters</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>obs: array</strong></p>
+<blockquote>
+<div><p>array of observations</p>
+</div></blockquote>
+<p><strong>season: int</strong></p>
+<blockquote class="last">
+<div><p>season number</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="sn_simulation.sn_simclass.SN_Simulation.processSeasonSingle">
+<code class="descname">processSeasonSingle</code><span class="sig-paren">(</span><em>obs</em>, <em>season</em>, <em>gen_params</em>, <em>index_hdf5</em>, <em>j=-1</em>, <em>output_q=None</em><span class="sig-paren">)</span><a class="headerlink" href="#sn_simulation.sn_simclass.SN_Simulation.processSeasonSingle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate LC for one season and a set of simu parameters</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>obs: array</strong></p>
+<blockquote>
+<div><p>array of observations</p>
+</div></blockquote>
+<p><strong>season: int</strong></p>
+<blockquote>
+<div><p>season number</p>
+</div></blockquote>
+<p><strong>gen_params: dict</strong></p>
+<blockquote>
+<div><p>generation parameters
+ex:</p>
+</div></blockquote>
+<p><strong>index_hdf5: int</strong></p>
+<blockquote>
+<div><p>SN index in hdf5 output file</p>
+</div></blockquote>
+<p><strong>j: int</strong></p>
+<blockquote>
+<div><p>used for multiprocessing</p>
+</div></blockquote>
+<p><strong>output_q: dict</strong></p>
+<blockquote>
+<div><p>output for multiprocessing</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">lc_table: astropy table</p>
+<blockquote>
+<div><p>table with LC informations (flux, time, …)</p>
+</div></blockquote>
+<p>metadata: dict</p>
+<blockquote class="last">
+<div><p>metadata of the simulation</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="sn_simulation.html">sn_simulation package</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Ph.Gris.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/api/sn_simulation.sn_simclass.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

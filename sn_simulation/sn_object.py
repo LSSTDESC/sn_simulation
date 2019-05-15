@@ -6,20 +6,56 @@ from collections import OrderedDict as odict
 
 
 class SN_Object:
-    """ class SN object
-    handles sn name, parameters,
-    cosmology, snid, telescope...
-    necessary parameters for simulation
-    SN classes inherit from SN_Object
-    """
-
     def __init__(self, name, sn_parameters, gen_parameters, cosmology,
                  Telescope, snid, area,
                  mjdCol='mjd', RaCol='pixRa', DecCol='pixDec',
                  filterCol='band', exptimeCol='exptime', nexpCol='numExposures',
                  m5Col='fiveSigmaDepth', seasonCol='season',
                  seeingEffCol='seeingFwhmEff', seeingGeomCol='seeingFwhmGeom'):
+        """ class SN object
+        handles sn name, parameters,
+        cosmology, snid, telescope...
+        necessary parameters for simulation
+        SN classes inherit from SN_Object
 
+        Parameters
+        --------------
+        name: str
+          production name?
+        sn_parameters: dict
+         supernovae parameters
+        gen_parameters: dict
+         simulation parameters
+        cosmology: dict
+         cosmological parameters used for simulation
+        telescope: dict
+         telescope parameters
+        snid: int
+         supernova identifier
+        area: float
+          survey area (usually in deg2)
+         mjdCol: str, opt
+           mjd col name in observations (default: 'mjd')
+        RaCol: str, opt
+          RA col name in observations (default: 'pixRa')
+        DecCol:str, opt
+          Dec col name in observations (default: 'pixDec')
+        filterCol: str, opt
+          filter col name in observations (default: band')
+        exptimeCol: str, opt
+         exposure time  col name in observations (default: 'exptime')
+        nexpCol: str, opt
+         number of exposures col name in observations (default: 'numExposures')
+        m5Col: str, opt
+          5-sigma depth col name in observations (default: 'fiveSigmaDepth')
+        seasonCol: str, opt
+         season col name in observations (default: 'season')
+        seeingEffCol: str, opt
+         seeing eff col name in observations (default: 'seeingFwhmEff')
+        seeingGeomCol: str, opt
+        seeing geom  col name in observations (default: 'seeingFwhmGeom')
+
+    """
         self._name = name
         self._sn_parameters = sn_parameters
         self._gen_parameters = gen_parameters
@@ -45,37 +81,53 @@ class SN_Object:
 
     @property
     def sn_parameters(self):
+        """SN parameters
+        """
         return self._sn_parameters
 
     @property
     def gen_parameters(self):
+        """ Simulation parameters
+        """
         return self._gen_parameters
 
     @property
     def cosmology(self):
+        """ Cosmology
+        """
         return self._cosmology
 
     @property
     def telescope(self):
+        """ Telescope
+        """
         return self._telescope
 
     @property
     def SNID(self):
+        """ SN identifier
+        """
         return self._SNID
 
     def cutoff(self, obs, T0, z, min_rf_phase, max_rf_phase):
         """ select observations depending on phases
-        Input
-        ---------
-        obs: observations (recarray)
-        T0: DayMax of the supernova
-        z: redshift
-        min_rf_phase: min phase rest-frame
-        max_rf_phase: max phase rest-frame
+
+        Parameters
+        -------------
+        obs: array
+          array of observations
+        T0: float
+          daymax of the supernova
+        z: float
+          redshift
+        min_rf_phase: float
+          min phase rest-frame
+        max_rf_phase: float
+         max phase rest-frame
 
         Returns
-        ---------
-        recarray of obs passing the selection
+        ----------
+        array of obs passing the selection
         """
 
         blue_cutoff = 300.
@@ -92,14 +144,21 @@ class SN_Object:
         idx &= (mean_restframe_wavelength < red_cutoff)
         return obs[idx]
 
-    def plotLC(self, table, time_display, z, daymax, season):
+    def plotLC(self, table, time_display):
+        """ Light curve plot using sncosmo methods
+
+        Parameters
+        ---------------
+        table: astropy table
+         table with LS informations (flux, ...)
+       time_display: float
+         duration of the window display
+        """
+
         import pylab as plt
         import sncosmo
-        print('What will be plotted')
-        print(table)
-        print(self.sn_parameters)
         prefix = 'LSST::'
-        print(table.dtype, len(table))
+        """
         _photdata_aliases = odict([
             ('time', set(['time', 'date', 'jd', 'mjd', 'mjdobs', 'mjd_obs'])),
             ('band', set(['band', 'bandpass', 'filter', 'flt'])),
@@ -109,6 +168,7 @@ class SN_Object:
             ('zp', set(['zp', 'zpt', 'zeropoint', 'zero_point'])),
             ('zpsys', set(['zpsys', 'zpmagsys', 'magsys']))
         ])
+        """
         for band in 'grizy':
             name_filter = prefix+band
             if self.telescope.airmass > 0:
@@ -126,12 +186,17 @@ class SN_Object:
             # print('registering',name_filter)
             sncosmo.registry.register(bandpass, force=True)
 
+        z = table.meta['z']
+        x1 = table.meta['x1']
+        color = table.meta['color']
+        daymax = table.meta['daymax']
+
         model = sncosmo.Model('salt2')
         model.set(z=z,
-                  c=np.unique(self.sn_parameters['color']),
+                  c=color,
                   t0=daymax,
                   # x0=self.X0,
-                  x1=np.unique(self.sn_parameters['x1']))
+                  x1=x1)
         """
         print('tests',isinstance(table, np.ndarray),isinstance(table,Table),isinstance(table,dict))
         array_tab = np.asarray(table)
@@ -155,9 +220,6 @@ class SN_Object:
         print('bbbb',orig_colnames_to_use,_photdata_aliases.keys(),new_data.dtype.names)
         new_data.dtype.names = _photdata_aliases.keys()
         """
-        print(table['band'])
-        for vat in table['band']:
-            print('oo', vat, 'oo')
         sncosmo.plot_lc(data=table, model=model)
 
         plt.draw()
