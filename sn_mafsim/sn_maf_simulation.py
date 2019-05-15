@@ -1,6 +1,6 @@
 import numpy as np
 from lsst.sims.maf.metrics import BaseMetric
-from sn_simulation.sn_simulation import SN_Simulation
+from sn_simulation.sn_simclass import SN_Simulation
 from sn_stackers.coadd_stacker import CoaddStacker
 import healpy as hp
 
