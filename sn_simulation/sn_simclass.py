@@ -68,6 +68,8 @@ class SN_Simulation:
      seeing eff col name in observations (default: 'seeingFwhmEff')
     seeingGeomCol: str, opt
      seeing geom  col name in observations (default: 'seeingFwhmGeom')
+    x1color_dir: str, opt
+      dir where (x1,color) distribution files are located
     nproc: int,opt
      number of multiprocess (default: 1)
 
@@ -80,6 +82,7 @@ class SN_Simulation:
                  filterCol='band', exptimeCol='exptime', nexpCol='numExposures',
                  m5Col='fiveSigmaDepth', seasonCol='season',
                  seeingEffCol='seeingFwhmEff', seeingGeomCol='seeingFwhmGeom',
+                 x1color_dir='reference_files',
                  nproc=1):
 
         self.sn_parameters = sn_parameters
@@ -102,7 +105,8 @@ class SN_Simulation:
         self.area = area
         # generate simulation parameters
         self.gen_par = GenerateSample(sn_parameters, cosmo_par, mjdCol=self.mjdCol, area=self.area,
-                                      min_rf_phase=sn_parameters['min_rf_phase'], max_rf_phase=sn_parameters['max_rf_phase'])
+                                      min_rf_phase=sn_parameters['min_rf_phase'],
+                                      max_rf_phase=sn_parameters['max_rf_phase'], dirFiles=x1color_dir)
 
         # instantiate cosmology
         self.cosmology = w0waCDM(H0=cosmo_par['H0'],
