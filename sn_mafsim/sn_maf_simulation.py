@@ -108,7 +108,8 @@ class SNMetric(BaseMetric):
                                   filterCol=self.filterCol, exptimeCol=self.exptimeCol,
                                   m5Col=self.m5Col, seasonCol=self.seasonCol,
                                   seeingEffCol=self.seeingEffCol, seeingGeomCol=self.seeingGeomCol,
-                                  x1color_dir=config['SN parameters']['x1_color']['dirFile'],
+                                  x1colorDir=config['SN parameters']['x1_color']['dirFile'],
+                                  salt2Dir=config['SN parameters']['salt2Dir'],
                                   nproc=config['Multiprocessing']['nproc'])
 
     def run(self, dataSlice, slicePoint=None):
