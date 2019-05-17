@@ -83,6 +83,7 @@ class SN_Simulation:
                  m5Col='fiveSigmaDepth', seasonCol='season',
                  seeingEffCol='seeingFwhmEff', seeingGeomCol='seeingFwhmGeom',
                  x1color_dir='reference_files',
+                 salt2Dir='SALT2_Files',
                  nproc=1):
 
         self.sn_parameters = sn_parameters
@@ -103,6 +104,7 @@ class SN_Simulation:
         self.seeingGeomCol = seeingGeomCol
         self.nproc = nproc
         self.area = area
+        self.salt2Dir = salt2Dir
         # generate simulation parameters
         self.gen_par = GenerateSample(sn_parameters, cosmo_par, mjdCol=self.mjdCol, area=self.area,
                                       min_rf_phase=sn_parameters['min_rf_phase'],
@@ -331,7 +333,8 @@ class SN_Simulation:
                               mjdCol=self.mjdCol, RaCol=self.RaCol,
                               DecCol=self.DecCol,
                               filterCol=self.filterCol, exptimeCol=self.exptimeCol,
-                              m5Col=self.m5Col)
+                              m5Col=self.m5Col,
+                              salt2Dir=self.salt2Dir)
 
         module = import_module(self.simu_config['name'])
         simu = module.SN(sn_object, self.simu_config)

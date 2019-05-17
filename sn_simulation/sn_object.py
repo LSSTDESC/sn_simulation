@@ -11,7 +11,8 @@ class SN_Object:
                  mjdCol='mjd', RaCol='pixRa', DecCol='pixDec',
                  filterCol='band', exptimeCol='exptime', nexpCol='numExposures',
                  m5Col='fiveSigmaDepth', seasonCol='season',
-                 seeingEffCol='seeingFwhmEff', seeingGeomCol='seeingFwhmGeom'):
+                 seeingEffCol='seeingFwhmEff', seeingGeomCol='seeingFwhmGeom',
+                 salt2Dir='SALT2_Files'):
         """ class SN object
         handles sn name, parameters,
         cosmology, snid, telescope...
@@ -53,8 +54,9 @@ class SN_Object:
         seeingEffCol: str, opt
          seeing eff col name in observations (default: 'seeingFwhmEff')
         seeingGeomCol: str, opt
-        seeing geom  col name in observations (default: 'seeingFwhmGeom')
-
+         seeing geom  col name in observations (default: 'seeingFwhmGeom')
+        salt2Dir: str,opt
+         dir of SALT2 files
     """
         self._name = name
         self._sn_parameters = sn_parameters
@@ -74,6 +76,7 @@ class SN_Object:
         self.seeingEffCol = seeingEffCol
         self.seeingGeomCol = seeingGeomCol
         self.area = area
+        self.salt2Dir = salt2Dir
 
     @property
     def name(self):

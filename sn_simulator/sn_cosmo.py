@@ -23,7 +23,8 @@ class SN(SN_Object):
                          filterCol=param.filterCol, exptimeCol=param.exptimeCol,
                          nexpCol=param.nexpCol,
                          m5Col=param.m5Col, seasonCol=param.seasonCol,
-                         seeingEffCol=param.seeingEffCol, seeingGeomCol=param.seeingGeomCol)
+                         seeingEffCol=param.seeingEffCol, seeingGeomCol=param.seeingGeomCol,
+                         salt2Dir=param.salt2Dir)
 
         """ SN class - inherits from SN_Object
 
@@ -285,7 +286,7 @@ class SN(SN_Object):
         name = 'STANDARD'
         band = 'B'
         #thedir = os.getenv('SALT2_DIR')
-        thedir = 'SALT2_Files'
+        thedir = self.salt2Dir
 
         os.environ[name] = thedir+'/Instruments/Landolt'
 
