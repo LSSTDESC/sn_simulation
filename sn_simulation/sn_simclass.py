@@ -198,7 +198,7 @@ class SN_Simulation:
                 # remove the u band
                 idx = [i for i, val in enumerate(
                     obs_season[self.filterCol]) if val[-1] != 'u']
-                if len(obs_season[idx]) > 0:
+                if len(obs_season[idx]) >= 5:
                     # if self.simu_config['name'] != 'SN_Fast':
                     self.processSeason(obs_season[idx], seas)
         else:
