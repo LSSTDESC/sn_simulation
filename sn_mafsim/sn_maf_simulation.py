@@ -47,7 +47,7 @@ class SNMetric(BaseMetric):
                  mjdCol='observationStartMJD', RaCol='fieldRA', DecCol='fieldDec',
                  filterCol='filter', m5Col='fiveSigmaDepth', exptimeCol='visitExposureTime',
                  nightCol='night', obsidCol='observationId', nexpCol='numExposures', vistimeCol='visitTime', seeingEffCol='seeingFwhmEff', seeingGeomCol='seeingFwhmGeom', coadd=True,
-                 uniqueBlocks=False, config=None, **kwargs):
+                 uniqueBlocks=False, config=None, x0_norm=None,**kwargs):
 
         self.mjdCol = mjdCol
         self.m5Col = m5Col
@@ -102,7 +102,7 @@ class SNMetric(BaseMetric):
 
         self.simu = SN_Simulation(cosmo_par, tel_par, sn_parameters,
                                   save_status, outdir, prodid,
-                                  simu_config, display_lc, display_time, area,
+                                  simu_config, x0_norm,display_lc, display_time, area,
                                   mjdCol=self.mjdCol, RaCol=self.RaCol,
                                   DecCol=self.DecCol,
                                   filterCol=self.filterCol, exptimeCol=self.exptimeCol,

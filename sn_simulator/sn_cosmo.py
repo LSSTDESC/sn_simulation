@@ -10,6 +10,7 @@ import os
 from scipy import interpolate, integrate
 import h5py
 from lsst.sims.catUtils.dust import EBV
+from scipy.interpolate import griddata
 
 from sn_simulation.sn_object import SN_Object
 from sn_tools.sn_throughputs import Throughputs
@@ -18,7 +19,7 @@ from sn_tools.sn_throughputs import Throughputs
 class SN(SN_Object):
     def __init__(self, param, simu_param):
         super().__init__(param.name, param.sn_parameters, param.gen_parameters,
-                         param.cosmology, param.telescope, param.SNID, param.area,
+                         param.cosmology, param.telescope, param.SNID, param.area,param.x0_grid,
                          mjdCol=param.mjdCol, RaCol=param.RaCol, DecCol=param.DecCol,
                          filterCol=param.filterCol, exptimeCol=param.exptimeCol,
                          nexpCol=param.nexpCol,
@@ -78,7 +79,10 @@ class SN(SN_Object):
         # need to correct X0 for alpha and beta
         lumidist = self.cosmology.luminosity_distance(
             self.sn_parameters['z']).value*1.e3
-        X0 = self.X0_norm() / lumidist ** 2
+        #X0 = self.X0_norm() / lumidist ** 2
+        X0_grid = griddata((self.x0_grid['x1'],self.x0_grid['color']),self.x0_grid['x0_norm'], (self.sn_parameters['x1'],self.sn_parameters['color']),  method='nearest')
+        #print('test here',self.X0_norm()/X0_grid)
+        X0 = X0_grid/ lumidist ** 2
         alpha = 0.13
         beta = 3.
         X0 *= np.power(10., 0.4*(alpha *
@@ -93,6 +97,8 @@ class SN(SN_Object):
 
         self.X0=self.SN.get('x0')
         """
+
+        self.defname =dict(zip(['healpixID','pixRa','pixDec'],['observationId',param.RaCol,param.DecCol]))
 
     def __call__(self, obs, index_hdf5, display=False, time_display=0.):
         """ Simulation of the light curve
@@ -150,14 +156,26 @@ class SN(SN_Object):
         ra = np.mean(obs[self.RaCol])
         dec = np.mean(obs[self.DecCol])
         area = self.area
+        season = np.unique(obs['season'])[0]
+        pix = {}
+        print(obs.dtype)
+        for vv in ['healpixID','pixRa','pixDec']:
+            if vv in obs.dtype.names:
+                pix[vv] = np.unique(obs['healpixID'])[0]
+            else:
+                pix[vv] = np.mean(obs[self.defname[vv]])
+
+
 
         # Metadata
+        index = '{}_{}_{}'.format(pix['healpixID'], int(season),index_hdf5)
+        #print('hello',index)
         metadata = dict(zip(['SNID', 'Ra', 'Dec',
-                             'daymax', 'x0', 'epsilon_x0', 'x1', 'epsilon_x1', 'color', 'epsilon_color', 'z', 'survey_area', 'index_hdf5'], [
+                             'daymax', 'x0', 'epsilon_x0', 'x1', 'epsilon_x1', 'color', 'epsilon_color', 'z', 'survey_area', 'index_hdf5','pixID','pixRa','pixDec','season'], [
             self.SNID, ra, dec, self.sn_parameters['daymax'],
             self.X0, self.gen_parameters['epsilon_x0'], self.sn_parameters['x1'], self.gen_parameters[
                 'epsilon_x1'], self.sn_parameters['color'], self.gen_parameters['epsilon_color'],
-            self.sn_parameters['z'], area, index_hdf5]))
+                                 self.sn_parameters['z'], area, index, pix['healpixID'], pix['pixRa'],['pixDec'],season]))
 
         # Select obs depending on min and max phases
         obs = self.cutoff(obs, self.sn_parameters['daymax'],
@@ -268,8 +286,9 @@ class SN(SN_Object):
 
         return table_lc, metadata
 
+"""
     def X0_norm(self):
-        """ Extimate X0 from flux at 10pc
+        #Extimate X0 from flux at 10pc
         using Vega spectrum
 
         Parameters
@@ -279,7 +298,7 @@ class SN(SN_Object):
         ----------
         x0: float
           x0 from flux at 10pc
-        """
+        #
 
         from lsst.sims.photUtils import Sed
 
@@ -347,7 +366,7 @@ class SN(SN_Object):
         return flux_at_10pc * 1.E-4 / e_per_sec
 
     def getMag(self, filename, name, band):
-        """ Get magnitude in filename
+        #Get magnitude in filename
 
         Parameters
         --------------
@@ -365,7 +384,7 @@ class SN(SN_Object):
         spectrum_file: str
          spectrum file
 
-        """
+        
         sfile = open(filename, 'rb')
         spectrum_file = 'unknown'
         for line in sfile.readlines():
@@ -377,7 +396,7 @@ class SN(SN_Object):
         sfile.close()
 
     def calcInteg(self, bandpass, signal, wavelen):
-        """ Estimate integral of signal
+        #Estimate integral of signal
         over wavelength using bandpass
 
         Parameters
@@ -392,7 +411,7 @@ class SN(SN_Object):
         Returns
         -----------
         integrated signal (float)
-        """
+        #
 
         fa = interpolate.interp1d(bandpass.wavelen, bandpass.sb)
         fb = interpolate.interp1d(wavelen, signal)
@@ -414,7 +433,7 @@ class SN(SN_Object):
         return integrate.simps(integrand, x=waves)
 
     def readSED_fnu(self, filename, name=None):
-        """
+        
         Read a file containing [lambda Fnu] (lambda in nm) (Fnu in Jansky).
         Extracted from sims/photUtils/Sed.py which does not seem to work
 
@@ -431,7 +450,7 @@ class SN(SN_Object):
          wavelength with lambda in nm
         sourcefnu: list(float)
          signal with Fnu in Jansky
-        """
+        
         # Try to open the data file.
         try:
             if filename.endswith('.gz'):
@@ -464,3 +483,4 @@ class SN(SN_Object):
         sourcewavelen = np.array(sourcewavelen)
         sourcefnu = np.array(sourcefnu)
         return sourcewavelen, sourcefnu
+"""

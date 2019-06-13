@@ -12,7 +12,7 @@ from sn_tools.sn_telescope import Telescope
 from sn_simulation.sn_object import SN_Object
 from sn_tools.sn_utils import GenerateSample
 from sn_tools.observations import Observations
-
+from scipy.interpolate import interp2d
 
 class SN_Simulation:
     """ Main class for simulation
@@ -42,6 +42,8 @@ class SN_Simulation:
      Simulator configuration
      ex: {'name': 'sn_simulator.sn_cosmo', 'model': 'salt2-extended',
          'version': 1.0, 'Reference File': 'LC_Test_today.hdf5'}
+    x0_norm: numpy array
+     array with (x1,color,x0_norm) values
     display_lc: bool,opt
      to display (True) or not (False-default) LC during generation
     time_display: float,opt
@@ -77,7 +79,7 @@ class SN_Simulation:
 
     def __init__(self, cosmo_par, tel_par, sn_parameters,
                  save_status, outdir, prodid,
-                 simu_config, display_lc=False, time_display=0., area=9.6,
+                 simu_config, x0_norm,display_lc=False, time_display=0., area=9.6,
                  mjdCol='mjd', RaCol='pixRa', DecCol='pixDec',
                  filterCol='band', exptimeCol='exptime', nexpCol='numExposures',
                  m5Col='fiveSigmaDepth', seasonCol='season',
@@ -122,6 +124,9 @@ class SN_Simulation:
                                    atmos=tel_par['atmos'],
                                    aerosol=tel_par['aerosol'],
                                    airmass=tel_par['airmass'])
+
+        # get the x0_norm values to be put on a 2D(x1,color) griddata
+        self.x0_grid = x0_norm
 
         # if saving activated, prepare output dirs
         if self.save_status:
@@ -192,6 +197,7 @@ class SN_Simulation:
 
         if self.simu_config['name'] != 'SN_Fast':
             for seas in seasons:
+                self.index_hdf5_count = self.index_hdf5
                 time_ref = time.time()
                 idxa = obs[self.seasonCol] == seas
                 obs_season = obs[idxa]
@@ -246,7 +252,7 @@ class SN_Simulation:
         nlc = len(gen_params)
         batch = range(0, nlc, self.nproc)
         batch = np.append(batch, nlc)
-
+        
         for i in range(len(batch)-1):
             result_queue = multiprocessing.Queue()
 
@@ -254,9 +260,9 @@ class SN_Simulation:
             idb = batch[i+1]
 
             for j in range(ida, idb):
-                self.index_hdf5 += 1
+                self.index_hdf5_count += 1
                 p = multiprocessing.Process(name='Subprocess-'+str(j), target=self.processSeasonSingle, args=(
-                    obs, season, gen_params[j], self.index_hdf5, j, result_queue))
+                    obs, season, gen_params[j], self.index_hdf5_count, j, result_queue))
                 p.start()
 
             resultdict = {}
@@ -285,7 +291,10 @@ class SN_Simulation:
                                          metadata['color'], metadata['epsilon_color'],
                                          metadata['z'], metadata['index_hdf5'], season,
                                          self.fieldname, self.fieldid,
-                                         n_lc_points, metadata['survey_area']))
+                                         n_lc_points, metadata['survey_area'],
+                                         metadata['pixID'],
+                                         metadata['pixRa'],
+                                         metadata['pixDec']))
 
             """
             for i, val in enumerate(gen_params[:]):
@@ -334,7 +343,8 @@ class SN_Simulation:
                               DecCol=self.DecCol,
                               filterCol=self.filterCol, exptimeCol=self.exptimeCol,
                               m5Col=self.m5Col,
-                              salt2Dir=self.salt2Dir)
+                              salt2Dir=self.salt2Dir,
+                              x0_grid = self.x0_grid)
 
         module = import_module(self.simu_config['name'])
         simu = module.SN(sn_object, self.simu_config)
@@ -359,9 +369,9 @@ class SN_Simulation:
                          'color', 'epsilon_color',
                          'z', 'id_hdf5', 'season',
                          'fieldname', 'fieldid',
-                         'n_lc_points', 'survey_area'],
+                         'n_lc_points', 'survey_area','pixID','pixRa','pixDec'],
                   dtype=('i4', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8',
-                         'f8', 'i4', 'i4', 'S3', 'i8', 'i8', 'f8')).write(
+                         'f8', h5py.special_dtype(vlen=str), 'i4', 'S3', 'i8', 'i8', 'f8','i8','f8','f8')).write(
                              self.simu_out, 'summary', compression=True)
 
     def processFast(self, obs, fieldname, fieldid):

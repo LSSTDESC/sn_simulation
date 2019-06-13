@@ -7,7 +7,7 @@ from collections import OrderedDict as odict
 
 class SN_Object:
     def __init__(self, name, sn_parameters, gen_parameters, cosmology,
-                 Telescope, snid, area,
+                 Telescope, snid, area,x0_grid,
                  mjdCol='mjd', RaCol='pixRa', DecCol='pixDec',
                  filterCol='band', exptimeCol='exptime', nexpCol='numExposures',
                  m5Col='fiveSigmaDepth', seasonCol='season',
@@ -35,7 +35,9 @@ class SN_Object:
          supernova identifier
         area: float
           survey area (usually in deg2)
-         mjdCol: str, opt
+        x0_grid: interp2D
+         2D-grid (x1,color) of x0_norm values
+        mjdCol: str, opt
            mjd col name in observations (default: 'mjd')
         RaCol: str, opt
           RA col name in observations (default: 'pixRa')
@@ -77,6 +79,8 @@ class SN_Object:
         self.seeingGeomCol = seeingGeomCol
         self.area = area
         self.salt2Dir = salt2Dir
+        self.x0_grid = x0_grid
+        
 
     @property
     def name(self):
