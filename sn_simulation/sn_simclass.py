@@ -14,6 +14,7 @@ from sn_tools.sn_utils import GenerateSample
 from sn_tools.observations import Observations
 from scipy.interpolate import interp2d
 
+
 class SN_Simulation:
     """ Main class for simulation
 
@@ -79,7 +80,7 @@ class SN_Simulation:
 
     def __init__(self, cosmo_par, tel_par, sn_parameters,
                  save_status, outdir, prodid,
-                 simu_config, x0_norm,display_lc=False, time_display=0., area=9.6,
+                 simu_config, x0_norm, display_lc=False, time_display=0., area=9.6,
                  mjdCol='mjd', RaCol='pixRa', DecCol='pixDec',
                  filterCol='band', exptimeCol='exptime', nexpCol='numExposures',
                  m5Col='fiveSigmaDepth', seasonCol='season',
@@ -252,7 +253,7 @@ class SN_Simulation:
         nlc = len(gen_params)
         batch = range(0, nlc, self.nproc)
         batch = np.append(batch, nlc)
-        
+
         for i in range(len(batch)-1):
             result_queue = multiprocessing.Queue()
 
@@ -344,7 +345,7 @@ class SN_Simulation:
                               filterCol=self.filterCol, exptimeCol=self.exptimeCol,
                               m5Col=self.m5Col,
                               salt2Dir=self.salt2Dir,
-                              x0_grid = self.x0_grid)
+                              x0_grid=self.x0_grid)
 
         module = import_module(self.simu_config['name'])
         simu = module.SN(sn_object, self.simu_config)
@@ -361,7 +362,6 @@ class SN_Simulation:
         """ Copy data to disk
 
         """
-
         if len(self.sn_meta) > 0:
             Table(rows=self.sn_meta,
                   names=['SNID', 'Ra', 'Dec', 'daymax', 'x0', 'epsilon_x0',
@@ -369,9 +369,9 @@ class SN_Simulation:
                          'color', 'epsilon_color',
                          'z', 'id_hdf5', 'season',
                          'fieldname', 'fieldid',
-                         'n_lc_points', 'survey_area','pixID','pixRa','pixDec'],
+                         'n_lc_points', 'survey_area', 'pixID', 'pixRa', 'pixDec'],
                   dtype=('i4', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8',
-                         'f8', h5py.special_dtype(vlen=str), 'i4', 'S3', 'i8', 'i8', 'f8','i8','f8','f8')).write(
+                         'f8', h5py.special_dtype(vlen=str), 'i4', 'S3', 'i8', 'i8', 'f8', 'i8', 'f8', 'f8')).write(
                              self.simu_out, 'summary', compression=True)
 
     def processFast(self, obs, fieldname, fieldid):
