@@ -141,7 +141,7 @@ class SN(SN_Object):
           m5: five-sigma depth (float)
           seeingFwhmEff: seeing eff (float)
           seeingFwhmGeom: seeing geom (float)
-          flux_e: flux in pe.s-1 (float)
+          flux_e_sec: flux in pe.s-1 (float)
           mag: magnitude (float)
           exptime: exposure time (float)
           magerr: magg error (float)
@@ -254,7 +254,7 @@ class SN(SN_Object):
             Column(obs[self.seeingEffCol], name=self.seeingEffCol))
         table_lc.add_column(
             Column(obs[self.seeingGeomCol], name=self.seeingGeomCol))
-        table_lc.add_column(Column(e_per_sec[:, 1], name='flux_e'))
+        table_lc.add_column(Column(e_per_sec[:, 1], name='flux_e_sec'))
         table_lc.add_column(Column(mag_SN, name='mag'))
         table_lc.add_column(Column(exptime, name='exptime'))
 

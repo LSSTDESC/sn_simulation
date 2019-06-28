@@ -173,7 +173,7 @@ class SN_Simulation:
         if os.path.exists(self.lc_out):
             os.remove(self.lc_out)
 
-    def __call__(self, obs, fieldname, fieldid, season):
+    def __call__(self, obs, fieldname, fieldid, season,reference_lc=None):
         """ LC simulations
 
         Parameters
@@ -196,7 +196,7 @@ class SN_Simulation:
         else:
             seasons = [season]
 
-        if self.simu_config['name'] != 'SN_Fast':
+        if  'sn_fast' not in self.simu_config['name']:
             for seas in seasons:
                 self.index_hdf5_count = self.index_hdf5
                 time_ref = time.time()
@@ -213,9 +213,9 @@ class SN_Simulation:
             if season != -1:
                 for seas in seasons:
                     idxa = obs[self.seasonCol] == seas
-                    self.processFast(obs[idxa], fieldname, fieldid)
+                    self.processFast(obs[idxa], fieldname, fieldid,reference_lc)
             else:
-                self.processFast(obs, fieldname, fieldid)
+                self.processFast(obs, fieldname, fieldid,reference_lc)
 
         print('End of simulation', time.time()-time_ref)
     """
@@ -374,7 +374,7 @@ class SN_Simulation:
                          'f8', h5py.special_dtype(vlen=str), 'i4', 'S3', 'i8', 'i8', 'f8', 'i8', 'f8', 'f8')).write(
                              self.simu_out, 'summary', compression=True)
 
-    def processFast(self, obs, fieldname, fieldid):
+    def processFast(self, obs, fieldname, fieldid, reference_lc):
         """ SN fast simulator
 
         Parameters
@@ -385,23 +385,23 @@ class SN_Simulation:
          name of the field
         fieldid: int
          int label for the field
+        reference_lc: class (see GetReference in sn_tools.sn_utils)
+         set od dicts with reference values (flux, flux error, ...)
+         
 
         """
 
+        # generate simulation parameters depending on obs
         gen_params = self.gen_par(obs)
 
         if gen_params is None:
             return
-        # print('genpar',gen_params)
+        # get SN simulation parameters
         sn_par = self.sn_parameters.copy()
-        for name in ['z', 'X1', 'Color', 'DayMax']:
+        for name in ['z', 'x1', 'color', 'daymax']:
             sn_par[name] = gen_params[name]
 
-        epsilon = {}
-
-        for val in ['x0', 'x1', 'color']:
-            epsilon[val] = np.asscalar(np.unique(gen_params['epsilon_'+val]))
-
+        # sn_object instance
         sn_object = SN_Object(self.simu_config['name'],
                               sn_par,
                               gen_params,
@@ -410,16 +410,56 @@ class SN_Simulation:
                               mjdCol=self.mjdCol, RaCol=self.RaCol,
                               DecCol=self.DecCol,
                               filterCol=self.filterCol, exptimeCol=self.exptimeCol,
-                              m5Col=self.m5Col)
+                              m5Col=self.m5Col,
+                              salt2Dir=self.salt2Dir,
+                              x0_grid=self.x0_grid)
 
+        # import the module as defined in the config file
         module = import_module(self.simu_config['name'])
-        simu = module.SN(sn_object, self.simu_config)
-        ra, dec, tab = simu(obs, self.index_hdf5,
-                            self.display_lc, self.time_display, gen_params)
+        
+        # SN class instance
+        simu = module.SN(sn_object, self.simu_config, reference_lc)
+
+        # perform simulation here
+        tab = simu(obs, self.index_hdf5,gen_params,
+                            self.display_lc, self.time_display)
 
         index_hdf5 = self.index_hdf5
 
+
+        # now a tricky part: save results on disk
         if self.save_status and tab is not None:
+            groups = tab.group_by(['healpixId','z','daymax','season'])
+            for group in groups.groups:
+              
+                x1 = np.unique(sn_par['x1'])[0]
+                color = np.unique(sn_par['color'])[0]
+
+
+                z = np.unique(group['z'].data)[0]
+                daymax = np.unique(group['daymax'].data)[0]
+               
+                season = np.unique(group['season'].data)[0]
+                pixID = np.unique(group['healpixId'].data)[0]
+                pixRa = np.unique(group['pixRa'].data)[0]
+                pixDec = np.unique(group['pixDec'].data)[0]
+                Ra = pixRa
+                Dec = pixDec
+                index_hdf5 += 1
+                SNID = sn_par['Id']+index_hdf5
+               
+                self.sn_meta.append((SNID, Ra, Dec, daymax,-1.,0.,
+                                     x1,0.,color,0.,
+                                     z, '{}_{}_{}'.format(Ra,Dec,index_hdf5), season, fieldname, 
+                                     fieldid, len(group), self.area,
+                                     pixID, pixRa, pixDec))
+                group.write(self.lc_out,
+                            path='lc_{}_{}_{}'.format(Ra,Dec,index_hdf5),
+                            # path = 'lc_'+key[0],
+                            append=True,
+                            compression=True)
+            """
+
             for season in np.unique(tab['season']):
                 for z in np.unique(tab['z']):
                     idx = tab['season'] == season
@@ -430,12 +470,12 @@ class SN_Simulation:
 
                     self.sn_meta.append((SNID, ra, dec, -1,
                                          -1.,
-                                         epsilon['x0'],
+                                         #epsilon['x0'],
                                          np.asscalar(np.unique(sn_par['x1'])),
-                                         epsilon['x1'],
+                                         #epsilon['x1'],
                                          np.asscalar(
                                              np.unique(sn_par['color'])),
-                                         epsilon['color'],
+                                         #epsilon['color'],
                                          z, index_hdf5, season, fieldname, fieldid, len(sel), self.area))
 
                     sel.write(self.lc_out,
@@ -444,3 +484,4 @@ class SN_Simulation:
                               # path = 'lc_'+key[0],
                               append=True,
                               compression=True)
+            """

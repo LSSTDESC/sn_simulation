@@ -3,7 +3,7 @@ from lsst.sims.maf.metrics import BaseMetric
 from sn_simulation.sn_simclass import SN_Simulation
 from sn_stackers.coadd_stacker import CoaddStacker
 import healpy as hp
-
+import numpy.lib.recfunctions as rf
 
 class SNMetric(BaseMetric):
     """LC simulations in the "MAF metric" framework
@@ -40,6 +40,10 @@ class SNMetric(BaseMetric):
     config: dict
      configuration dict for simulation (SN parameters, cosmology, telescope, ...)
      ex: {'ProductionID': 'DD_baseline2018a_Cosmo', 'SN parameters': {'Id': 100, 'x1_color': {'type': 'fixed', 'min': [-2.0, 0.2], 'max': [0.2, 0.2], 'rate': 'JLA'}, 'z': {'type': 'uniform', 'min': 0.01, 'max': 0.9, 'step': 0.05, 'rate': 'Perrett'}, 'daymax': {'type': 'unique', 'step': 1}, 'min_rf_phase': -20.0, 'max_rf_phase': 60.0, 'absmag': -19.0906, 'band': 'bessellB', 'magsys': 'vega', 'differential_flux': False}, 'Cosmology': {'Model': 'w0waCDM', 'Omega_m': 0.3, 'Omega_l': 0.7, 'H0': 72.0, 'w0': -1.0, 'wa': 0.0}, 'Instrument': {'name': 'LSST', 'throughput_dir': 'LSST_THROUGHPUTS_BASELINE', 'atmos_dir': 'THROUGHPUTS_DIR', 'airmass': 1.2, 'atmos': True, 'aerosol': False}, 'Observations': {'filename': '/home/philippe/LSST/DB_Files/kraken_2026.db', 'fieldtype': 'DD', 'coadd': True, 'season': 1}, 'Simulator': {'name': 'sn_simulator.sn_cosmo', 'model': 'salt2-extended', 'version': 1.0, 'Reference File': 'LC_Test_today.hdf5'}, 'Host Parameters': 'None', 'Display_LC': {'display': True, 'time': 1}, 'Output': {'directory': 'Output_Simu', 'save': True}, 'Multiprocessing': {'nproc': 1}, 'Metric': 'sn_mafsim.sn_maf_simulation', 'Pixelisation': {'nside': 64}}
+    x0_norm: array of float
+     grid ox (x1,color,x0) values
+    reference_lc: class
+     reference lc for the fast simulation
 
     """
 
@@ -47,7 +51,7 @@ class SNMetric(BaseMetric):
                  mjdCol='observationStartMJD', RaCol='fieldRA', DecCol='fieldDec',
                  filterCol='filter', m5Col='fiveSigmaDepth', exptimeCol='visitExposureTime',
                  nightCol='night', obsidCol='observationId', nexpCol='numExposures', vistimeCol='visitTime', seeingEffCol='seeingFwhmEff', seeingGeomCol='seeingFwhmGeom', coadd=True,
-                 uniqueBlocks=False, config=None, x0_norm=None,**kwargs):
+                 uniqueBlocks=False, config=None, x0_norm=None,reference_lc=None,**kwargs):
 
         self.mjdCol = mjdCol
         self.m5Col = m5Col
@@ -62,6 +66,7 @@ class SNMetric(BaseMetric):
         self.vistimeCol = vistimeCol
         self.seeingEffCol = seeingEffCol
         self.seeingGeomCol = seeingGeomCol
+        self.reference_lc = reference_lc
 
         cols = [self.nightCol, self.m5Col, self.filterCol, self.mjdCol, self.obsidCol,
                 self.nexpCol, self.vistimeCol, self.exptimeCol, self.seasonCol, self.seeingEffCol, self.seeingGeomCol]
@@ -72,6 +77,7 @@ class SNMetric(BaseMetric):
 
         self.filterNames = np.array(['u', 'g', 'r', 'i', 'z', 'y'])
         self.config = config
+        self.nside = config['Pixelisation']['nside']
 
         # load cosmology
         cosmo_par = config['Cosmology']
@@ -95,8 +101,7 @@ class SNMetric(BaseMetric):
         area = 9.6  # survey_area in sqdeg - 9.6 by default for DD
         if self.field_type == 'WFD':
             # in that case the survey area is the healpix area
-            area = hp.nside2pixarea(
-                config['Pixelisation']['nside'], degrees=True)
+            area = hp.nside2pixarea(self.nside, degrees=True)
 
         # instantiate simulator here
 
@@ -126,12 +131,34 @@ class SNMetric(BaseMetric):
 
         """
 
-        goodFilters = np.in1d(dataSlice['filter'], self.filterNames)
+        goodFilters = np.in1d(dataSlice[self.filterCol], self.filterNames)
         dataSlice = dataSlice[goodFilters]
         if dataSlice.size == 0:
             return (self.badval, self.badval, self.badval)
         dataSlice.sort(order=self.mjdCol)
-
-        self.simu(dataSlice, self.field_type, 100, self.season)
+        
+        # if the fields healpixID, pixRa, pixDec are not in dataSlice 
+        # then estimate them and add them to dataSlice
+        datacp = np.copy(dataSlice)
+        
+        if 'healpixID' not in datacp.dtype.names:
+            Ra = np.mean(datacp[self.RaCol])
+            Dec = np.mean(datacp[self.DecCol])
+            
+            table = hp.ang2vec([Ra], [Dec], lonlat=True)
+            
+            healpixs = hp.vec2pix(self.nside, table[:, 0], table[:, 1], table[:, 2], nest=True)
+            coord = hp.pix2ang(self.nside, healpixs, nest=True, lonlat=True)
+            
+            healpixId, pixRa, pixDec = healpixs[0], coord[0][0],coord[1][0]
+            
+            datacp = rf.append_fields(datacp,'healpixId',[healpixId]*len(datacp))
+            datacp = rf.append_fields(datacp,'pixRa',[pixRa]*len(datacp))
+            datacp = rf.append_fields(datacp,'pixDec',[pixDec]*len(datacp))
+        #print('alors',datacp[['healpixId','pixRa','pixDec']])
+        
+        # Run simulation
+        
+        self.simu(datacp, self.field_type, 100, self.season,self.reference_lc)
 
         return None
