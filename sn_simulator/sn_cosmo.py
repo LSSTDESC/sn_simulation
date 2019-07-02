@@ -174,12 +174,23 @@ class SN(SN_Object):
                 'epsilon_x1'], self.sn_parameters['color'], self.gen_parameters['epsilon_color'],
                                  self.sn_parameters['z'], area, index, pix['healpixID'], pix['pixRa'], pix['pixDec'], season]))
 
+        
+    
+        
         # Select obs depending on min and max phases
         obs = self.cutoff(obs, self.sn_parameters['daymax'],
                           self.sn_parameters['z'],
                           self.sn_parameters['min_rf_phase'],
                           self.sn_parameters['max_rf_phase'])
 
+        """
+        print('after sel',obs.dtype)
+        for band in np.unique(obs['filter']):
+            idx = obs['filter']==band
+            sel = obs[idx]
+            phase = (sel['observationStartMJD']-self.sn_parameters['daymax'])/(1.+self.sn_parameters['z'])
+            print(band,np.min(phase),np.max(phase))
+        """
         for band in 'grizy':
             idb = obs[self.filterCol] == band
         if len(obs) == 0:
@@ -221,10 +232,13 @@ class SN(SN_Object):
             [seds[i].calcFlux(bandpass=transes[i]) for i in nvals])
 
         #
-        idx = int_fluxes > 0
+        #idx = int_fluxes > 0
+        int_fluxes[int_fluxes<0.]=1.e-10
+        """
         int_fluxes = int_fluxes[idx]
         transes = transes[idx]
         obs = obs[idx]
+        """
         nvals = range(len(obs))
 
         # Get photometric parameters to estimate SNR
@@ -275,7 +289,7 @@ class SN(SN_Object):
         phases = (table_lc['time']-self.sn_parameters['daymax']
                   )/(1.+self.sn_parameters['z'])
         table_lc.add_column(Column(phases, name='phase'))
-
+        
         # if the user chooses to display the results...
         if display:
             self.plotLC(table_lc['time', 'band',

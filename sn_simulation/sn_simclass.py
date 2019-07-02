@@ -448,11 +448,19 @@ class SN_Simulation:
                 index_hdf5 += 1
                 SNID = sn_par['Id']+index_hdf5
                
-                self.sn_meta.append((SNID, Ra, Dec, daymax,-1.,0.,
+                formeta = (SNID, Ra, Dec, daymax,-1.,0.,
                                      x1,0.,color,0.,
                                      z, '{}_{}_{}'.format(Ra,Dec,index_hdf5), season, fieldname, 
                                      fieldid, len(group), self.area,
-                                     pixID, pixRa, pixDec))
+                                     pixID, pixRa, pixDec)
+                self.sn_meta.append(formeta)
+
+                group.meta = dict(zip(['SNID', 'Ra', 'Dec', 'daymax', 'x0', 'epsilon_x0',
+                         'x1', 'epsilon_x1',
+                         'color', 'epsilon_color',
+                         'z', 'id_hdf5', 'season',
+                         'fieldname', 'fieldid',
+                         'n_lc_points', 'survey_area', 'pixID', 'pixRa', 'pixDec'],list(formeta)))
                 group.write(self.lc_out,
                             path='lc_{}_{}_{}'.format(Ra,Dec,index_hdf5),
                             # path = 'lc_'+key[0],

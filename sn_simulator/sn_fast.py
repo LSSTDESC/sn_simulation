@@ -10,13 +10,13 @@ import time
 import multiprocessing
 from optparse import OptionParser
 import os
-from scipy.interpolate import griddata,interp2d
+from scipy.interpolate import griddata,interp2d,RegularGridInterpolator
 import numpy.lib.recfunctions as rf
 import scipy.linalg.lapack as lapack
 from sn_simulation.sn_object import SN_Object
 #from scipy.sparse import coo_matrix, block_diag,csc_matrix
 #from scipy.linalg import pinvh
-
+import time
 
 class SN(SN_Object):
     """ SN class - inherits from SN_Object
@@ -181,8 +181,9 @@ class SN(SN_Object):
 
         
         # method used for interpolation
-        method = 'nearest'
-
+        method = 'linear'
+        interpType = 'griddata'
+        interpType = 'regular'
         
         # if there are no observations in this filter: return None
         if len(sel_obs) == 0:
@@ -203,42 +204,59 @@ class SN(SN_Object):
         p = xi/(1.+yi[:, np.newaxis])  
         yi_arr = np.ones_like(p)*yi[:, np.newaxis]
 
-        # Get reference values: phase, z, flux, fluxerr
-        x = self.reference_lc.lc_ref[band]['phase']
-        y = self.reference_lc.lc_ref[band]['z']
-        z = self.reference_lc.lc_ref[band]['flux']
-        zb = self.reference_lc.lc_ref[band]['fluxerr']
+        time_ref = time.time()
+        if interpType == 'griddata':
+            # Get reference values: phase, z, flux, fluxerr
+            x = self.reference_lc.lc_ref[band]['phase']
+            y = self.reference_lc.lc_ref[band]['z']
+            z = self.reference_lc.lc_ref[band]['flux']
+            zb = self.reference_lc.lc_ref[band]['fluxerr']
         
     
-        """
-        import matplotlib.pylab as plt
-        plt.plot(x,y,'k.')
-        plt.show()
-        """
+            # flux interpolation
+            fluxes_obs = griddata((x, y), z, (p, yi_arr),
+                                  method=method, fill_value=0.)
 
-        #print(x)
-        #print(np.min(y),np.max(y))
-        # flux interpolation
-        fluxes_obs = griddata((x, y), z, (p, yi_arr),
-                              method=method, fill_value=0.)
-
-        # flux error interpolation
-        fluxes_obs_err = griddata(
-            (x, y), zb, (p, yi_arr), method=method, fill_value=0.)
+            # flux error interpolation
+            fluxes_obs_err = griddata(
+                (x, y), zb, (p, yi_arr), method=method, fill_value=0.)
         
-        """
-        test = interp2d(x,y,z,kind=method,fill_value=0.)
+            # Fisher components estimation
 
-        print(type(p.data),type(yi_arr.data),p.data.shape)
-        print(p.data,p.data.flatten())
-        print('interp',test(p.data.flatten(),yi_arr.data.flatten())[0])
-        print('grid',fluxes_obs)
-        """
-        """
-        print(sel_obs[['pixRa','pixDec']])
-        print('phase',p)
-        print('fluxes',fluxes_obs)
-        """
+            dFlux = {}
+
+            # loop on Fisher parameters
+            for val in self.param_Fisher:
+                #get the reference components
+                z_c = self.reference_lc.lc_ref[band]['d'+val]
+                # get Fisher components from interpolation
+                dFlux[val] = griddata((x, y), z_c, (p, yi_arr),
+                                      method=method, fill_value=0.)
+
+       
+        
+
+        if interpType == 'regular':
+            pts = (p,yi_arr)
+            fluxes_obs = self.reference_lc.flux[band](pts)
+            fluxes_obs_err = self.reference_lc.fluxerr[band](pts)
+            
+            # Fisher components estimation
+
+            dFlux = {}
+
+            # loop on Fisher parameters
+            for val in self.param_Fisher:
+                dFlux[val] = self.reference_lc.param[band][val](pts)
+            # get the reference components
+            #z_c = self.reference_lc.lc_ref[band]['d'+val]
+            # get Fisher components from interpolation
+            #dFlux[val] = griddata((x, y), z_c, (p, yi_arr),
+            #                      method=method, fill_value=0.)
+
+
+
+        #print('interp',time.time()-time_ref)
         
         # replace crazy fluxes by dummy values
         fluxes_obs[fluxes_obs<=0.] = 1.e-8
@@ -247,17 +265,7 @@ class SN(SN_Object):
         #print('fluxes cleaned',fluxes_obs)
 
 
-        # Fisher components estimation
-
-        dFlux = {}
-
-        # loop on Fisher parameters
-        for val in self.param_Fisher:
-            # get the reference components
-            z_c = self.reference_lc.lc_ref[band]['d'+val]
-            # get Fisher components from interpolation
-            dFlux[val] = griddata((x, y), z_c, (p, yi_arr),
-                                  method=method, fill_value=0.)
+       
 
         # Fisher matrix components estimation
         # loop on SN parameters (x0,x1,color)
@@ -266,8 +274,7 @@ class SN(SN_Object):
         for ia, vala in enumerate(self.param_Fisher):
             for jb, valb in enumerate(self.param_Fisher):
                 if jb >= ia:
-                    Derivative_for_Fisher[vala+valb] = dFlux[vala] * \
-                        dFlux[valb]/fluxes_obs_err**2
+                    Derivative_for_Fisher[vala+valb] = dFlux[vala] * dFlux[valb]
 
        
         # remove LC points outside the restframe phase range
@@ -374,6 +381,7 @@ class SN(SN_Object):
         lc = tab
         if len(lc) == 0:
             lc = None
+                                    
         if output_q is not None:
             output_q.put({j: lc})
         else:

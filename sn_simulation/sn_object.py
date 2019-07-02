@@ -146,7 +146,7 @@ class SN_Object:
 
         p = (obs[self.mjdCol]-T0)/(1.+z)
 
-        idx = (p >= min_rf_phase) & (p <= max_rf_phase)
+        idx = (p >= 1.000000001*min_rf_phase) & (p <= 1.00001*max_rf_phase)
         idx &= (mean_restframe_wavelength > blue_cutoff)
         idx &= (mean_restframe_wavelength < red_cutoff)
         return obs[idx]
