@@ -136,20 +136,6 @@ class SN(SN_Object):
         dtype = [dtype.fields[name][0] for name in names]
         tab_tot = Table(rows=r, names=names, dtype=dtype)
         
-        """
-        LC_Summary = self.Ana_LC(tab_tot)
-        print(LC_Summary)
-        #self.Plot_Sigma_c(LC_Summary)
-        if display:
-            season = 1
-            zref = 0.5
-            idx = (tab_tot['season'] == season) & (tab_tot['z'] == zref)
-            sel_tab = tab_tot[idx]
-            for daymax in np.unique(sel_tab['daymax']):
-                idxb = sel_tab['daymax'] == daymax
-                self.Plot_LC(sel_tab[idxb]['time', 'band', 'flux', 'fluxerr',
-                                           'zp', 'zpsys'], time_display, zref, daymax, season)
-        """
         return tab_tot
 
     def processBand(self, sel_obs, band, gen_par, j=-1, output_q=None):
@@ -198,7 +184,7 @@ class SN(SN_Object):
         xi = sel_obs[self.mjdCol]-gen_par['daymax'][:, np.newaxis]
 
         # yi = redshift simulated values
-        yi = gen_par['z']
+        yi = np.round(gen_par['z'],4) # requested to avoid interpolation problems near boundaries
 
         # p = phases of LC points = xi/(1.+z)
         p = xi/(1.+yi[:, np.newaxis])  
@@ -234,13 +220,12 @@ class SN(SN_Object):
                                       method=method, fill_value=0.)
 
        
-        
 
         if interpType == 'regular':
             pts = (p,yi_arr)
             fluxes_obs = self.reference_lc.flux[band](pts)
             fluxes_obs_err = self.reference_lc.fluxerr[band](pts)
-            
+
             # Fisher components estimation
 
             dFlux = {}
@@ -254,18 +239,11 @@ class SN(SN_Object):
             #dFlux[val] = griddata((x, y), z_c, (p, yi_arr),
             #                      method=method, fill_value=0.)
 
-
-
-        #print('interp',time.time()-time_ref)
         
         # replace crazy fluxes by dummy values
         fluxes_obs[fluxes_obs<=0.] = 1.e-8
         fluxes_obs_err[fluxes_obs_err<=0.] = 1.e-10
-
-        #print('fluxes cleaned',fluxes_obs)
-
-
-       
+            
 
         # Fisher matrix components estimation
         # loop on SN parameters (x0,x1,color)
@@ -376,7 +354,7 @@ class SN(SN_Object):
             tab.add_column(Column(vals[~vals.mask], name='F_'+key))
 
         # remove lc points with a null or negative flux
-        idx = tab['flux'] >= 1.e-7
+        idx = tab['flux'] >= 1.e-10
         lc = tab[idx]
         lc = tab
         if len(lc) == 0:
@@ -387,120 +365,11 @@ class SN(SN_Object):
         else:
             return lc
 
-    def Ana_LC(self, tab):
+    def srand(self, gamma, mag, m5):
+        x = 10**(0.4*(mag-m5))
+        return np.sqrt((0.04-gamma)*x+gamma*x**2)
 
-        r = []
-        restab = Table()
-        # for season in np.unique(tab['season']):
-        idx = tab['snr_m5'] >= 10.
-        tab = tab[idx]
-        for season in np.unique(tab['season']):
-            idxa = tab['season'] == season
-            sela = tab[idxa]
-            for z in np.unique(sela['z']):
-                if z > 0.7:
-                    continue
-            # for z in np.arange(0.05,0.64,0.05):
-                time_refa = time.time()
-                idxb = np.abs(sela['z']-z) < 1.e-5
-                selb = sela[idxb]
-                print('redshift', z, len(selb))
-                daymax = np.unique(selb['daymax'])
-                diff = selb['daymax']-daymax[:, np.newaxis]
-                flag = np.abs(diff) < 1.e-5
-                resu = np.ma.array(np.tile(selb, (len(daymax), 1)), mask=~flag)
-                parts = {}
-                time_refa = time.time()
-                for ia, vala in enumerate(self.param_Fisher):
-                    for jb, valb in enumerate(self.param_Fisher):
-                        if jb >= ia:
-                            #print('F_'+vala+valb,np.sum(resu['F_'+vala+valb],axis = 1))
-                            parts[ia, jb] = np.sum(
-                                resu['F_'+vala+valb], axis=1)
-
-                print('there one', time.time()-time_refa)
-                time_refa = time.time()
-                size = len(resu)
-                #size = 3
-                Fisher_Big = np.zeros((3*size, 3*size))
-                Big_Diag = np.zeros((3*size, 3*size))
-                Big_Diag = []
-                restab_loc = Table()
-                restab_loc.add_column(Column([season]*size, name='season'))
-                restab_loc.add_column(Column([z]*size, name='z'))
-                restab_loc.add_column(Column(daymax[:size], name='daymax'))
-                print('there two', time.time()-time_refa)
-                time_refa = time.time()
-                for iv in range(size):
-                    Fisher_Matrix = np.zeros((3, 3))
-                    for ia, vala in enumerate(self.param_Fisher):
-                        for jb, valb in enumerate(self.param_Fisher):
-                            if jb >= ia:
-                                #Fisher_Matrix[ia,jb] = parts[ia,jb][iv]
-                                Fisher_Big[ia+3*iv][jb+3 *
-                                                    iv] = parts[ia, jb][iv]
-                """
-                    Fisher_Matrix = np.maximum(Fisher_Matrix, Fisher_Matrix.transpose())
-                    print(Fisher_Matrix)
-                    Inv_Diag = np.diag(np.linalg.inv(Fisher_Matrix))
-                    print('inv',Inv_Diag)
-                    
-                    for ia,vala in enumerate(self.param_Fisher):
-                        #Big_Diag[ia+3*iv][ia+3*iv] = Inv_Diag[ia]
-                        Big_Diag.append(Inv_Diag[ia])
-                    #print('ici',Fisher_Matrix)
-                #print('Big Diag',Big_Diag)
-                """
-                Fisher_Big = np.maximum(Fisher_Big, Fisher_Big.transpose())
-                """
-                print(Fisher_Big)
-                plt.imshow(Fisher_Big)
-                plt.show()
-                """
-                # print('Summ',Fisher_Big.shape,Fisher_Big[:10][:])
-                print('there three', time.time()-time_refa)
-                #from IPython import embed
-                time_refa = time.time()
-                # embed()
-                Big_Diag = np.diag(np.linalg.inv(Fisher_Big))
-                # np.linalg.cholesky(Fisher_Big)
-                #M,invM = self.invert_matrix(Fisher_Big)
-                #Big_Diag = np.diag(Big_diag)
-                # print('Big',Big_Diag)
-                print('there four', time.time()-time_refa)
-                time_refa = time.time()
-                # print('Diag',np.diag(np.linalg.inv(Fisher_Big)))
-                for ia, vala in enumerate(self.param_Fisher):
-                    indices = range(ia, len(Big_Diag), 3)
-                    print('test', ia, indices, vala,
-                          np.take(Big_Diag, indices))
-                    restab_loc.add_column(
-                        Column(np.sqrt(np.take(Big_Diag, indices)), name='sigma_'+vala))
-
-                restab = vstack([restab, restab_loc])
-                print('there five', time.time()-time_refa)
-                time_refa = time.time()
-                """
-                for ii,DayMax in enumerate(np.unique(selb['DayMax'])):
-                    idxc = np.abs(selb['DayMax']-DayMax)<1.e-5
-                    selc = selb[idxc]
-                    Fisher_Matrix = np.zeros((3,3))
-                    for ia,vala in enumerate(self.param_Fisher):
-                        for jb,valb in enumerate(self.param_Fisher):
-                            if jb >= ia:
-                                Fisher_Matrix[ia,jb] = np.sum(selc['F_'+vala+valb])
-                    Fisher_Matrix = np.maximum(Fisher_Matrix, Fisher_Matrix.transpose())
-                    Sigma = np.linalg.inv(Fisher_Matrix)
-                    r.append([season,z,DayMax]+[np.sqrt(Sigma[ia][ia]) for ia,vala in enumerate(self.param_Fisher)])
-                    print('la',Fisher_Matrix)
-                    if ii > 3:
-                        break
-                """
-                # break
-            # break
-        return restab
-        # return np.rec.fromrecords(r, names = ['season','z','DayMax']+['sigma_'+str(val) for val in self.param_Fisher])
-
+"""
     def Plot_Sigma_c(self, tab):
 
         import pylab as plt
@@ -524,14 +393,15 @@ class SN(SN_Object):
 
     def matmul(self, a, b, out):
         return np.matmul(a, b, out=out)
-
+"""
+"""
     def invert_matrix(self, M, dtype="float32"):
-        """Invert a positive definite matrix using cholesky decomposition.
-        WARNING : This DOES NOT check if the matrix is positive definite and can lead to wrong results if a non positive definite matrix is given.
+        #Invert a positive definite matrix using cholesky decomposition.
+        #WARNING : This DOES NOT check if the matrix is positive definite and can lead to wrong results if a non positive definite matrix is given.
 
-        Arguments:
-        - `M`: Matrix to invert
-        """
+        #Arguments:
+        #- `M`: Matrix to invert
+        
         M = self.dpotrf(M)  # L
         invL = np.ascontiguousarray(self.dtrtri(M), dtype=dtype)  # invL
         if np.__version__ == '1.13.3':
@@ -539,7 +409,8 @@ class SN(SN_Object):
         else:
             invL = np.matmul(invL.T, invL)
         return M, invL
-
+"""
+"""
     def Add_Gamma(self, obs):
 
         gamma = self.telescope.gamma(obs[self.m5Col], [
@@ -563,27 +434,16 @@ class SN(SN_Object):
             output_q.put({j: lc})
         else:
             return obs_c
-
+"""
+"""
     def Multiproc(self, obs):
 
         tab_tot = Table()
-        """
-        prefix=obs['band'][0].split('::')[0]
-        for band in bands:
-            idx = obs['band']== prefix+'::'+band
-            obs_b=obs[idx]
-            if len(obs_b) > 0:
-                tab_tot=vstack([tab_tot,self.Process(obs_b,band,telescope)])
-        """
+       
 
         njobs = -1
         result_queue = multiprocessing.Queue()
-        """
-        prefix=''
-        if '::' in obs['band'][0]:
-            prefix=obs['band'][0].split('::')[0]
-            prefix+='::'
-        """
+       
         for band in np.unique(obs[self.filterCol]):
             idx = obs[self.filterCol] == band
             obs_b = obs[idx]
@@ -609,7 +469,8 @@ class SN(SN_Object):
                 tab_tot = vstack([tab_tot, resultdict[j]])
 
         return tab_tot
-
+"""
+"""
     def Process(self, obs, band, j=-1, output_q=None):
 
         deriv = {}
@@ -626,11 +487,7 @@ class SN(SN_Object):
         fluxes_obs = griddata((x, y), z, (xi, yi), method=method)
         fluxes_err = griddata((x, y), zb, (xi, yi), method=method)
 
-        """
-        print(self.lc_ref[band][['flux','time']])
-        print(xi,yi)
-        print(fluxes_obs)
-        """
+
         mag_obs = -2.5*np.log10(fluxes_obs/3631.)
 
         m5 = np.asarray([self.m5_ref[band]]*len(obs))
@@ -638,14 +495,7 @@ class SN(SN_Object):
 
         correct_m5 = self.srand(gammaref, mag_obs, m5) / \
             self.srand(obs['gamma'], mag_obs, obs[self.m5Col])
-        """
-        for key in self.key_deriv:
-            xa=self.lc_ref[band]['time']
-            ya=self.lc_ref[band]['z']
-            za=self.lc_ref[band][key]
         
-            deriv[key]=griddata((xa,ya),za,(xi, yi), method=method)
-        """
         tab = Table()
 
         tab.add_column(Column(fluxes_obs, name='flux'))
@@ -676,7 +526,7 @@ class SN(SN_Object):
     def srand(self, gamma, mag, m5):
         x = 10**(0.4*(mag-m5))
         return np.sqrt((0.04-gamma)*x+gamma*x**2)
-
+"""
 """
 class SNFast_old:
 
