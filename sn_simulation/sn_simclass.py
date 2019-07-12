@@ -421,20 +421,67 @@ class SN_Simulation:
         simu = module.SN(sn_object, self.simu_config, reference_lc)
 
         # perform simulation here
-        tab = simu(obs, self.index_hdf5,gen_params,
+        df = simu(obs, self.index_hdf5,gen_params,
                             self.display_lc, self.time_display)
 
         index_hdf5 = self.index_hdf5
 
 
-        # now a tricky part: save results on disk
-        if self.save_status and tab is not None:
-            groups = tab.group_by(['healpixId','z','daymax','season'])
-            for group in groups.groups:
-              
-                x1 = np.unique(sn_par['x1'])[0]
-                color = np.unique(sn_par['color'])[0]
+        def applyGroup(grp, x1, color, index_hdf5, SNID):
+            
+            z = np.unique(grp['z'])[0]
+            daymax = np.unique(grp['daymax'])[0]
+            
+            season = np.unique(grp['season'])[0]
+            pixID = np.unique(grp['healpixId'])[0]
+            pixRa = np.unique(grp['pixRa'])[0]
+            pixDec = np.unique(grp['pixDec'])[0]
+            Ra = pixRa
+            Dec = pixDec
+            
+            formeta = (SNID, Ra, Dec, daymax,-1.,0.,
+                       x1,0.,color,0.,
+                       z, '{}_{}_{}'.format(Ra,Dec,index_hdf5), season, fieldname, 
+                       fieldid, len(grp), self.area,
+                       pixID, pixRa, pixDec)
+            self.sn_meta.append(formeta)
 
+            
+            
+            meta = dict(zip(['SNID', 'Ra', 'Dec', 'daymax', 'x0', 'epsilon_x0',
+                         'x1', 'epsilon_x1',
+                         'color', 'epsilon_color',
+                         'z', 'id_hdf5', 'season',
+                         'fieldname', 'fieldid',
+                         'n_lc_points', 'survey_area', 'pixID', 'pixRa', 'pixDec'],list(formeta)))
+
+            tab = Table.from_pandas(grp)
+            tab.meta = meta
+
+            tab.write(self.lc_out,
+                        path='lc_{}_{}_{}'.format(Ra,Dec,index_hdf5),
+                        # path = 'lc_'+key[0],
+                        append=True,
+                        compression=True)
+            
+
+        # now a tricky part: save results on disk
+        if self.save_status:
+            x1 = np.unique(sn_par['x1'])[0]
+            color = np.unique(sn_par['color'])[0]
+            groups = df.groupby(['healpixId','z','daymax','season'])
+
+            for name, group in groups:
+                index_hdf5 += 1
+                SNID = sn_par['Id']+index_hdf5
+
+                applyGroup(group,x1,color,index_hdf5,SNID)
+            
+
+            
+        
+            """
+            for group in groups.groups:
 
                 z = np.unique(group['z'].data)[0]
                 daymax = np.unique(group['daymax'].data)[0]
@@ -466,6 +513,7 @@ class SN_Simulation:
                             # path = 'lc_'+key[0],
                             append=True,
                             compression=True)
+            """
             """
 
             for season in np.unique(tab['season']):

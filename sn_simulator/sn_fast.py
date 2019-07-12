@@ -1,5 +1,4 @@
 import numpy as np
-#from Observations import *
 from scipy import interpolate
 from astropy.table import Table, Column, vstack, hstack
 import glob
@@ -14,9 +13,8 @@ from scipy.interpolate import griddata,interp2d,RegularGridInterpolator
 import numpy.lib.recfunctions as rf
 import scipy.linalg.lapack as lapack
 from sn_simulation.sn_object import SN_Object
-#from scipy.sparse import coo_matrix, block_diag,csc_matrix
-#from scipy.linalg import pinvh
 import time
+import pandas as pd
 
 class SN(SN_Object):
     """ SN class - inherits from SN_Object
@@ -95,8 +93,11 @@ class SN(SN_Object):
         result_queue = multiprocessing.Queue()
         bands = 'grizy'
 
+        tab_tot = pd.DataFrame()
+
         # multiprocessing here: one process (processBand) per band
         jproc = -1
+        time_ref = time.time()
         for j, band in enumerate(bands):
             idx = obs[self.filterCol] == band
             if len(obs[idx]) > 0:
@@ -112,9 +113,12 @@ class SN(SN_Object):
         for p in multiprocessing.active_children():
             p.join()
 
+        for j in range(jproc+1):
+            tab_tot = tab_tot.append(resultdict[j], ignore_index=True)
+           
         
         # Collect the results
-        tab_tot = [resultdict[j] for j in range(jproc+1) if resultdict[j] is not None]
+        #tab_tot = [resultdict[j] for j in range(jproc+1) if resultdict[j] is not None]
 
         # There is a trick here
         # Usually one would just use vstack to get one astropy Table
@@ -124,6 +128,7 @@ class SN(SN_Object):
         # to add the lists,
         # and then recreate an astropy table.
 
+        """
         r = []
         if len(tab_tot) == 0:
             return ra, dec, None
@@ -135,7 +140,9 @@ class SN(SN_Object):
         
         dtype = [dtype.fields[name][0] for name in names]
         tab_tot = Table(rows=r, names=names, dtype=dtype)
-        
+        """
+
+        print('full end',time.time()-time_ref)
         return tab_tot
 
     def processBand(self, sel_obs, band, gen_par, j=-1, output_q=None):
@@ -222,10 +229,29 @@ class SN(SN_Object):
        
 
         if interpType == 'regular':
+            
+            # remove LC points outside the restframe phase range
+            """
+            min_rf_phase = gen_par['min_rf_phase'][:, np.newaxis]
+            max_rf_phase = gen_par['max_rf_phase'][:, np.newaxis]
+            flag = (p >= min_rf_phase) & (p <= max_rf_phase)
+            
+            time_ref = time.time()
+            p_mask = np.ma.array(p, mask=~flag)
+            yi_mask = np.ma.array(yi_arr, mask=~flag)
+           
+            pts = (p_mask[~p.mask],yi_mask[~p.mask])
+            """
             pts = (p,yi_arr)
             fluxes_obs = self.reference_lc.flux[band](pts)
             fluxes_obs_err = self.reference_lc.fluxerr[band](pts)
+            print('interp',time.time()-time_ref)
 
+            """
+            print(test)
+            for val in fluxes_obs:
+                print(val)
+            """
             # Fisher components estimation
 
             dFlux = {}
@@ -272,17 +298,23 @@ class SN(SN_Object):
         flag_idx = np.argwhere(flag)
 
         # Correct fluxes_err (m5 in generation probably different from m5 obs)
-        gamma_obs = self.telescope.gamma(
-            sel_obs[self.m5Col], [band]*len(sel_obs), sel_obs[self.exptimeCol])
-        mag_obs = -2.5*np.log10(fluxes_obs/3631.)
+        
+        #gamma_obs = self.telescope.gamma(
+        #    sel_obs[self.m5Col], [band]*len(sel_obs), sel_obs[self.exptimeCol])
 
+        gamma_obs = self.reference_lc.gamma[band]((sel_obs[self.m5Col],sel_obs[self.exptimeCol]))
+
+
+        mag_obs = -2.5*np.log10(fluxes_obs/3631.)
+        print('mag',time.time()-time_ref)
         
         m5 = np.asarray([self.reference_lc.m5_ref[band]]*len(sel_obs))
         gammaref = np.asarray([self.reference_lc.gamma_ref[band]]*len(sel_obs))
+        m5_tile =  np.tile(m5, (len(p), 1))
         srand_ref = self.srand(
-            np.tile(gammaref, (len(mag_obs), 1)), mag_obs, np.tile(m5, (len(mag_obs), 1)))
-        srand_obs = self.srand(np.tile(gamma_obs, (len(mag_obs), 1)), mag_obs, np.tile(
-            sel_obs[self.m5Col], (len(mag_obs), 1)))
+            np.tile(gammaref, (len(p), 1)), mag_obs, m5_tile)
+        srand_obs = self.srand(np.tile(gamma_obs, (len(p), 1)), mag_obs, np.tile(
+            sel_obs[self.m5Col], (len(p), 1)))
         correct_m5 = srand_ref/srand_obs
         fluxes_obs_err = fluxes_obs_err/correct_m5
 
@@ -291,6 +323,7 @@ class SN(SN_Object):
         fluxes_err = np.ma.array(fluxes_obs_err, mask=~flag)
         phases = np.ma.array(p, mask=~flag)
         snr_m5 = np.ma.array(fluxes_obs/fluxes_obs_err, mask=~flag)
+        
         nvals = len(phases)
         
         obs_time = np.ma.array(
@@ -316,11 +349,13 @@ class SN(SN_Object):
         for key, vals in Derivative_for_Fisher.items():
             Fisher_Mat[key] = np.ma.array(vals, mask=~flag)
 
-
+        """
         # Store in an astropy Table
         tab = Table()
         tab.add_column(Column(fluxes[~fluxes.mask], name='flux'))
         tab.add_column(Column(fluxes_err[~fluxes_err.mask], name='fluxerr'))
+        #tab.add_column(Column(fluxes_obs, name='flux'))
+        #tab.add_column(Column(fluxes_obs_err, name='fluxerr'))
         tab.add_column(Column(phases[~phases.mask], name='phase'))
         tab.add_column(Column(snr_m5[~snr_m5.mask], name='snr_m5'))
         tab.add_column(Column(mag_obs[~mag_obs.mask], name='mag'))
@@ -352,14 +387,33 @@ class SN(SN_Object):
             tab['mag'])), name='flux_e_sec')
         for key, vals in Fisher_Mat.items():
             tab.add_column(Column(vals[~vals.mask], name='F_'+key))
+        """
 
-        # remove lc points with a null or negative flux
-        idx = tab['flux'] >= 1.e-10
-        lc = tab[idx]
-        lc = tab
-        if len(lc) == 0:
-            lc = None
-                                    
+        #Store in a panda dataframe
+        lc = pd.DataFrame()
+        lc['flux'] = fluxes[~fluxes.mask]
+        lc['fluxerr'] = fluxes_err[~fluxes_err.mask]
+        lc['phase'] = phases[~phases.mask]
+        lc['snr_m5'] = snr_m5[~snr_m5.mask]
+        lc['mag'] = mag_obs[~mag_obs.mask]
+        lc['magerr'] = (2.5/np.log(10.))/snr_m5[~snr_m5.mask]
+        lc['time'] = obs_time[~obs_time.mask]
+        lc['band'] = ['LSST::'+band]*len(lc)
+        lc['zp'] = [2.5*np.log10(3631)]*len(lc)
+        lc['zpsys'] = ['ab']*len(lc)
+        lc['season'] = seasons[~seasons.mask]
+        lc['healpixId'] = healpixIds[~healpixIds.mask]
+        lc['pixRa'] = pixRas[~pixRas.mask]
+        lc['pixDec'] =pixDecs[~pixDecs.mask]
+        lc['z'] = z_vals
+        lc['daymax'] = daymax_vals
+        lc['flux_e_sec'] = self.reference_lc.mag_to_flux_e_sec[band](
+            lc['mag'])
+        for key, vals in Fisher_Mat.items():
+            lc['F_{}'.format(key)] = vals[~vals.mask]
+
+                     
+        
         if output_q is not None:
             output_q.put({j: lc})
         else:
