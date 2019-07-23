@@ -333,7 +333,7 @@ class SN(SN_Object):
 
         
         healpixIds = np.ma.array(
-            np.tile(sel_obs['healpixId'], (nvals, 1)), mask=~flag)
+            np.tile(sel_obs['healpixID'], (nvals, 1)), mask=~flag)
         
         pixRas = np.ma.array(
             np.tile(sel_obs['pixRa'], (nvals, 1)), mask=~flag)
@@ -402,7 +402,7 @@ class SN(SN_Object):
         lc['zp'] = [2.5*np.log10(3631)]*len(lc)
         lc['zpsys'] = ['ab']*len(lc)
         lc['season'] = seasons[~seasons.mask]
-        lc['healpixId'] = healpixIds[~healpixIds.mask]
+        lc['healpixID'] = healpixIds[~healpixIds.mask]
         lc['pixRa'] = pixRas[~pixRas.mask]
         lc['pixDec'] =pixDecs[~pixDecs.mask]
         lc['z'] = z_vals

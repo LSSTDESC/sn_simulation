@@ -433,11 +433,11 @@ class SN_Simulation:
             daymax = np.unique(grp['daymax'])[0]
             
             season = np.unique(grp['season'])[0]
-            pixID = np.unique(grp['healpixId'])[0]
+            pixID = np.unique(grp['healpixID'])[0]
             pixRa = np.unique(grp['pixRa'])[0]
             pixDec = np.unique(grp['pixDec'])[0]
-            Ra = pixRa
-            Dec = pixDec
+            Ra = np.round(pixRa,3)
+            Dec = np.round(pixDec,3)
             
             formeta = (SNID, Ra, Dec, daymax,-1.,0.,
                        x1,0.,color,0.,
@@ -469,7 +469,7 @@ class SN_Simulation:
         if self.save_status:
             x1 = np.unique(sn_par['x1'])[0]
             color = np.unique(sn_par['color'])[0]
-            groups = df.groupby(['healpixId','z','daymax','season'])
+            groups = df.groupby(['healpixID','z','daymax','season'])
 
             for name, group in groups:
                 index_hdf5 += 1
