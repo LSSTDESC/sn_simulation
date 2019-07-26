@@ -68,14 +68,22 @@ class SNMetric(BaseMetric):
         self.seeingGeomCol = seeingGeomCol
         self.reference_lc = reference_lc
 
-        cols = [self.nightCol, self.m5Col, self.filterCol, self.mjdCol, self.obsidCol,
-                self.nexpCol, self.vistimeCol, self.exptimeCol, self.seasonCol, self.seeingEffCol, self.seeingGeomCol]
+        cols = [self.RaCol, self.DecCol,self.nightCol, self.m5Col, self.filterCol, self.mjdCol, self.obsidCol,
+                self.nexpCol, self.vistimeCol, self.exptimeCol, self.seasonCol, self.seeingEffCol, self.seeingGeomCol,self.nightCol]
+        self.stacker = None
+
+       
         if coadd:
-            cols += ['coadd']
+            #cols += ['sn_coadd']
+            self.stacker = CoaddStacker(mjdCol=self.mjdCol,RaCol=self.RaCol, DecCol=self.DecCol, m5Col=self.m5Col, nightCol=self.nightCol, filterCol=self.filterCol, numExposuresCol=self.nexpCol, visitTimeCol=self.vistimeCol,visitExposureTimeCol='visitExposureTime')
         super(SNMetric, self).__init__(
             col=cols, metricName=metricName, **kwargs)
-
-        self.filterNames = np.array(['u', 'g', 'r', 'i', 'z', 'y'])
+        """
+        super().__init__(
+            col=cols, metricName=metricName, **kwargs)
+        """
+        #self.filterNames = np.array(['u', 'g', 'r', 'i', 'z', 'y'])
+        self.filterNames = 'ugrizy'
         self.config = config
         self.nside = config['Pixelisation']['nside']
 
@@ -131,12 +139,22 @@ class SNMetric(BaseMetric):
 
         """
 
+        """
         goodFilters = np.in1d(dataSlice[self.filterCol], self.filterNames)
         dataSlice = dataSlice[goodFilters]
         if dataSlice.size == 0:
             return (self.badval, self.badval, self.badval)
+        """
         dataSlice.sort(order=self.mjdCol)
         
+        #print(dataSlice.dtype)
+        #print(dataSlice[[self.mjdCol,self.filterCol,self.exptimeCol,self.nexpCol]])
+        if self.stacker is not None:
+            dataSlice = self.stacker._run(dataSlice)
+        #print(dataSlice[[self.mjdCol,self.filterCol,self.exptimeCol,self.nexpCol]])
+
+        #print(test)
+        #print('stacked')
         # if the fields healpixID, pixRa, pixDec are not in dataSlice 
         # then estimate them and add them to dataSlice
         datacp = np.copy(dataSlice)

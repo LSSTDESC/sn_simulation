@@ -80,10 +80,13 @@ class SN(SN_Object):
         metadata : SNID,Ra,Dec,DayMax,X1,Color,z
         """
 
-        assert (len(np.unique(obs[self.RaCol])) == 1)
-        assert (len(np.unique(obs[self.DecCol])) == 1)
-        ra = np.asscalar(np.unique(obs[self.RaCol]))
-        dec = np.asscalar(np.unique(obs[self.DecCol]))
+        #assert (len(np.unique(obs[self.RaCol])) == 1)
+        #assert (len(np.unique(obs[self.DecCol])) == 1)
+        #ra = np.asscalar(np.unique(obs[self.RaCol]))
+        #dec = np.asscalar(np.unique(obs[self.DecCol]))
+        ra = np.mean(obs[self.RaCol])
+        dec = np.mean(obs[self.DecCol])
+
         area = self.area
         self.index_hdf5 = index_hdf5
 
@@ -230,8 +233,8 @@ class SN(SN_Object):
 
         if interpType == 'regular':
             
-            # remove LC points outside the restframe phase range
             """
+            # remove LC points outside the restframe phase range
             min_rf_phase = gen_par['min_rf_phase'][:, np.newaxis]
             max_rf_phase = gen_par['max_rf_phase'][:, np.newaxis]
             flag = (p >= min_rf_phase) & (p <= max_rf_phase)
@@ -245,13 +248,7 @@ class SN(SN_Object):
             pts = (p,yi_arr)
             fluxes_obs = self.reference_lc.flux[band](pts)
             fluxes_obs_err = self.reference_lc.fluxerr[band](pts)
-            print('interp',time.time()-time_ref)
 
-            """
-            print(test)
-            for val in fluxes_obs:
-                print(val)
-            """
             # Fisher components estimation
 
             dFlux = {}
@@ -306,7 +303,6 @@ class SN(SN_Object):
 
 
         mag_obs = -2.5*np.log10(fluxes_obs/3631.)
-        print('mag',time.time()-time_ref)
         
         m5 = np.asarray([self.reference_lc.m5_ref[band]]*len(sel_obs))
         gammaref = np.asarray([self.reference_lc.gamma_ref[band]]*len(sel_obs))
@@ -330,8 +326,10 @@ class SN(SN_Object):
             np.tile(sel_obs[self.mjdCol], (nvals, 1)), mask=~flag)
         seasons = np.ma.array(
             np.tile(sel_obs[self.seasonCol], (nvals, 1)), mask=~flag)
-
-        
+        exp_time = np.ma.array(
+            np.tile(sel_obs[self.exptimeCol], (nvals, 1)), mask=~flag)
+        m5_obs = np.ma.array(
+            np.tile(sel_obs[self.m5Col], (nvals, 1)), mask=~flag)
         healpixIds = np.ma.array(
             np.tile(sel_obs['healpixID'], (nvals, 1)), mask=~flag)
         
@@ -395,9 +393,11 @@ class SN(SN_Object):
         lc['fluxerr'] = fluxes_err[~fluxes_err.mask]
         lc['phase'] = phases[~phases.mask]
         lc['snr_m5'] = snr_m5[~snr_m5.mask]
+        lc['m5'] = m5_obs[~m5_obs.mask]
         lc['mag'] = mag_obs[~mag_obs.mask]
         lc['magerr'] = (2.5/np.log(10.))/snr_m5[~snr_m5.mask]
         lc['time'] = obs_time[~obs_time.mask]
+        lc['exposuretime'] = exp_time[~exp_time.mask]
         lc['band'] = ['LSST::'+band]*len(lc)
         lc['zp'] = [2.5*np.log10(3631)]*len(lc)
         lc['zpsys'] = ['ab']*len(lc)
@@ -409,6 +409,8 @@ class SN(SN_Object):
         lc['daymax'] = daymax_vals
         lc['flux_e_sec'] = self.reference_lc.mag_to_flux_e_sec[band](
             lc['mag'])
+        lc['flux_5'] = self.reference_lc.mag_to_flux_e_sec[band](
+            lc['m5'])
         for key, vals in Fisher_Mat.items():
             lc['F_{}'.format(key)] = vals[~vals.mask]
 

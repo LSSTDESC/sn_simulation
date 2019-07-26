@@ -455,6 +455,7 @@ class SN_Simulation:
                          'fieldname', 'fieldid',
                          'n_lc_points', 'survey_area', 'pixID', 'pixRa', 'pixDec'],list(formeta)))
 
+            #print('metadata',meta)
             tab = Table.from_pandas(grp)
             tab.meta = meta
 
