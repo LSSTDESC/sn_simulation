@@ -15,6 +15,7 @@ import scipy.linalg.lapack as lapack
 from sn_simulation.sn_object import SN_Object
 import time
 import pandas as pd
+from sn_tools.sn_calcFast import LCfast
 
 class SN(SN_Object):
     """ SN class - inherits from SN_Object
@@ -53,8 +54,12 @@ class SN(SN_Object):
 
         # SN parameters for Fisher matrix estimation
         self.param_Fisher = ['x0', 'x1', 'color']
+
+        self.lcFast = LCfast(reference_lc,param.telescope,param.mjdCol, param.RaCol, param.DecCol,
+                         param.filterCol, param.exptimeCol,
+                         param.m5Col, param.seasonCol)
        
-    def __call__(self, obs, index_hdf5, gen_par=None, display=False, time_display=0.):
+    def __call__(self, obs, index_hdf5, gen_par=None):
         """ Simulation of the light curve
         We use multiprocessing (one band per process) to increase speed
 
@@ -84,6 +89,12 @@ class SN(SN_Object):
         #assert (len(np.unique(obs[self.DecCol])) == 1)
         #ra = np.asscalar(np.unique(obs[self.RaCol]))
         #dec = np.asscalar(np.unique(obs[self.DecCol]))
+
+        
+        tab_tot = self.lcFast(obs,index_hdf5,gen_par)
+        
+        return tab_tot
+
         ra = np.mean(obs[self.RaCol])
         dec = np.mean(obs[self.DecCol])
 
@@ -146,6 +157,13 @@ class SN(SN_Object):
         """
 
         print('full end',time.time()-time_ref)
+        time_ref = time.time()
+        fastTest = self.lcFast(obs,index_hdf5,gen_par)
+        print('after fast',time.time()-time_ref)
+
+        print(fastTest)
+        print(tab_tot[['z','phase','band']])
+        print(test)
         return tab_tot
 
     def processBand(self, sel_obs, band, gen_par, j=-1, output_q=None):
@@ -248,6 +266,11 @@ class SN(SN_Object):
             pts = (p,yi_arr)
             fluxes_obs = self.reference_lc.flux[band](pts)
             fluxes_obs_err = self.reference_lc.fluxerr[band](pts)
+
+            print('phases',p)
+            print('yi',yi)
+            
+            print('fluxes',fluxes_obs)
 
             # Fisher components estimation
 

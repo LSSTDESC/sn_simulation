@@ -286,10 +286,11 @@ class SN_Simulation:
                                                append=True,
                                                compression=True)
                     self.sn_meta.append((metadata['SNID'], metadata['Ra'],
-                                         metadata['Dec'], metadata['daymax'],
+                                         metadata['Dec'],
                                          metadata['x0'], metadata['epsilon_x0'],
                                          metadata['x1'], metadata['epsilon_x1'],
                                          metadata['color'], metadata['epsilon_color'],
+                                         metadata['daymax'], metadata['epsilon_daymax'],
                                          metadata['z'], metadata['index_hdf5'], season,
                                          self.fieldname, self.fieldid,
                                          n_lc_points, metadata['survey_area'],
@@ -364,9 +365,10 @@ class SN_Simulation:
         """
         if len(self.sn_meta) > 0:
             Table(rows=self.sn_meta,
-                  names=['SNID', 'Ra', 'Dec', 'daymax', 'x0', 'epsilon_x0',
+                  names=['SNID', 'Ra', 'Dec', 'x0', 'epsilon_x0',
                          'x1', 'epsilon_x1',
                          'color', 'epsilon_color',
+                         'daymax', 'epsilon_daymax',
                          'z', 'id_hdf5', 'season',
                          'fieldname', 'fieldid',
                          'n_lc_points', 'survey_area', 'pixID', 'pixRa', 'pixDec'],
@@ -421,8 +423,7 @@ class SN_Simulation:
         simu = module.SN(sn_object, self.simu_config, reference_lc)
 
         # perform simulation here
-        df = simu(obs, self.index_hdf5,gen_params,
-                            self.display_lc, self.time_display)
+        df = simu(obs, self.index_hdf5,gen_params)
 
         index_hdf5 = self.index_hdf5
 
@@ -448,9 +449,10 @@ class SN_Simulation:
 
             
             
-            meta = dict(zip(['SNID', 'Ra', 'Dec', 'daymax', 'x0', 'epsilon_x0',
+            meta = dict(zip(['SNID', 'Ra', 'Dec','x0', 'epsilon_x0',
                          'x1', 'epsilon_x1',
                          'color', 'epsilon_color',
+                         'daymax', 'epsilon_daymax',
                          'z', 'id_hdf5', 'season',
                          'fieldname', 'fieldid',
                          'n_lc_points', 'survey_area', 'pixID', 'pixRa', 'pixDec'],list(formeta)))
@@ -468,6 +470,7 @@ class SN_Simulation:
 
         # now a tricky part: save results on disk
         if self.save_status:
+            print('saving data on disk - yes this can be long')
             x1 = np.unique(sn_par['x1'])[0]
             color = np.unique(sn_par['color'])[0]
             groups = df.groupby(['healpixID','z','daymax','season'])
@@ -503,9 +506,10 @@ class SN_Simulation:
                                      pixID, pixRa, pixDec)
                 self.sn_meta.append(formeta)
 
-                group.meta = dict(zip(['SNID', 'Ra', 'Dec', 'daymax', 'x0', 'epsilon_x0',
+                group.meta = dict(zip(['SNID', 'Ra', 'Dec','x0', 'epsilon_x0',
                          'x1', 'epsilon_x1',
                          'color', 'epsilon_color',
+                         'daymax', 'epsilon_daymax',
                          'z', 'id_hdf5', 'season',
                          'fieldname', 'fieldid',
                          'n_lc_points', 'survey_area', 'pixID', 'pixRa', 'pixDec'],list(formeta)))

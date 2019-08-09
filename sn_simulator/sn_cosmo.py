@@ -71,7 +71,8 @@ class SN(SN_Object):
         """
         self.SN = sncosmo.Model(source=source)
         self.SN.set(z=self.sn_parameters['z'])
-        self.SN.set(t0=self.sn_parameters['daymax'])
+        self.SN.set(t0=self.sn_parameters['daymax'] + 
+                    self.gen_parameters['epsilon_daymax'])
         self.SN.set(c=self.sn_parameters['color'] +
                     self.gen_parameters['epsilon_color'])
         self.SN.set(x1=self.sn_parameters['x1'] +
@@ -124,6 +125,7 @@ class SN(SN_Object):
           Ra: SN RA (float)
           Dec: SN Dec (float)
           daymax: day of the max luminosity (float)
+          epsilon_daymax: epsilon added to daymax for simulation (float)
           x0: SN x0 (float)
           epsilon_x0: epsilon added to x0 for simulation (float)
           x1: SN x1 (float)
@@ -167,14 +169,26 @@ class SN(SN_Object):
         # Metadata
         index = '{}_{}_{}'.format(pix['healpixID'], int(season), index_hdf5)
 
-        metadata = dict(zip(['SNID', 'Ra', 'Dec',
-                             'daymax', 'x0', 'epsilon_x0', 'x1', 'epsilon_x1', 'color', 'epsilon_color', 'z', 'survey_area', 'index_hdf5', 'pixID', 'pixRa', 'pixDec', 'season'], [
-            self.SNID, ra, dec, self.sn_parameters['daymax'],
-            self.X0, self.gen_parameters['epsilon_x0'], self.sn_parameters['x1'], self.gen_parameters[
-                'epsilon_x1'], self.sn_parameters['color'], self.gen_parameters['epsilon_color'],
-                                 self.sn_parameters['z'], area, index, pix['healpixID'], pix['pixRa'], pix['pixDec'], season]))
 
-        
+        names_meta = ['SNID', 'Ra', 'Dec',
+                      'x0', 'epsilon_x0', 
+                      'x1', 'epsilon_x1', 
+                      'color', 'epsilon_color', 
+                      'daymax', 'epsilon_daymax',
+                      'z', 'survey_area', 'index_hdf5', 
+                      'pixID', 'pixRa', 'pixDec', 
+                      'season']
+        val_meta = [self.SNID, ra, dec,
+                    self.X0, self.gen_parameters['epsilon_x0'], 
+                    self.sn_parameters['x1'], self.gen_parameters['epsilon_x1'], 
+                    self.sn_parameters['color'], self.gen_parameters['epsilon_color'], 
+                    self.sn_parameters['daymax'], self.gen_parameters['epsilon_daymax'],
+                    self.sn_parameters['z'], area, index, 
+                    pix['healpixID'], pix['pixRa'], pix['pixDec'], 
+                    season]
+
+        metadata = dict(zip(names_meta,val_meta))
+
     
         
         # Select obs depending on min and max phases

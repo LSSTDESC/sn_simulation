@@ -151,6 +151,7 @@ class SNMetric(BaseMetric):
         #print(dataSlice[[self.mjdCol,self.filterCol,self.exptimeCol,self.nexpCol]])
         if self.stacker is not None:
             dataSlice = self.stacker._run(dataSlice)
+            print('stacked')
         #print(dataSlice[[self.mjdCol,self.filterCol,self.exptimeCol,self.nexpCol]])
 
         #print(test)
