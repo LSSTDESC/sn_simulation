@@ -137,7 +137,7 @@ class SN_Object:
         array of obs passing the selection
         """
 
-        blue_cutoff = 300.
+        blue_cutoff = 380.
         red_cutoff = 800.
 
         mean_restframe_wavelength = np.asarray(
