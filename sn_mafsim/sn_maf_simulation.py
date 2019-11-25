@@ -106,10 +106,12 @@ class SNMetric(BaseMetric):
         display_time = config['Display_LC']['time']
         self.field_type = config['Observations']['fieldtype']
         self.season = config['Observations']['season']
-        area = 9.6  # survey_area in sqdeg - 9.6 by default for DD
-        if self.field_type == 'WFD':
-            # in that case the survey area is the healpix area
-            area = hp.nside2pixarea(self.nside, degrees=True)
+        #area = 9.6  # survey_area in sqdeg - 9.6 by default for DD
+        #if self.field_type == 'WFD':
+        # in that case the survey area is the healpix area
+        area = hp.nside2pixarea(self.nside, degrees=True)
+
+        self.type = 'simulation'
 
         # instantiate simulator here
 
