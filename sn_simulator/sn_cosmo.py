@@ -195,7 +195,9 @@ class SN(SN_Object):
         obs = self.cutoff(obs, self.sn_parameters['daymax'],
                           self.sn_parameters['z'],
                           self.sn_parameters['min_rf_phase'],
-                          self.sn_parameters['max_rf_phase'])
+                          self.sn_parameters['max_rf_phase'],
+                          self.sn_parameters['blue_cutoff'],
+                          self.sn_parameters['red_cutoff'])
 
         """
         print('after sel',obs.dtype)

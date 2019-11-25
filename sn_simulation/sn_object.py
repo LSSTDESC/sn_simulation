@@ -116,7 +116,9 @@ class SN_Object:
         """
         return self._SNID
 
-    def cutoff(self, obs, T0, z, min_rf_phase, max_rf_phase):
+    def cutoff(self, obs, T0, z, 
+               min_rf_phase, max_rf_phase,
+               blue_cutoff=350.,red_cutoff=800.):
         """ select observations depending on phases
 
         Parameters
@@ -136,9 +138,6 @@ class SN_Object:
         ----------
         array of obs passing the selection
         """
-
-        blue_cutoff = 380.
-        red_cutoff = 800.
 
         mean_restframe_wavelength = np.asarray(
             [self.telescope.mean_wavelength[obser[self.filterCol][-1]] /
