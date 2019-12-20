@@ -12,6 +12,7 @@ class SN_Object:
                  filterCol='band', exptimeCol='exptime', nexpCol='numExposures',
                  m5Col='fiveSigmaDepth', seasonCol='season',
                  seeingEffCol='seeingFwhmEff', seeingGeomCol='seeingFwhmGeom',
+                 airmassCol='airmass',skyCol='sky', moonCol='moonPhase',
                  salt2Dir='SALT2_Files'):
         """ class SN object
         handles sn name, parameters,
@@ -57,6 +58,12 @@ class SN_Object:
          seeing eff col name in observations (default: 'seeingFwhmEff')
         seeingGeomCol: str, opt
          seeing geom  col name in observations (default: 'seeingFwhmGeom')
+        airmassCol: str, opt
+         airmass col name in observations (default: 'airmass')
+        skyCol: str, opt
+         sky col name in observations (default: 'sky')
+        moonCol: str, opt
+         moon col name in observations (default:'moonPhase')
         salt2Dir: str,opt
          dir of SALT2 files
     """
@@ -77,6 +84,10 @@ class SN_Object:
         self.seasonCol = seasonCol
         self.seeingEffCol = seeingEffCol
         self.seeingGeomCol = seeingGeomCol
+        self.airmassCol = airmassCol
+        self.skyCol = skyCol
+        self.moonCol = moonCol
+
         self.area = area
         self.salt2Dir = salt2Dir
         self.x0_grid = x0_grid
