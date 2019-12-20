@@ -25,6 +25,7 @@ class SN(SN_Object):
                          nexpCol=param.nexpCol,
                          m5Col=param.m5Col, seasonCol=param.seasonCol,
                          seeingEffCol=param.seeingEffCol, seeingGeomCol=param.seeingGeomCol,
+                         airmassCol=param.airmassCol,skyCol=param.skyCol,moonCol=param.moonCol,
                          salt2Dir=param.salt2Dir)
 
         """ SN class - inherits from SN_Object
@@ -90,6 +91,7 @@ class SN(SN_Object):
                                  self.sn_parameters['color']))
         X0 += self.gen_parameters['epsilon_x0']
         self.X0 = X0
+        self.dL = lumidist
         self.SN.set(x0=X0)
         """
         self.SN.set_source_peakabsmag(self.sn_parameters['absmag'],
@@ -135,6 +137,11 @@ class SN(SN_Object):
           z: SN redshift (float)
           survey_area: survey area for this SN (float)
           index_hdf5: SN index in the hdf5 file
+          pixID: pixel ID
+          pixRa: pixel RA 
+          pixDec: pixel Dec 
+          season: season
+          dL: luminosity distance
         fields:
           flux: SN flux (Jy)
           fluxerr: EN error flux (Jy)
@@ -177,7 +184,7 @@ class SN(SN_Object):
                       'daymax', 'epsilon_daymax',
                       'z', 'survey_area', 'index_hdf5', 
                       'pixID', 'pixRa', 'pixDec', 
-                      'season']
+                      'season','dL']
         val_meta = [self.SNID, ra, dec,
                     self.X0, self.gen_parameters['epsilon_x0'], 
                     self.sn_parameters['x1'], self.gen_parameters['epsilon_x1'], 
@@ -185,7 +192,7 @@ class SN(SN_Object):
                     self.sn_parameters['daymax'], self.gen_parameters['epsilon_daymax'],
                     self.sn_parameters['z'], area, index, 
                     pix['healpixID'], pix['pixRa'], pix['pixDec'], 
-                    season]
+                    season,self.dL]
 
         metadata = dict(zip(names_meta,val_meta))
 
@@ -270,6 +277,7 @@ class SN(SN_Object):
         gamma_opsim = [calc[i][1] for i in nvals]
         exptime = [obs[self.exptimeCol][i] for i in nvals]
 
+        #print('Exposure time',exptime)
         # estimate the flux in elec.sec-1
         e_per_sec = self.telescope.mag_to_flux_e_sec(
             mag_SN, obs[self.filterCol], [30.]*len(mag_SN))
@@ -280,6 +288,13 @@ class SN(SN_Object):
         table_lc.add_column(Column(snr_m5_opsim, name='snr_m5'))
         table_lc.add_column(Column(gamma_opsim, name='gamma'))
         table_lc.add_column(Column(obs[self.m5Col], name='m5'))
+        if self.airmassCol in obs.dtype.names:
+            table_lc.add_column(Column(obs[self.airmassCol], name=self.airmassCol))
+        if self.skyCol in obs.dtype.names:
+            table_lc.add_column(Column(obs[self.skyCol], name=self.skyCol))
+        if self.moonCol in obs.dtype.names:
+            table_lc.add_column(Column(obs[self.moonCol], name=self.moonCol))
+        table_lc.add_column(Column(obs[self.nexpCol], name=self.nexpCol))
         table_lc.add_column(
             Column(obs[self.seeingEffCol], name=self.seeingEffCol))
         table_lc.add_column(
