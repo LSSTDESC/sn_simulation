@@ -296,7 +296,9 @@ class SN_Simulation:
                                          n_lc_points, metadata['survey_area'],
                                          metadata['pixID'],
                                          metadata['pixRa'],
-                                         metadata['pixDec']))
+                                         metadata['pixDec'],
+                                         metadata['dL']))
+                   
             
 
             """
@@ -372,9 +374,9 @@ class SN_Simulation:
                          'daymax', 'epsilon_daymax',
                          'z', 'id_hdf5', 'season',
                          'fieldname', 'fieldid',
-                         'n_lc_points', 'survey_area', 'pixID', 'pixRa', 'pixDec'],
+                         'n_lc_points', 'survey_area', 'pixID', 'pixRa', 'pixDec','dL'],
                   dtype=('i4', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8',
-                         'f8','f8', h5py.special_dtype(vlen=str), 'i4', 'S3', 'i8', 'i8', 'f8', 'i8', 'f8', 'f8')).write(
+                         'f8','f8', h5py.special_dtype(vlen=str), 'i4', 'S3', 'i8', 'i8', 'f8', 'i8', 'f8', 'f8','f8')).write(
                              self.simu_out, 'summary', compression=True)
 
     def processFast(self, obs, fieldname, fieldid, reference_lc):
@@ -438,6 +440,7 @@ class SN_Simulation:
             pixID = np.unique(grp['healpixID'])[0]
             pixRa = np.unique(grp['pixRa'])[0]
             pixDec = np.unique(grp['pixDec'])[0]
+            dL = np.unique(grp['dL'])[0]
             Ra = np.round(pixRa,3)
             Dec = np.round(pixDec,3)
             
@@ -445,7 +448,8 @@ class SN_Simulation:
                        x1,0.,color,0.,
                        z, '{}_{}_{}'.format(Ra,Dec,index_hdf5), season, fieldname, 
                        fieldid, len(grp), self.area,
-                       pixID, pixRa, pixDec)
+                       pixID, pixRa, pixDec,dL)
+
             self.sn_meta.append(formeta)
 
             
@@ -456,7 +460,7 @@ class SN_Simulation:
                          'daymax', 'epsilon_daymax',
                          'z', 'id_hdf5', 'season',
                          'fieldname', 'fieldid',
-                         'n_lc_points', 'survey_area', 'pixID', 'pixRa', 'pixDec'],list(formeta)))
+                             'n_lc_points', 'survey_area', 'pixID', 'pixRa', 'pixDec','dL'],list(formeta)))
 
             #print('metadata',meta)
             tab = Table.from_pandas(grp)
