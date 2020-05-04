@@ -5,7 +5,8 @@ from sn_stackers.coadd_stacker import CoaddStacker
 import healpy as hp
 import numpy.lib.recfunctions as rf
 
-class SNMetric(BaseMetric):
+
+class SNMAFSimulation(BaseMetric):
     """LC simulations in the "MAF metric" framework
 
     Parameters
@@ -13,7 +14,7 @@ class SNMetric(BaseMetric):
 
     mjdCol: str, opt
      mjd col name in observations (default: 'observationStartMJD')
-    RaCol: str, opt
+    RACol: str, opt
      RA col name in observations (default: 'fieldRA')
     DecCol:str, opt
      Dec col name in observations (default: 'fieldDec')
@@ -47,16 +48,18 @@ class SNMetric(BaseMetric):
 
     """
 
-    def __init__(self, metricName='SNMetric',
-                 mjdCol='observationStartMJD', RaCol='fieldRA', DecCol='fieldDec',
+    def __init__(self, metricName='SNMAFSimulation',
+                 mjdCol='observationStartMJD', RACol='fieldRA', DecCol='fieldDec',
                  filterCol='filter', m5Col='fiveSigmaDepth', exptimeCol='visitExposureTime',
-                 nightCol='night', obsidCol='observationId', nexpCol='numExposures', vistimeCol='visitTime', seeingEffCol='seeingFwhmEff', seeingGeomCol='seeingFwhmGeom', coadd=True,
-                 uniqueBlocks=False, config=None, x0_norm=None,reference_lc=None,**kwargs):
+                 nightCol='night', obsidCol='observationId', nexpCol='numExposures',
+                 vistimeCol='visitTime', seeingEffCol='seeingFwhmEff',
+                 seeingGeomCol='seeingFwhmGeom', coadd=True,
+                 uniqueBlocks=False, config=None, x0_norm=None, reference_lc=None, **kwargs):
 
         self.mjdCol = mjdCol
         self.m5Col = m5Col
         self.filterCol = filterCol
-        self.RaCol = RaCol
+        self.RACol = RACol
         self.DecCol = DecCol
         self.exptimeCol = exptimeCol
         self.seasonCol = 'season'
@@ -68,15 +71,18 @@ class SNMetric(BaseMetric):
         self.seeingGeomCol = seeingGeomCol
         self.reference_lc = reference_lc
 
-        cols = [self.RaCol, self.DecCol,self.nightCol, self.m5Col, self.filterCol, self.mjdCol, self.obsidCol,
-                self.nexpCol, self.vistimeCol, self.exptimeCol, self.seasonCol, self.seeingEffCol, self.seeingGeomCol,self.nightCol]
+        cols = [self.RACol, self.DecCol, self.nightCol, self.m5Col, self.filterCol, self.mjdCol, self.obsidCol,
+                self.nexpCol, self.vistimeCol, self.exptimeCol, self.seasonCol, self.seeingEffCol, self.seeingGeomCol, self.nightCol]
         self.stacker = None
 
-       
         if coadd:
             #cols += ['sn_coadd']
-            self.stacker = CoaddStacker(mjdCol=self.mjdCol,RaCol=self.RaCol, DecCol=self.DecCol, m5Col=self.m5Col, nightCol=self.nightCol, filterCol=self.filterCol, numExposuresCol=self.nexpCol, visitTimeCol=self.vistimeCol,visitExposureTimeCol='visitExposureTime')
-        super(SNMetric, self).__init__(
+            self.stacker = CoaddStacker(mjdCol=self.mjdCol,
+                                        RACol=self.RACol, DecCol=self.DecCol,
+                                        m5Col=self.m5Col, nightCol=self.nightCol,
+                                        filterCol=self.filterCol, numExposuresCol=self.nexpCol,
+                                        visitTimeCol=self.vistimeCol, visitExposureTimeCol='visitExposureTime')
+        super(SNMAFSimulation, self).__init__(
             col=cols, metricName=metricName, **kwargs)
         """
         super().__init__(
@@ -106,8 +112,8 @@ class SNMetric(BaseMetric):
         display_time = config['Display_LC']['time']
         self.field_type = config['Observations']['fieldtype']
         self.season = config['Observations']['season']
-        #area = 9.6  # survey_area in sqdeg - 9.6 by default for DD
-        #if self.field_type == 'WFD':
+        # area = 9.6  # survey_area in sqdeg - 9.6 by default for DD
+        # if self.field_type == 'WFD':
         # in that case the survey area is the healpix area
         area = hp.nside2pixarea(self.nside, degrees=True)
 
@@ -117,8 +123,8 @@ class SNMetric(BaseMetric):
 
         self.simu = SN_Simulation(cosmo_par, tel_par, sn_parameters,
                                   save_status, outdir, prodid,
-                                  simu_config, x0_norm,display_lc, display_time, area,
-                                  mjdCol=self.mjdCol, RaCol=self.RaCol,
+                                  simu_config, x0_norm, display_lc, display_time, area,
+                                  mjdCol=self.mjdCol, RACol=self.RACol,
                                   DecCol=self.DecCol,
                                   filterCol=self.filterCol, exptimeCol=self.exptimeCol,
                                   m5Col=self.m5Col, seasonCol=self.seasonCol,
@@ -148,38 +154,40 @@ class SNMetric(BaseMetric):
             return (self.badval, self.badval, self.badval)
         """
         dataSlice.sort(order=self.mjdCol)
-        
-        #print(dataSlice.dtype)
-        #print(dataSlice[[self.mjdCol,self.filterCol,self.exptimeCol,self.nexpCol]])
+
+        # print(dataSlice.dtype)
+        # print(dataSlice[[self.mjdCol,self.filterCol,self.exptimeCol,self.nexpCol]])
         if self.stacker is not None:
             dataSlice = self.stacker._run(dataSlice)
             print('stacked')
-        #print(dataSlice[[self.mjdCol,self.filterCol,self.exptimeCol,self.nexpCol]])
+        # print(dataSlice[[self.mjdCol,self.filterCol,self.exptimeCol,self.nexpCol]])
 
-        #print(test)
-        #print('stacked')
-        # if the fields healpixID, pixRa, pixDec are not in dataSlice 
+        # print(test)
+        # print('stacked')
+        # if the fields healpixID, pixRa, pixDec are not in dataSlice
         # then estimate them and add them to dataSlice
         datacp = np.copy(dataSlice)
-        
+
         if 'healpixID' not in datacp.dtype.names:
-            Ra = np.mean(datacp[self.RaCol])
+            Ra = np.mean(datacp[self.RACol])
             Dec = np.mean(datacp[self.DecCol])
-            
+
             table = hp.ang2vec([Ra], [Dec], lonlat=True)
-            
-            healpixs = hp.vec2pix(self.nside, table[:, 0], table[:, 1], table[:, 2], nest=True)
+
+            healpixs = hp.vec2pix(
+                self.nside, table[:, 0], table[:, 1], table[:, 2], nest=True)
             coord = hp.pix2ang(self.nside, healpixs, nest=True, lonlat=True)
-            
-            healpixId, pixRa, pixDec = healpixs[0], coord[0][0],coord[1][0]
-            
-            datacp = rf.append_fields(datacp,'healpixId',[healpixId]*len(datacp))
-            datacp = rf.append_fields(datacp,'pixRa',[pixRa]*len(datacp))
-            datacp = rf.append_fields(datacp,'pixDec',[pixDec]*len(datacp))
-        #print('alors',datacp[['healpixId','pixRa','pixDec']])
-        
+
+            healpixId, pixRa, pixDec = healpixs[0], coord[0][0], coord[1][0]
+
+            datacp = rf.append_fields(datacp, 'healpixId', [
+                                      healpixId]*len(datacp))
+            datacp = rf.append_fields(datacp, 'pixRa', [pixRa]*len(datacp))
+            datacp = rf.append_fields(datacp, 'pixDec', [pixDec]*len(datacp))
+        # print('alors',datacp[['healpixId','pixRa','pixDec']])
+
         # Run simulation
-        
-        self.simu(datacp, self.field_type, 100, self.season,self.reference_lc)
+
+        self.simu(datacp, self.field_type, 100, self.season, self.reference_lc)
 
         return None

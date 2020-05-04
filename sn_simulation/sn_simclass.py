@@ -11,7 +11,6 @@ import multiprocessing
 from sn_tools.sn_telescope import Telescope
 from sn_simulation.sn_object import SN_Object
 from sn_tools.sn_utils import GenerateSample
-from sn_tools.observations import Observations
 from scipy.interpolate import interp2d
 
 
@@ -53,7 +52,7 @@ class SN_Simulation:
      observed area (default: 9.6 deg2)
     mjdCol: str, opt
      mjd col name in observations (default: 'mjd')
-    RaCol: str, opt
+    RACol: str, opt
      RA col name in observations (default: 'pixRa')
     DecCol:str, opt
      Dec col name in observations (default: 'pixDec')
@@ -81,7 +80,7 @@ class SN_Simulation:
     def __init__(self, cosmo_par, tel_par, sn_parameters,
                  save_status, outdir, prodid,
                  simu_config, x0_norm, display_lc=False, time_display=0., area=9.6,
-                 mjdCol='mjd', RaCol='pixRa', DecCol='pixDec',
+                 mjdCol='mjd', RACol='pixRa', DecCol='pixDec',
                  filterCol='band', exptimeCol='exptime', nexpCol='numExposures',
                  m5Col='fiveSigmaDepth', seasonCol='season',
                  seeingEffCol='seeingFwhmEff', seeingGeomCol='seeingFwhmGeom',
@@ -96,7 +95,7 @@ class SN_Simulation:
         self.index_hdf5 = 100
         self.save_status = save_status
         self.mjdCol = mjdCol
-        self.RaCol = RaCol
+        self.RACol = RACol
         self.DecCol = DecCol
         self.filterCol = filterCol
         self.exptimeCol = exptimeCol
@@ -173,7 +172,7 @@ class SN_Simulation:
         if os.path.exists(self.lc_out):
             os.remove(self.lc_out)
 
-    def __call__(self, obs, fieldname, fieldid, season,reference_lc=None):
+    def __call__(self, obs, fieldname, fieldid, season, reference_lc=None):
         """ LC simulations
 
         Parameters
@@ -196,7 +195,7 @@ class SN_Simulation:
         else:
             seasons = [season]
 
-        if  'sn_fast' not in self.simu_config['name']:
+        if 'sn_fast' not in self.simu_config['name']:
             for seas in seasons:
                 self.index_hdf5_count = self.index_hdf5
                 time_ref = time.time()
@@ -213,9 +212,10 @@ class SN_Simulation:
             if season != -1:
                 for seas in seasons:
                     idxa = obs[self.seasonCol] == seas
-                    self.processFast(obs[idxa], fieldname, fieldid,reference_lc)
+                    self.processFast(obs[idxa], fieldname,
+                                     fieldid, reference_lc)
             else:
-                self.processFast(obs, fieldname, fieldid,reference_lc)
+                self.processFast(obs, fieldname, fieldid, reference_lc)
 
         print('End of simulation', time.time()-time_ref)
     """
@@ -298,8 +298,6 @@ class SN_Simulation:
                                          metadata['pixRa'],
                                          metadata['pixDec'],
                                          metadata['dL']))
-                   
-            
 
             """
             for i, val in enumerate(gen_params[:]):
@@ -344,7 +342,7 @@ class SN_Simulation:
                               gen_params,
                               self.cosmology,
                               self.telescope, SNID, self.area,
-                              mjdCol=self.mjdCol, RaCol=self.RaCol,
+                              mjdCol=self.mjdCol, RACol=self.RACol,
                               DecCol=self.DecCol,
                               filterCol=self.filterCol, exptimeCol=self.exptimeCol,
                               m5Col=self.m5Col,
@@ -374,9 +372,9 @@ class SN_Simulation:
                          'daymax', 'epsilon_daymax',
                          'z', 'id_hdf5', 'season',
                          'fieldname', 'fieldid',
-                         'n_lc_points', 'survey_area', 'pixID', 'pixRa', 'pixDec','dL'],
+                         'n_lc_points', 'survey_area', 'pixID', 'pixRa', 'pixDec', 'dL'],
                   dtype=('i4', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8',
-                         'f8','f8', h5py.special_dtype(vlen=str), 'i4', 'S3', 'i8', 'i8', 'f8', 'i8', 'f8', 'f8','f8')).write(
+                         'f8', 'f8', h5py.special_dtype(vlen=str), 'i4', 'S3', 'i8', 'i8', 'f8', 'i8', 'f8', 'f8', 'f8')).write(
                              self.simu_out, 'summary', compression=True)
 
     def processFast(self, obs, fieldname, fieldid, reference_lc):
@@ -392,7 +390,7 @@ class SN_Simulation:
          int label for the field
         reference_lc: class (see GetReference in sn_tools.sn_utils)
          set od dicts with reference values (flux, flux error, ...)
-         
+
 
         """
 
@@ -412,7 +410,7 @@ class SN_Simulation:
                               gen_params,
                               self.cosmology,
                               self.telescope, sn_par['Id'], self.area,
-                              mjdCol=self.mjdCol, RaCol=self.RaCol,
+                              mjdCol=self.mjdCol, RACol=self.RACol,
                               DecCol=self.DecCol,
                               filterCol=self.filterCol, exptimeCol=self.exptimeCol,
                               m5Col=self.m5Col,
@@ -421,73 +419,68 @@ class SN_Simulation:
 
         # import the module as defined in the config file
         module = import_module(self.simu_config['name'])
-        
+
         # SN class instance
         simu = module.SN(sn_object, self.simu_config, reference_lc)
 
         # perform simulation here
-        df = simu(obs, self.index_hdf5,gen_params)
+        df = simu(obs, self.index_hdf5, gen_params)
 
         index_hdf5 = self.index_hdf5
 
-
         def applyGroup(grp, x1, color, index_hdf5, SNID):
-            
+
             z = np.unique(grp['z'])[0]
             daymax = np.unique(grp['daymax'])[0]
-            
+
             season = np.unique(grp['season'])[0]
             pixID = np.unique(grp['healpixID'])[0]
             pixRa = np.unique(grp['pixRa'])[0]
             pixDec = np.unique(grp['pixDec'])[0]
             dL = np.unique(grp['dL'])[0]
-            Ra = np.round(pixRa,3)
-            Dec = np.round(pixDec,3)
-            
-            formeta = (SNID, Ra, Dec, daymax,-1.,0.,
-                       x1,0.,color,0.,
-                       z, '{}_{}_{}'.format(Ra,Dec,index_hdf5), season, fieldname, 
+            Ra = np.round(pixRa, 3)
+            Dec = np.round(pixDec, 3)
+
+            formeta = (SNID, Ra, Dec, daymax, -1., 0.,
+                       x1, 0., color, 0.,
+                       z, '{}_{}_{}'.format(
+                           Ra, Dec, index_hdf5), season, fieldname,
                        fieldid, len(grp), self.area,
-                       pixID, pixRa, pixDec,dL)
+                       pixID, pixRa, pixDec, dL)
 
             self.sn_meta.append(formeta)
 
-            
-            
-            meta = dict(zip(['SNID', 'Ra', 'Dec','x0', 'epsilon_x0',
-                         'x1', 'epsilon_x1',
-                         'color', 'epsilon_color',
-                         'daymax', 'epsilon_daymax',
-                         'z', 'id_hdf5', 'season',
-                         'fieldname', 'fieldid',
-                             'n_lc_points', 'survey_area', 'pixID', 'pixRa', 'pixDec','dL'],list(formeta)))
+            meta = dict(zip(['SNID', 'Ra', 'Dec', 'x0', 'epsilon_x0',
+                             'x1', 'epsilon_x1',
+                             'color', 'epsilon_color',
+                             'daymax', 'epsilon_daymax',
+                             'z', 'id_hdf5', 'season',
+                             'fieldname', 'fieldid',
+                             'n_lc_points', 'survey_area', 'pixID', 'pixRa', 'pixDec', 'dL'], list(formeta)))
 
-            #print('metadata',meta)
+            # print('metadata',meta)
             tab = Table.from_pandas(grp)
             tab.meta = meta
 
             tab.write(self.lc_out,
-                        path='lc_{}_{}_{}'.format(Ra,Dec,index_hdf5),
-                        # path = 'lc_'+key[0],
-                        append=True,
-                        compression=True)
-            
+                      path='lc_{}_{}_{}'.format(Ra, Dec, index_hdf5),
+                      # path = 'lc_'+key[0],
+                      append=True,
+                      compression=True)
 
         # now a tricky part: save results on disk
         if self.save_status:
             print('saving data on disk - yes this can be long')
             x1 = np.unique(sn_par['x1'])[0]
             color = np.unique(sn_par['color'])[0]
-            groups = df.groupby(['healpixID','z','daymax','season'])
+            groups = df.groupby(['healpixID', 'z', 'daymax', 'season'])
 
             for name, group in groups:
                 index_hdf5 += 1
                 SNID = sn_par['Id']+index_hdf5
 
-                applyGroup(group,x1,color,index_hdf5,SNID)
-            
+                applyGroup(group, x1, color, index_hdf5, SNID)
 
-                    
             """
 
             for season in np.unique(tab['season']):

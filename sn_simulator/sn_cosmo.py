@@ -20,12 +20,12 @@ class SN(SN_Object):
     def __init__(self, param, simu_param):
         super().__init__(param.name, param.sn_parameters, param.gen_parameters,
                          param.cosmology, param.telescope, param.SNID, param.area, param.x0_grid,
-                         mjdCol=param.mjdCol, RaCol=param.RaCol, DecCol=param.DecCol,
+                         mjdCol=param.mjdCol, RACol=param.RACol, DecCol=param.DecCol,
                          filterCol=param.filterCol, exptimeCol=param.exptimeCol,
                          nexpCol=param.nexpCol,
                          m5Col=param.m5Col, seasonCol=param.seasonCol,
                          seeingEffCol=param.seeingEffCol, seeingGeomCol=param.seeingGeomCol,
-                         airmassCol=param.airmassCol,skyCol=param.skyCol,moonCol=param.moonCol,
+                         airmassCol=param.airmassCol, skyCol=param.skyCol, moonCol=param.moonCol,
                          salt2Dir=param.salt2Dir)
 
         """ SN class - inherits from SN_Object
@@ -72,7 +72,7 @@ class SN(SN_Object):
         """
         self.SN = sncosmo.Model(source=source)
         self.SN.set(z=self.sn_parameters['z'])
-        self.SN.set(t0=self.sn_parameters['daymax'] + 
+        self.SN.set(t0=self.sn_parameters['daymax'] +
                     self.gen_parameters['epsilon_daymax'])
         self.SN.set(c=self.sn_parameters['color'] +
                     self.gen_parameters['epsilon_color'])
@@ -101,7 +101,7 @@ class SN(SN_Object):
         """
 
         self.defname = dict(zip(['healpixID', 'pixRa', 'pixDec'], [
-                            'observationId', param.RaCol, param.DecCol]))
+                            'observationId', param.RACol, param.DecCol]))
 
     def __call__(self, obs, index_hdf5, display=False, time_display=0.):
         """ Simulation of the light curve
@@ -162,7 +162,7 @@ class SN(SN_Object):
         """
         #assert (len(np.unique(obs[self.RaCol])) == 1)
         #assert (len(np.unique(obs[self.DecCol])) == 1)
-        ra = np.mean(obs[self.RaCol])
+        ra = np.mean(obs[self.RACol])
         dec = np.mean(obs[self.DecCol])
         area = self.area
         season = np.unique(obs['season'])[0]
@@ -176,28 +176,25 @@ class SN(SN_Object):
         # Metadata
         index = '{}_{}_{}'.format(pix['healpixID'], int(season), index_hdf5)
 
-
         names_meta = ['SNID', 'Ra', 'Dec',
-                      'x0', 'epsilon_x0', 
-                      'x1', 'epsilon_x1', 
-                      'color', 'epsilon_color', 
+                      'x0', 'epsilon_x0',
+                      'x1', 'epsilon_x1',
+                      'color', 'epsilon_color',
                       'daymax', 'epsilon_daymax',
-                      'z', 'survey_area', 'index_hdf5', 
-                      'pixID', 'pixRa', 'pixDec', 
-                      'season','dL']
+                      'z', 'survey_area', 'index_hdf5',
+                      'pixID', 'pixRa', 'pixDec',
+                      'season', 'dL']
         val_meta = [self.SNID, ra, dec,
-                    self.X0, self.gen_parameters['epsilon_x0'], 
-                    self.sn_parameters['x1'], self.gen_parameters['epsilon_x1'], 
-                    self.sn_parameters['color'], self.gen_parameters['epsilon_color'], 
+                    self.X0, self.gen_parameters['epsilon_x0'],
+                    self.sn_parameters['x1'], self.gen_parameters['epsilon_x1'],
+                    self.sn_parameters['color'], self.gen_parameters['epsilon_color'],
                     self.sn_parameters['daymax'], self.gen_parameters['epsilon_daymax'],
-                    self.sn_parameters['z'], area, index, 
-                    pix['healpixID'], pix['pixRa'], pix['pixDec'], 
-                    season,self.dL]
+                    self.sn_parameters['z'], area, index,
+                    pix['healpixID'], pix['pixRa'], pix['pixDec'],
+                    season, self.dL]
 
-        metadata = dict(zip(names_meta,val_meta))
+        metadata = dict(zip(names_meta, val_meta))
 
-    
-        
         # Select obs depending on min and max phases
         obs = self.cutoff(obs, self.sn_parameters['daymax'],
                           self.sn_parameters['z'],
@@ -256,7 +253,7 @@ class SN(SN_Object):
 
         #
         #idx = int_fluxes > 0
-        int_fluxes[int_fluxes<0.]=1.e-10
+        int_fluxes[int_fluxes < 0.] = 1.e-10
         """
         int_fluxes = int_fluxes[idx]
         transes = transes[idx]
@@ -289,7 +286,8 @@ class SN(SN_Object):
         table_lc.add_column(Column(gamma_opsim, name='gamma'))
         table_lc.add_column(Column(obs[self.m5Col], name='m5'))
         if self.airmassCol in obs.dtype.names:
-            table_lc.add_column(Column(obs[self.airmassCol], name=self.airmassCol))
+            table_lc.add_column(
+                Column(obs[self.airmassCol], name=self.airmassCol))
         if self.skyCol in obs.dtype.names:
             table_lc.add_column(Column(obs[self.skyCol], name=self.skyCol))
         if self.moonCol in obs.dtype.names:
@@ -320,7 +318,7 @@ class SN(SN_Object):
         phases = (table_lc['time']-self.sn_parameters['daymax']
                   )/(1.+self.sn_parameters['z'])
         table_lc.add_column(Column(phases, name='phase'))
-        
+
         # if the user chooses to display the results...
         if display:
             self.plotLC(table_lc['time', 'band',

@@ -5,7 +5,7 @@ from sn_stackers.coadd_stacker import CoaddStacker
 import healpy as hp
 
 
-class SNMetric:
+class SNSimulation:
     """
     LC simulations in the "MAF metric" framework
     on fake observations

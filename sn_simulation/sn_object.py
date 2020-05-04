@@ -7,12 +7,12 @@ from collections import OrderedDict as odict
 
 class SN_Object:
     def __init__(self, name, sn_parameters, gen_parameters, cosmology,
-                 Telescope, snid, area,x0_grid,
-                 mjdCol='mjd', RaCol='pixRa', DecCol='pixDec',
+                 Telescope, snid, area, x0_grid,
+                 mjdCol='mjd', RACol='pixRa', DecCol='pixDec',
                  filterCol='band', exptimeCol='exptime', nexpCol='numExposures',
                  m5Col='fiveSigmaDepth', seasonCol='season',
                  seeingEffCol='seeingFwhmEff', seeingGeomCol='seeingFwhmGeom',
-                 airmassCol='airmass',skyCol='sky', moonCol='moonPhase',
+                 airmassCol='airmass', skyCol='sky', moonCol='moonPhase',
                  salt2Dir='SALT2_Files'):
         """ class SN object
         handles sn name, parameters,
@@ -40,7 +40,7 @@ class SN_Object:
          2D-grid (x1,color) of x0_norm values
         mjdCol: str, opt
            mjd col name in observations (default: 'mjd')
-        RaCol: str, opt
+        RACol: str, opt
           RA col name in observations (default: 'pixRa')
         DecCol:str, opt
           Dec col name in observations (default: 'pixDec')
@@ -75,7 +75,7 @@ class SN_Object:
         self._SNID = snid
 
         self.mjdCol = mjdCol
-        self.RaCol = RaCol
+        self.RACol = RACol
         self.DecCol = DecCol
         self.filterCol = filterCol
         self.exptimeCol = exptimeCol
@@ -91,7 +91,6 @@ class SN_Object:
         self.area = area
         self.salt2Dir = salt2Dir
         self.x0_grid = x0_grid
-        
 
     @property
     def name(self):
@@ -127,9 +126,9 @@ class SN_Object:
         """
         return self._SNID
 
-    def cutoff(self, obs, T0, z, 
+    def cutoff(self, obs, T0, z,
                min_rf_phase, max_rf_phase,
-               blue_cutoff=350.,red_cutoff=800.):
+               blue_cutoff=350., red_cutoff=800.):
         """ select observations depending on phases
 
         Parameters
