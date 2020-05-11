@@ -5,7 +5,7 @@ setup(
     name='sn_simulation',
     version='0.1',
     description='Simulations for supernovae',
-    url='http://github.com/lsstdesc/sn_metrics',
+    url='http://github.com/lsstdesc/sn_simulation',
     author='Philippe Gris',
     author_email='philippe.gris@clermont.in2p3.fr',
     license='BSD',
