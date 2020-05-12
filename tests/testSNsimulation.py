@@ -9,6 +9,8 @@ import h5py
 from astropy.table import Table, vstack
 # import glob
 from sn_simulation.sn_simclass import SN_Simulation
+from sn_wrapper.sn_simu import SNSimulation
+
 
 main_repo = 'https://me.lsst.eu/gris/Reference_Files'
 m5_ref = dict(zip('ugrizy', [23.60, 24.83, 24.38, 23.92, 23.35, 22.44]))
@@ -159,7 +161,7 @@ def Observations_band(day0=59000, daymin=59000, cadence=3., season_length=140., 
     # Define fake data
     names = ['observationStartMJD', 'fieldRA', 'fieldDec',
              'fiveSigmaDepth', 'visitExposureTime', 'numExposures',
-             'visitTime', 'season', 'seeingFwhmEff', 'seeingFwhmGeom',
+             'visitTime', 'seeingFwhmEff', 'seeingFwhmGeom',
              'pixRA', 'pixDec', 'RA', 'Dec']
     types = ['f8']*len(names)
     names += ['night', 'healpixID']
@@ -236,11 +238,11 @@ class TestSNsimulation(unittest.TestCase):
         colormin = 0.2
         colormax = 0.3
         colorstep = 0.02
-        zType = 'unique'
+        zType = 'random'
         zmin = 0.1
         zmax = 1.0
         zstep = 0.1
-        daymaxtype = 'unique'
+        daymaxtype = 'random'
         daymaxstep = 1.
         difflux = 0
         fulldbName = 'data_from_fake'
@@ -269,6 +271,7 @@ class TestSNsimulation(unittest.TestCase):
 
         area = 9.6  # survey area (deg2)
 
+        """
         simu = SN_Simulation(cosmo_par=conf['Cosmology'],
                              tel_par=conf['Instrument'],
                              sn_parameters=conf['SN parameters'],
@@ -287,6 +290,13 @@ class TestSNsimulation(unittest.TestCase):
                              x1colorDir=conf['SN parameters']['x1_color']['dirFile'],
                              salt2Dir=conf['SN parameters']['salt2Dir'],
                              nproc=conf['Multiprocessing']['nproc'])
+        """
+
+        simu = SNSimulation(mjdCol='observationStartMJD',
+                            filterCol='filter',
+                            nexpCol='numExposures',
+                            exptimeCol='visitExposureTime',
+                            config=conf, x0_norm=x0_norm)
 
         # Generate fake data
         day0 = 59000
@@ -301,10 +311,10 @@ class TestSNsimulation(unittest.TestCase):
             else:
                 data = np.concatenate((data, dat))
 
-        print(len(data))
+        print(len(data), data.dtype)
         # now simulate LC on this data
 
-        simu(data, conf['Observations']['fieldtype'], 100, -1, None)
+        simu.run(data)
 
         # save metadata
 
