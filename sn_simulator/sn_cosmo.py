@@ -100,7 +100,7 @@ class SN(SN_Object):
         self.X0=self.SN.get('x0')
         """
 
-        self.defname = dict(zip(['healpixID', 'pixRa', 'pixDec'], [
+        self.defname = dict(zip(['healpixID', 'pixRA', 'pixDec'], [
                             'observationId', param.RACol, param.DecCol]))
 
     def __call__(self, obs, index_hdf5, display=False, time_display=0.):
@@ -124,7 +124,7 @@ class SN(SN_Object):
         astropy table:
         metadata:
           SNID: ID of the supernova (int)
-          Ra: SN RA (float)
+          RA: SN RA (float)
           Dec: SN Dec (float)
           daymax: day of the max luminosity (float)
           epsilon_daymax: epsilon added to daymax for simulation (float)
@@ -138,7 +138,7 @@ class SN(SN_Object):
           survey_area: survey area for this SN (float)
           index_hdf5: SN index in the hdf5 file
           pixID: pixel ID
-          pixRa: pixel RA 
+          pixRA: pixel RA 
           pixDec: pixel Dec 
           season: season
           dL: luminosity distance
@@ -167,7 +167,7 @@ class SN(SN_Object):
         area = self.area
         season = np.unique(obs['season'])[0]
         pix = {}
-        for vv in ['healpixID', 'pixRa', 'pixDec']:
+        for vv in ['healpixID', 'pixRA', 'pixDec']:
             if vv in obs.dtype.names:
                 pix[vv] = np.unique(obs[vv])[0]
             else:
@@ -176,13 +176,13 @@ class SN(SN_Object):
         # Metadata
         index = '{}_{}_{}'.format(pix['healpixID'], int(season), index_hdf5)
 
-        names_meta = ['SNID', 'Ra', 'Dec',
+        names_meta = ['SNID', 'RA', 'Dec',
                       'x0', 'epsilon_x0',
                       'x1', 'epsilon_x1',
                       'color', 'epsilon_color',
                       'daymax', 'epsilon_daymax',
                       'z', 'survey_area', 'index_hdf5',
-                      'pixID', 'pixRa', 'pixDec',
+                      'pixID', 'pixRA', 'pixDec',
                       'season', 'dL']
         val_meta = [self.SNID, ra, dec,
                     self.X0, self.gen_parameters['epsilon_x0'],
@@ -190,7 +190,7 @@ class SN(SN_Object):
                     self.sn_parameters['color'], self.gen_parameters['epsilon_color'],
                     self.sn_parameters['daymax'], self.gen_parameters['epsilon_daymax'],
                     self.sn_parameters['z'], area, index,
-                    pix['healpixID'], pix['pixRa'], pix['pixDec'],
+                    pix['healpixID'], pix['pixRA'], pix['pixDec'],
                     season, self.dL]
 
         metadata = dict(zip(names_meta, val_meta))

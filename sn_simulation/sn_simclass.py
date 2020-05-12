@@ -53,7 +53,7 @@ class SN_Simulation:
     mjdCol: str, opt
      mjd col name in observations (default: 'mjd')
     RACol: str, opt
-     RA col name in observations (default: 'pixRa')
+     RA col name in observations (default: 'pixRA')
     DecCol:str, opt
      Dec col name in observations (default: 'pixDec')
     filterCol: str, opt
@@ -80,7 +80,7 @@ class SN_Simulation:
     def __init__(self, cosmo_par, tel_par, sn_parameters,
                  save_status, outdir, prodid,
                  simu_config, x0_norm, display_lc=False, time_display=0., area=9.6,
-                 mjdCol='mjd', RACol='pixRa', DecCol='pixDec',
+                 mjdCol='mjd', RACol='pixRA', DecCol='pixDec',
                  filterCol='band', exptimeCol='exptime', nexpCol='numExposures',
                  m5Col='fiveSigmaDepth', seasonCol='season',
                  seeingEffCol='seeingFwhmEff', seeingGeomCol='seeingFwhmGeom',
@@ -145,7 +145,7 @@ class SN_Simulation:
         Returns
         ----------
         Two output files are open:
-        - astropy table with (SNID,Ra,Dec,X1,Color,z) parameters
+        - astropy table with (SNID,RA,Dec,X1,Color,z) parameters
         -> name: Simu_prodid.hdf5
         - astropy tables with LC
         -> name : LC_prodid.hdf5
@@ -158,7 +158,7 @@ class SN_Simulation:
         # Two files to be opened (fieldname and fieldid
         # given in the input yaml file)
         # One containing a summary of the simulation:
-        # astropy table with (SNID,Ra,Dec,X1,Color,z) parameters
+        # astropy table with (SNID,RA,Dec,X1,Color,z) parameters
         # -> name: Simu_prodid.hdf5
         # A second containing the Light curves (list of astropy tables)
         # -> name : LC_prodid.hdf5
@@ -206,6 +206,7 @@ class SN_Simulation:
                     obs_season[self.filterCol]) if val[-1] != 'u']
                 if len(obs_season[idx]) >= 5:
                     # if self.simu_config['name'] != 'SN_Fast':
+                    # print(len(obs_season))
                     self.processSeason(obs_season[idx], seas)
         else:
             time_ref = time.time()
@@ -248,6 +249,7 @@ class SN_Simulation:
 
         """
         gen_params = self.gen_par(obs)
+
         if gen_params is None:
             return
         nlc = len(gen_params)
@@ -285,7 +287,7 @@ class SN_Simulation:
                                                str(metadata['index_hdf5']),
                                                append=True,
                                                compression=True)
-                    self.sn_meta.append((metadata['SNID'], metadata['Ra'],
+                    self.sn_meta.append((metadata['SNID'], metadata['RA'],
                                          metadata['Dec'],
                                          metadata['x0'], metadata['epsilon_x0'],
                                          metadata['x1'], metadata['epsilon_x1'],
@@ -295,7 +297,7 @@ class SN_Simulation:
                                          self.fieldname, self.fieldid,
                                          n_lc_points, metadata['survey_area'],
                                          metadata['pixID'],
-                                         metadata['pixRa'],
+                                         metadata['pixRA'],
                                          metadata['pixDec'],
                                          metadata['dL']))
 
@@ -366,13 +368,13 @@ class SN_Simulation:
         """
         if len(self.sn_meta) > 0:
             Table(rows=self.sn_meta,
-                  names=['SNID', 'Ra', 'Dec', 'x0', 'epsilon_x0',
+                  names=['SNID', 'RA', 'Dec', 'x0', 'epsilon_x0',
                          'x1', 'epsilon_x1',
                          'color', 'epsilon_color',
                          'daymax', 'epsilon_daymax',
                          'z', 'id_hdf5', 'season',
                          'fieldname', 'fieldid',
-                         'n_lc_points', 'survey_area', 'pixID', 'pixRa', 'pixDec', 'dL'],
+                         'n_lc_points', 'survey_area', 'pixID', 'pixRA', 'pixDec', 'dL'],
                   dtype=('i4', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8',
                          'f8', 'f8', h5py.special_dtype(vlen=str), 'i4', 'S3', 'i8', 'i8', 'f8', 'i8', 'f8', 'f8', 'f8')).write(
                              self.simu_out, 'summary', compression=True)
@@ -435,35 +437,35 @@ class SN_Simulation:
 
             season = np.unique(grp['season'])[0]
             pixID = np.unique(grp['healpixID'])[0]
-            pixRa = np.unique(grp['pixRa'])[0]
+            pixRA = np.unique(grp['pixRA'])[0]
             pixDec = np.unique(grp['pixDec'])[0]
             dL = np.unique(grp['dL'])[0]
-            Ra = np.round(pixRa, 3)
+            RA = np.round(pixRA, 3)
             Dec = np.round(pixDec, 3)
 
-            formeta = (SNID, Ra, Dec, daymax, -1., 0.,
+            formeta = (SNID, RA, Dec, daymax, -1., 0.,
                        x1, 0., color, 0.,
                        z, '{}_{}_{}'.format(
-                           Ra, Dec, index_hdf5), season, fieldname,
+                           RA, Dec, index_hdf5), season, fieldname,
                        fieldid, len(grp), self.area,
-                       pixID, pixRa, pixDec, dL)
+                       pixID, pixRA, pixDec, dL)
 
             self.sn_meta.append(formeta)
 
-            meta = dict(zip(['SNID', 'Ra', 'Dec', 'x0', 'epsilon_x0',
+            meta = dict(zip(['SNID', 'RA', 'Dec', 'x0', 'epsilon_x0',
                              'x1', 'epsilon_x1',
                              'color', 'epsilon_color',
                              'daymax', 'epsilon_daymax',
                              'z', 'id_hdf5', 'season',
                              'fieldname', 'fieldid',
-                             'n_lc_points', 'survey_area', 'pixID', 'pixRa', 'pixDec', 'dL'], list(formeta)))
+                             'n_lc_points', 'survey_area', 'pixID', 'pixRA', 'pixDec', 'dL'], list(formeta)))
 
             # print('metadata',meta)
             tab = Table.from_pandas(grp)
             tab.meta = meta
 
             tab.write(self.lc_out,
-                      path='lc_{}_{}_{}'.format(Ra, Dec, index_hdf5),
+                      path='lc_{}_{}_{}'.format(RA, Dec, index_hdf5),
                       # path = 'lc_'+key[0],
                       append=True,
                       compression=True)
