@@ -36,7 +36,7 @@ def getRefDir(dirname):
         os.system(cmd)
 
 
-def getconfig(prodid, x1colorType,
+def getconfig(prodid,
               x1Type, x1min, x1max, x1step,
               colorType, colormin, colormax, colorstep,
               zType, zmin, zmax, zstep,
@@ -55,16 +55,20 @@ def getconfig(prodid, x1colorType,
     config['SN parameters']['x1']['type'] = x1Type  # unique, uniform or random
     config['SN parameters']['x1']['min'] = x1min
     config['SN parameters']['x1']['max'] = x1max
+    config['SN parameters']['x1']['step'] = 1.
     config['SN parameters']['color'] = {}
     # unique, uniform or random
     config['SN parameters']['color']['type'] = colorType
     config['SN parameters']['color']['min'] = colormin
     config['SN parameters']['color']['max'] = colormax
+    config['SN parameters']['color']['step'] = 0.05
 
     config['SN parameters']['x1_color'] = {}
+    """
     config['SN parameters']['x1_color']['type'] = x1colorType  # random or fixed
     config['SN parameters']['x1_color']['min'] = [x1min, colormin]
     config['SN parameters']['x1_color']['max'] = [0.2, 0.2]
+    """
     config['SN parameters']['x1_color']['rate'] = 'JLA'
     config['SN parameters']['x1_color']['dirFile'] = 'reference_files'
     config['SN parameters']['z'] = {}               # redshift
@@ -79,10 +83,12 @@ def getconfig(prodid, x1colorType,
     config['SN parameters']['daymax']['type'] = daymaxType
     # if uniform: step (in day) between Tmin(obs) and Tmax(obs)
     config['SN parameters']['daymax']['step'] = daymaxstep
-    config['SN parameters']['min_rf_phase'] = - \
-        20.        # obs min phase (rest frame)
-    # obs max phase (rest frame)
+    # obs min and max phase (rest frame) for LC points
+    config['SN parameters']['min_rf_phase'] = - 20.
     config['SN parameters']['max_rf_phase'] = 60.
+    # obs min and max phase (rest frame) for T0 estimation
+    config['SN parameters']['min_rf_phase_qual'] = -15
+    config['SN parameters']['max_rf_phase_qual'] = 45
     config['SN parameters']['absmag'] = -19.0906          # peak abs mag
     config['SN parameters']['band'] = 'bessellB'             # band for absmag
     config['SN parameters']['magsys'] = 'vega'              # magsys for absmag
@@ -229,12 +235,12 @@ class TestSNsimulation(unittest.TestCase):
     def testSimuObject(self):
         # set simulation parameters
         prodid = 'Fake'
-        x1colorType = 'unique'
-        x1Type = 'unique'
+        #x1colorType = 'unique'
+        x1Type = 'random'
         x1min = -2.0
         x1max = 2.0
         x1step = 0.1
-        colorType = 'unique'
+        colorType = 'uniform'
         colormin = 0.2
         colormax = 0.3
         colorstep = 0.02
@@ -244,14 +250,14 @@ class TestSNsimulation(unittest.TestCase):
         zstep = 0.1
         daymaxtype = 'random'
         daymaxstep = 1.
-        difflux = 0
+        difflux = 1
         fulldbName = 'data_from_fake'
         fieldType = 'Fake'
         fcoadd = 1
         seasval = [1]
 
         # get the config file from these
-        conf = getconfig(prodid, x1colorType,
+        conf = getconfig(prodid,
                          x1Type, x1min, x1max, x1step,
                          colorType, colormin, colormax, colorstep,
                          zType, zmin, zmax, zstep,
