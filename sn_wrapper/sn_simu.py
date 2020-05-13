@@ -60,12 +60,12 @@ class SNSimulation(BaseMetric):
 
     """
 
-    def __init__(self, metricName='SNMAFSimulation',
+    def __init__(self, metricName='SNSimulation',
                  mjdCol='observationStartMJD', RACol='fieldRA', DecCol='fieldDec',
                  filterCol='filter', m5Col='fiveSigmaDepth', exptimeCol='visitExposureTime',
                  nightCol='night', obsidCol='observationId', nexpCol='numExposures',
                  vistimeCol='visitTime', seeingEffCol='seeingFwhmEff',
-                 seeingGeomCol='seeingFwhmGeom', coadd=True,
+                 seeingGeomCol='seeingFwhmGeom',
                  uniqueBlocks=False, config=None, x0_norm=None, reference_lc=None, **kwargs):
 
         self.mjdCol = mjdCol
@@ -88,6 +88,7 @@ class SNSimulation(BaseMetric):
                 self.nexpCol, self.vistimeCol, self.exptimeCol, self.seeingEffCol, self.seeingGeomCol, self.nightCol]
         self.stacker = None
 
+        coadd = config['Observations']['coadd']
         if coadd:
             # cols += ['sn_coadd']
             self.stacker = CoaddStacker(mjdCol=self.mjdCol,
@@ -176,7 +177,6 @@ class SNSimulation(BaseMetric):
         """
         # estimate seasons
         obs = seasoncalc(obs)
-
         # stack if necessary
         if self.stacker is not None:
             obs = self.stacker._run(obs)
@@ -184,7 +184,7 @@ class SNSimulation(BaseMetric):
         # obs = Observations(data=tab, names=self.names)
         self.fieldname = 'unknown'
         self.fieldid = 0
-        if self.season == [-1]:
+        if self.season == -1:
             seasons = np.unique(obs[self.seasonCol])
         else:
             seasons = self.season
