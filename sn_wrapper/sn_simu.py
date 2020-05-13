@@ -262,7 +262,7 @@ class SNSimulation(BaseMetric):
 
         """
 
-        gen_params = self.gen_par.getparams(obs)
+        gen_params = self.gen_par.Params(obs)
 
         if gen_params is None:
             return
