@@ -177,6 +177,10 @@ class SNSimulation(BaseMetric):
         # estimate seasons
         obs = seasoncalc(obs)
 
+        # stack if necessary
+        if self.stacker is not None:
+            obs = self.stacker._run(obs)
+            print('stacked')
         # obs = Observations(data=tab, names=self.names)
         self.fieldname = 'unknown'
         self.fieldid = 0
