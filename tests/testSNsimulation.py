@@ -168,7 +168,7 @@ def Observations_band(day0=59000, daymin=59000, cadence=3., season_length=140., 
     names = ['observationStartMJD', 'fieldRA', 'fieldDec',
              'fiveSigmaDepth', 'visitExposureTime', 'numExposures',
              'visitTime', 'seeingFwhmEff', 'seeingFwhmGeom',
-             'pixRA', 'pixDec', 'RA', 'Dec']
+             'pixRA', 'pixDec', 'RA', 'Dec', 'airmass', 'sky', 'moonPhase']
     types = ['f8']*len(names)
     names += ['night', 'healpixID']
     types += ['i2', 'i2']
@@ -196,7 +196,9 @@ def Observations_band(day0=59000, daymin=59000, cadence=3., season_length=140., 
     data['pixDec'] = 0.0
     data['RA'] = 0.0
     data['Dec'] = 0.0
-
+    data['airmass'] = 1.2
+    data['sky'] = 1.2
+    data['moonPhase'] = 0.5
     return data
 
 
@@ -236,21 +238,21 @@ class TestSNsimulation(unittest.TestCase):
         # set simulation parameters
         prodid = 'Fake'
         #x1colorType = 'unique'
-        x1Type = 'random'
+        x1Type = 'unique'
         x1min = -2.0
         x1max = 2.0
         x1step = 0.1
-        colorType = 'uniform'
+        colorType = 'unique'
         colormin = 0.2
         colormax = 0.3
         colorstep = 0.02
-        zType = 'random'
+        zType = 'uniform'
         zmin = 0.1
-        zmax = 1.0
+        zmax = 0.8
         zstep = 0.1
-        daymaxtype = 'random'
+        daymaxtype = 'unique'
         daymaxstep = 1.
-        difflux = 1
+        difflux = 0
         fulldbName = 'data_from_fake'
         fieldType = 'Fake'
         fcoadd = 1
@@ -277,27 +279,6 @@ class TestSNsimulation(unittest.TestCase):
 
         area = 9.6  # survey area (deg2)
 
-        """
-        simu = SN_Simulation(cosmo_par=conf['Cosmology'],
-                             tel_par=conf['Instrument'],
-                             sn_parameters=conf['SN parameters'],
-                             save_status=conf['Output']['save'],
-                             outdir=conf['Output']['directory'],
-                             prodid=conf['ProductionID'],
-                             simu_config=conf['Simulator'],
-                             x0_norm=x0_norm,
-                             display_lc=conf['Display_LC']['display'],
-                             time_display=conf['Display_LC']['time'],
-                             area=area,
-                             mjdCol='observationStartMJD',
-                             filterCol='filter',
-                             nexpCol='numExposures',
-                             exptimeCol='visitExposureTime',
-                             x1colorDir=conf['SN parameters']['x1_color']['dirFile'],
-                             salt2Dir=conf['SN parameters']['salt2Dir'],
-                             nproc=conf['Multiprocessing']['nproc'])
-        """
-
         simu = SNSimulation(mjdCol='observationStartMJD',
                             filterCol='filter',
                             nexpCol='numExposures',
@@ -317,7 +298,6 @@ class TestSNsimulation(unittest.TestCase):
             else:
                 data = np.concatenate((data, dat))
 
-        print(len(data), data.dtype)
         # now simulate LC on this data
 
         simu.run(data)
@@ -334,18 +314,88 @@ class TestSNsimulation(unittest.TestCase):
             conf['Output']['directory'], conf['ProductionID'])
 
         f = h5py.File(simu_name, 'r')
-        print(f.keys())
         # reading the simu file
         for i, key in enumerate(f.keys()):
             simul = Table.read(simu_name, path=key)
 
-        print(simul[['x1', 'color', 'z', 'daymax']])
+        # first check on simulation parameters
+        """
+        for cc in simul.columns:
+            print('RefDict[\'{}\']='.format(cc), simul[cc].tolist())
+        """
+
+        RefDict = {}
+        RefDict['SNID'] = [201, 202, 203, 204, 205, 206, 207, 208]
+        RefDict['RA'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        RefDict['Dec'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        RefDict['x0'] = [0.0001740043427228556, 3.838217653816398e-05, 1.5291775006387726e-05, 7.813694452227428e-06,
+                         4.593754146993177e-06, 2.958319253169902e-06, 2.031812357572594e-06, 1.4642465313185475e-06]
+        RefDict['epsilon_x0'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        RefDict['x1'] = [-2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0]
+        RefDict['epsilon_x1'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        RefDict['color'] = [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]
+        RefDict['epsilon_color'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        RefDict['daymax'] = [59023.10190972222, 59025.20190972222, 59027.30190972223, 59029.401909722226,
+                             59031.501909722225, 59033.60190972222, 59035.70190972222, 59037.80190972223]
+        RefDict['epsilon_daymax'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        RefDict['z'] = [0.1, 0.2, 0.30000000000000004,
+                        0.4, 0.5, 0.6, 0.7000000000000001, 0.8]
+        RefDict['id_hdf5'] = ['10_1_101', '10_1_102', '10_1_103',
+                              '10_1_104', '10_1_105', '10_1_106', '10_1_107', '10_1_108']
+        RefDict['season'] = [1, 1, 1, 1, 1, 1, 1, 1]
+        RefDict['fieldname'] = ['unk', 'unk', 'unk',
+                                'unk', 'unk', 'unk', 'unk', 'unk']
+        RefDict['fieldid'] = [0, 0, 0, 0, 0, 0, 0, 0]
+        RefDict['n_lc_points'] = [116, 128, 140, 148, 160, 172, 135, 144]
+        RefDict['survey_area'] = [0.8392936452111668, 0.8392936452111668, 0.8392936452111668,
+                                  0.8392936452111668, 0.8392936452111668, 0.8392936452111668, 0.8392936452111668, 0.8392936452111668]
+        RefDict['pixID'] = [10, 10, 10, 10, 10, 10, 10, 10]
+        RefDict['pixRA'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        RefDict['pixDec'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        RefDict['dL'] = [447513.8270462983, 952843.778897064, 1509584.9325567451, 2111826.765549938,
+                         2754245.369069551, 3432131.997266213, 4141376.3917280077, 4878422.389153463]
+
+        for key, vv in RefDict.items():
+            if key not in ['id_hdf5', 'fieldname']:
+                assert(np.isclose(vv, simul[key].tolist()).all())
 
         # now grab LC
 
+        vars = ['snr_m5', 'flux_e_sec', 'mag',
+                'exptime', 'magerr', 'band', 'phase']
+
         for simu in simul:
             lc = Table.read(lc_name, path='lc_{}'.format(simu['id_hdf5']))
-            print(lc)
+            idx = lc['snr_m5'] >= 5.
+            lc = lc[idx][:20]
+            break
+
+        """
+        for cc in vars:
+            print('RefDict[\'{}\']='.format(cc), lc[cc].tolist())
+        """
+        RefDict = {}
+
+        RefDict['snr_m5'] = [27.772923620356103, 18.983342162107302, 72.79593984362035, 152.87977223849938, 156.0685865832734, 29.621406914295484, 285.0462993006308, 367.0592232519814, 359.1614412531729,
+                             171.59490954768887, 506.5917937548474, 646.3234598972053, 598.4834333799382, 288.7282674337122, 661.327366034326, 850.0564702893679, 734.2166561609322, 389.3250502768923, 745.0477332694176, 967.0798070200309]
+        RefDict['flux_e_sec'] = [38.63048481688093, 30.05326359299371, 121.88545019060624, 229.46055195746084, 265.7354374367385, 47.61100427319823, 597.0568637060227, 626.6704052212074, 680.5620770907243,
+                                 292.05747499012944, 1321.1124849045573, 1298.1026162913374, 1282.7999663138387, 515.1045023970963, 1985.7957890733053, 1911.397717772466, 1684.5021456227396, 723.0824208367617, 2403.864481616118, 2314.5019489575334]
+        RefDict['mag'] = [24.1975402954205, 24.157655378648695, 23.160953686205854, 22.263095607161585, 21.791260794726814, 23.244285332871133, 21.4357941123162, 21.172267728375726, 20.77021511674539, 21.27488287316678,
+                          20.573483858618765, 20.381593128907532, 20.081987130304093, 20.65881532367227, 20.13099688702663, 19.96148803417519, 19.78620555869124, 20.290584180196035, 19.923558399162097, 19.753721814921928]
+        RefDict['exptime'] = [600.0, 600.0, 300.0, 600.0, 600.0, 780.0, 300.0, 600.0, 600.0,
+                              780.0, 300.0, 600.0, 600.0, 780.0, 300.0, 600.0, 600.0, 780.0, 300.0, 600.0]
+        RefDict['magerr'] = [0.039093334918558646, 0.057194154511178236, 0.014914790675008787, 0.007101895750239159, 0.006956788861407506, 0.03665376894147948, 0.003808981935292667, 0.002957931952067543, 0.0030229754089687874, 0.00632732175808739,
+                             0.002143217119074662, 0.0016798650708591183, 0.0018141457961942716, 0.0037604084089459607, 0.001641753026596777, 0.0012772518564425886, 0.0014787681478587269, 0.0027887653362811916, 0.0014572706637113076, 0.00112269555922559]
+        RefDict['band'] = ['LSST::r', 'LSST::i', 'LSST::g', 'LSST::r', 'LSST::i', 'LSST::z', 'LSST::g', 'LSST::r', 'LSST::i',
+                           'LSST::z', 'LSST::g', 'LSST::r', 'LSST::i', 'LSST::z', 'LSST::g', 'LSST::r', 'LSST::i', 'LSST::z', 'LSST::g', 'LSST::r']
+        RefDict['phase'] = [-15.54029882153951, -15.536721380459229, -12.818181818180495, -12.813026094266784, -12.809448653186502, -12.808501683486444, -10.090909090907767, -10.085753366994057, -10.082175925913774, -
+                            10.081228956213717, -7.36363636363504, -7.35848063972133, -7.354903198641047, -7.353956228940991, -4.636363636362313, -4.631207912448603, -4.62763047136832, -4.626683501668263, -1.909090909089586, -1.9039351851758757]
+
+        for key, vv in RefDict.items():
+            if key not in ['band']:
+                assert(np.isclose(vv, lc[key].tolist()).all())
+            else:
+                assert(set(vv) == set(lc[key].tolist()))
 
 
 if __name__ == "__main__":
