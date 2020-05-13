@@ -8,16 +8,13 @@ from astropy.cosmology import w0waCDM
 from importlib import import_module
 from sn_tools.sn_telescope import Telescope
 from sn_simulation.sn_object import SN_Object
-from sn_tools.sn_utils import GenerateSample
+from sn_tools.sn_utils import SimuParameters
 from sn_tools.sn_obs import season as seasoncalc
 import os
 import time
 import multiprocessing
 from astropy.table import vstack, Table, Column
 import h5py
-
-import pandas as pd
-from sn_tools.sn_rate import SN_Rate
 
 
 class SNSimulation(BaseMetric):
@@ -132,15 +129,10 @@ class SNSimulation(BaseMetric):
 
         # sn parameters
         self.sn_parameters = config['SN parameters']
-        self.gen_par = GenerateSample(self.sn_parameters, cosmo_par, mjdCol=self.mjdCol, area=self.area,
-                                      min_rf_phase=self.sn_parameters['min_rf_phase'],
-                                      max_rf_phase=self.sn_parameters['max_rf_phase'],
+        self.gen_par = SimuParameters(self.sn_parameters, cosmo_par, mjdCol=self.mjdCol, area=self.area,
+                                      min_rf_phase=self.sn_parameters['min_rf_phase_qual'],
+                                      max_rf_phase=self.sn_parameters['max_rf_phase_qual'],
                                       dirFiles=self.sn_parameters['x1_color']['dirFile'])
-
-        self.test_genpar = SimuParameters(self.sn_parameters, cosmo_par, mjdCol=self.mjdCol, area=self.area,
-                                          min_rf_phase=self.sn_parameters['min_rf_phase'],
-                                          max_rf_phase=self.sn_parameters['max_rf_phase'],
-                                          dirFiles=self.sn_parameters['x1_color']['dirFile'])
 
         # this is for output
 
@@ -269,16 +261,9 @@ class SNSimulation(BaseMetric):
           season number
 
         """
-        """
-        gen_params = self.gen_par(obs)
 
-        print('param simu', gen_params)
-        """
-        test_params = self.test_genpar.getparams(obs)
+        gen_params = self.gen_par.getparams(obs)
 
-        print('test params', test_params)
-
-        print(test)
         if gen_params is None:
             return
         nlc = len(gen_params)
@@ -511,156 +496,3 @@ class SNSimulation(BaseMetric):
                 SNID = sn_par['Id']+index_hdf5
 
                 applyGroup(group, x1, color, index_hdf5, SNID)
-
-
-class SimuParameters:
-    """ Generates a sample of parameters for simulation
-    Parameters
-    ---------------
-    sn_parameters : dict
-      supernovae parameters: x1, color, z, daymax, ...
-    cosmo_parameters: dict
-      cosmology parameters: H0, Om0
-    mjdCol : str,opt
-       name of the column corresponding to MJD
-       Default : 'mjd'
-    seasonCol : str, opt
-      name of the column corresponding to season
-      Default : 'season'
-    filterCol : str, opt
-      name of the column corresponding to filter
-      Default : 'filter'
-    min_rf_phase : float, opt
-       min rest-frame phase for supernovae
-       Default : -15.
-    max_rf_phase : float, opt
-       max rest-frame phase for supernovae
-       Default : 30.
-    area : float, opt
-       area of the survey (in deg\^2)
-       Default : 9.6 deg\^2
-    """
-
-    def __init__(self, sn_parameters, cosmo_parameters, mjdCol='mjd', seasonCol='season', filterCol='filter', min_rf_phase=-15., max_rf_phase=30., area=9.6, dirFiles='reference_files'):
-        self.dirFiles = dirFiles
-        self.params = sn_parameters
-        self.sn_rate = SN_Rate(rate=self.params['z']['rate'],
-                               H0=cosmo_parameters['H0'],
-                               Om0=cosmo_parameters['Omega_m'])
-
-        self.x1_color = self.getDist(self.params['x1_color']['rate'])
-        self.mjdCol = mjdCol
-        self.seasonCol = seasonCol
-        self.filterCol = filterCol
-        self.area = area
-        self.min_rf_phase = min_rf_phase
-        self.max_rf_phase = max_rf_phase
-
-    def getDist(self, rate):
-        """ get (x1,color) distributions
-        Parameters
-        --------------
-        rate: str
-            name of the x1_color distrib (JLA, ...)
-        Returns
-        -----------
-        dict of (x1,color) rates
-        keys : 'low_z' and 'high_z'
-        values (float) : recarray with X1,Color,weight_X1,weight_Color,weight
-        """
-
-        # prefix = os.getenv('SN_UTILS_DIR')+'/input/Dist_X1_Color_'+rate+'_'
-        prefix = '{}/Dist_X1_Color_{}'.format(self.dirFiles, rate)
-        suffix = '.txt'
-        # names=['x1','c','weight_x1','weight_c','weight_tot']
-        dtype = np.dtype([('x1', np.float), ('color', np.float),
-                          ('weight_x1', np.float), ('weight_color', np.float),
-                          ('weight', np.float)])
-        x1_color = {}
-        for val in ['low_z', 'high_z']:
-            x1_color[val] = np.loadtxt('{}_{}{}'.format(
-                prefix, val, suffix), dtype=dtype)
-
-        return x1_color
-
-    def getparams(self, obs):
-
-        # first estimation: z distribution - will rule daymax distribution
-        daymin = np.min(obs[self.mjdCol])
-        daymax = np.max(obs[self.mjdCol])
-        duration = daymax-daymin
-        pars = self.zdist(duration)
-
-        # add daymax, which is z-dependent (boundaries effects)
-
-        pars = self.daymaxdist(pars, daymin, daymax)
-
-        print('there man', self.params['z'])
-        print(pars)
-
-    def zdist(self, duration):
-
-        ztype = self.params['z']['type']
-        zmin = self.params['z']['min']
-        zmax = self.params['z']['max']
-        zstep = self.params['z']['step']
-
-        if ztype == 'unique':
-            zvals = [zmin]
-
-        if ztype == 'uniform':
-            zvals = np.arange(zmin, zmax+zstep, zstep)
-
-        if ztype == 'random':
-            # get sn rate for this z range
-
-            if zmin < 1.e-6:
-                zmin = 0.01
-            print(zmin, zmax, duration, self.area)
-            zz, rate, err_rate, nsn, err_nsn = self.sn_rate(
-                zmin=zmin, zmax=zmax,
-                duration=duration,
-                survey_area=self.area,
-                account_for_edges=True, dz=0.001)
-            # get number of supernovae
-            N_SN = int(np.cumsum(nsn)[-1])
-            if np.cumsum(nsn)[-1] < 0.5:
-                return r
-            weight_z = np.cumsum(nsn)/np.sum(np.cumsum(nsn))
-
-            if N_SN < 1:
-                N_SN = 1
-                # weight_z = 1
-            print('nsn', N_SN)
-            zvals = np.random.choice(zz, N_SN, p=weight_z)
-
-        return pd.DataFrame(zvals, columns=['z'])
-
-    def daymaxdist(self, pars, daymin, daymax):
-
-        daymaxtype = self.params['daymax']['type']
-        daymaxstep = self.params['daymax']['step']
-
-        if daymaxtype == 'unique':
-            daymaxdf = pd.DataFrame(pars)
-            daymaxdf['daymax'] = daymin+21
-
-        if daymaxtype == 'uniform':
-            daymaxdf = pd.DataFrame()
-            for z in pars['z'].values:
-                daymax_min = daymin-(1.+z)*self.min_rf_phase
-                daymax_max = daymax-(1.+z)*self.max_rf_phase
-                ndaymax = int((daymax_max-daymax_min)/daymaxstep)+1
-                df = pd.DataFrame(np.linspace(
-                    daymax_min, daymax_max, ndaymax), columns=['daymax'])
-                df['z'] = z
-                daymaxdf = pd.concat((daymaxdf, df))
-
-        if daymaxtype == 'random':
-            daymaxdf = pd.DataFrame(pars)
-            daymax_min = daymin-(1.+pars['z'])*self.min_rf_phase
-            daymax_max = daymax-(1.+pars['z'])*self.max_rf_phase
-            print(np.random.uniform(daymax_min, daymax_max, 1))
-            daymaxdf['daymax'] = np.random.uniform(daymax_min, daymax_max, 1)
-
-        return daymaxdf
