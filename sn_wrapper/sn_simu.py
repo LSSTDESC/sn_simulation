@@ -2,18 +2,17 @@ import numpy as np
 from lsst.sims.maf.metrics import BaseMetric
 from sn_stackers.coadd_stacker import CoaddStacker
 import healpy as hp
-import numpy.lib.recfunctions as rf
+import os
+import time
+import multiprocessing
+from astropy.table import Table
+import h5py
 from astropy.cosmology import w0waCDM
 from importlib import import_module
 from sn_tools.sn_telescope import Telescope
 from sn_wrapper.sn_object import SN_Object
 from sn_tools.sn_utils import SimuParameters
 from sn_tools.sn_obs import season as seasoncalc
-import os
-import time
-import multiprocessing
-from astropy.table import vstack, Table, Column
-import h5py
 from sn_tools.sn_utils import GetReference
 
 

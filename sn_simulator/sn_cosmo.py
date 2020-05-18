@@ -3,17 +3,11 @@ import numpy as np
 from lsst.sims.photUtils import Bandpass, Sed
 from lsst.sims.photUtils import SignalToNoise
 from lsst.sims.photUtils import PhotometricParameters
-from astropy.table import vstack, Table, Column
-import matplotlib.animation as manimation
-import pylab as plt
-import os
-from scipy import interpolate, integrate
-import h5py
+from astropy.table import Table, Column
 from lsst.sims.catUtils.dust import EBV
 from scipy.interpolate import griddata
-
+import h5py
 from sn_wrapper.sn_object import SN_Object
-from sn_tools.sn_throughputs import Throughputs
 
 
 class SN(SN_Object):

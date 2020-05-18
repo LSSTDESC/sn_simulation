@@ -1,21 +1,9 @@
 import numpy as np
-from scipy import interpolate
-from astropy.table import Table, Column, vstack, hstack
-import glob
-import h5py
-import pylab as plt
-from scipy.spatial import distance
-import time
-import multiprocessing
-from optparse import OptionParser
-import os
-from scipy.interpolate import griddata, interp2d, RegularGridInterpolator
-import numpy.lib.recfunctions as rf
-import scipy.linalg.lapack as lapack
-from sn_wrapper.sn_object import SN_Object
+from astropy.table import Table
 import time
 import pandas as pd
 from sn_tools.sn_calcFast import LCfast
+from sn_wrapper.sn_object import SN_Object
 
 
 class SN(SN_Object):
