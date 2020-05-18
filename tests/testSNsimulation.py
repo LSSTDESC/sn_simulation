@@ -4,11 +4,8 @@ import unittest
 import lsst.utils.tests
 import os
 from numpy.testing import assert_almost_equal, assert_equal
-# import pandas as pd
 import h5py
 from astropy.table import Table, vstack
-# import glob
-from sn_simulation.sn_simclass import SN_Simulation
 from sn_wrapper.sn_simu import SNSimulation
 
 
@@ -45,7 +42,7 @@ def getconfig(prodid,
               simulator='sn_cosmo', nside=64, nproc=1, outputDir='.'):
 
     config = {}
-    config['ProductionID'] = prodid
+    config['ProductionID'] = prodid+'_'+simulator
 
     # -------------- Supernova parameters ----------------------------------------
     config['SN parameters'] = {}
@@ -135,9 +132,8 @@ def getconfig(prodid,
     config['Simulator']['model'] = 'salt2-extended'   # spectra model
     config['Simulator']['version'] = 1.0  # version
     # Reference File= SN_MAF/Reference_Files/LC_Ref_-2.0_0.2.hdf5
-    config['Simulator']['Reference File'] = '/sps/lsst/data/dev/pgris/Templates_final_new/LC_{}_{}_vstack.hdf5'.format(
-        x1min, colormin)
-    config['SN parameters']['Gamma File'] = 'reference_files/gamma.hdf5'
+    config['Simulator']['Template Dir'] = '.'
+    config['Simulator']['Gamma File'] = 'reference_files/gamma.hdf5'
 
     # -------------------------host ---------------------
     config['Host Parameters'] = None         # Host parameters
@@ -234,10 +230,10 @@ def Observations_season(day0=59000, mjdmin=59000, cadence=3.):
 
 class TestSNsimulation(unittest.TestCase):
 
-    def testSimuObject(self):
+    def testSimuSNCosmo(self):
         # set simulation parameters
         prodid = 'Fake'
-        #x1colorType = 'unique'
+        # x1colorType = 'unique'
         x1Type = 'unique'
         x1min = -2.0
         x1max = 2.0
@@ -265,8 +261,6 @@ class TestSNsimulation(unittest.TestCase):
                          zType, zmin, zmax, zstep,
                          daymaxtype, daymaxstep, difflux,
                          fulldbName, fieldType, fcoadd, seasval)
-
-        print(conf)
 
         # SN_Simulation instance
         getRefDir('SALT2_Files')
@@ -304,7 +298,7 @@ class TestSNsimulation(unittest.TestCase):
 
         # save metadata
 
-        simu.Finish()
+        simu.save_metadata()
 
         # check what we have inside the data
 
@@ -325,7 +319,7 @@ class TestSNsimulation(unittest.TestCase):
         """
 
         RefDict = {}
-        RefDict['SNID'] = [201, 202, 203, 204, 205, 206, 207, 208]
+        RefDict['SNID'] = [101, 102, 103, 104, 105, 106, 107, 108]
         RefDict['RA'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         RefDict['Dec'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         RefDict['x0'] = [0.0001740043427228556, 3.838217653816398e-05, 1.5291775006387726e-05, 7.813694452227428e-06,
@@ -390,6 +384,159 @@ class TestSNsimulation(unittest.TestCase):
                            'LSST::z', 'LSST::g', 'LSST::r', 'LSST::i', 'LSST::z', 'LSST::g', 'LSST::r', 'LSST::i', 'LSST::z', 'LSST::g', 'LSST::r']
         RefDict['phase'] = [-15.54029882153951, -15.536721380459229, -12.818181818180495, -12.813026094266784, -12.809448653186502, -12.808501683486444, -10.090909090907767, -10.085753366994057, -10.082175925913774, -
                             10.081228956213717, -7.36363636363504, -7.35848063972133, -7.354903198641047, -7.353956228940991, -4.636363636362313, -4.631207912448603, -4.62763047136832, -4.626683501668263, -1.909090909089586, -1.9039351851758757]
+
+        for key, vv in RefDict.items():
+            if key not in ['band']:
+                assert(np.isclose(vv, lc[key].tolist()).all())
+            else:
+                assert(set(vv) == set(lc[key].tolist()))
+
+    def testSimuSNFast(self):
+        # set simulation parameters
+        prodid = 'Fake'
+        # x1colorType = 'unique'
+        x1Type = 'unique'
+        x1min = -2.0
+        x1max = 2.0
+        x1step = 0.1
+        colorType = 'unique'
+        colormin = 0.2
+        colormax = 0.3
+        colorstep = 0.02
+        zType = 'uniform'
+        zmin = 0.1
+        zmax = 0.8
+        zstep = 0.1
+        daymaxtype = 'unique'
+        daymaxstep = 1.
+        difflux = 0
+        fulldbName = 'data_from_fake'
+        fieldType = 'Fake'
+        fcoadd = 1
+        seasval = [1]
+
+        # get the config file from these
+        conf = getconfig(prodid,
+                         x1Type, x1min, x1max, x1step,
+                         colorType, colormin, colormax, colorstep,
+                         zType, zmin, zmax, zstep,
+                         daymaxtype, daymaxstep, difflux,
+                         fulldbName, fieldType, fcoadd, seasval,
+                         simulator='sn_fast')
+
+        # get the reference LC file
+
+        referenceName = 'LC_{}_{}_vstack.hdf5'.format(x1min, colormin)
+        getFile('Templates', referenceName)
+
+        # instance of SNSimulation
+        simu = SNSimulation(mjdCol='observationStartMJD',
+                            filterCol='filter',
+                            nexpCol='numExposures',
+                            exptimeCol='visitExposureTime',
+                            config=conf)
+
+        # Generate fake data
+        day0 = 59000
+        data = None
+
+        diff_season = 280.
+        nseasons = 1
+        for val in np.arange(59000, 59000+nseasons*diff_season, diff_season):
+            dat = Observations_season(day0, val)
+            if data is None:
+                data = dat
+            else:
+                data = np.concatenate((data, dat))
+
+        # now simulate LC on this data
+
+        tab = simu.run(data)
+
+        # save metadata
+
+        simu.save_metadata()
+
+        # check what we have inside the data
+
+        simu_name = '{}/Simu_{}.hdf5'.format(
+            conf['Output']['directory'], conf['ProductionID'])
+        lc_name = '{}/LC_{}.hdf5'.format(
+            conf['Output']['directory'], conf['ProductionID'])
+
+        f = h5py.File(simu_name, 'r')
+        # reading the simu file
+        for i, key in enumerate(f.keys()):
+            simul = Table.read(simu_name, path=key)
+
+        # first check on simulation
+        """
+        for cc in simul.columns:
+            print('RefDict[\'{}\']='.format(cc), simul[cc].tolist())
+        """
+        RefDict = {}
+        RefDict['SNID'] = [101, 102, 103, 104, 105, 106, 107, 108]
+        RefDict['RA'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        RefDict['Dec'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        RefDict['x0'] = [-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0]
+        RefDict['epsilon_x0'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        RefDict['x1'] = [-2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0]
+        RefDict['epsilon_x1'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        RefDict['color'] = [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]
+        RefDict['epsilon_color'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        RefDict['daymax'] = [59023.10190972222, 59025.20190972222, 59027.30190972223, 59029.401909722226,
+                             59031.501909722225, 59033.60190972222, 59035.70190972222, 59037.80190972223]
+        RefDict['epsilon_daymax'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        RefDict['z'] = [0.1, 0.2, 0.30000000000000004,
+                        0.4, 0.5, 0.6, 0.7000000000000001, 0.8]
+        RefDict['id_hdf5'] = ['101', '102', '103',
+                              '104', '105', '106', '107', '108']
+        RefDict['season'] = [1, 1, 1, 1, 1, 1, 1, 1]
+        RefDict['fieldname'] = ['unk', 'unk', 'unk',
+                                'unk', 'unk', 'unk', 'unk', 'unk']
+        RefDict['fieldid'] = [0, 0, 0, 0, 0, 0, 0, 0]
+        RefDict['n_lc_points'] = [88, 96, 104, 112, 120, 128, 102, 108]
+        RefDict['survey_area'] = [0.8392936452111668, 0.8392936452111668, 0.8392936452111668,
+                                  0.8392936452111668, 0.8392936452111668, 0.8392936452111668, 0.8392936452111668, 0.8392936452111668]
+        RefDict['pixID'] = [10, 10, 10, 10, 10, 10, 10, 10]
+        RefDict['pixRA'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        RefDict['pixDec'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        RefDict['dL'] = [-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0]
+
+        for key, vv in RefDict.items():
+            if key not in ['id_hdf5', 'fieldname']:
+                assert(np.isclose(vv, simul[key].tolist()).all())
+
+        # now grab LC
+
+        vars = ['snr_m5', 'flux_e_sec', 'mag',
+                'exptime', 'magerr', 'band', 'phase']
+
+        for simu in simul:
+            lc = Table.read(lc_name, path='lc_{}'.format(simu['id_hdf5']))
+            idx = lc['snr_m5'] >= 5.
+            lc = lc[idx][:20]
+            break
+
+        """
+        for cc in vars:
+            print('RefDict[\'{}\']='.format(cc), lc[cc].tolist())
+        """
+        RefDict = {}
+        RefDict['snr_m5'] = [73.43420610434742, 283.33317127966245, 499.9323483273812, 650.0445290499508, 730.9094020380237, 737.1805610088064, 690.0470243527778, 608.6652253891193, 504.1773404482862, 403.6131375689242,
+                             313.37158557134967, 238.66226160308508, 187.4911237193539, 158.79633621940252, 125.5922386662526, 100.22733937394999, 90.02593165899779, 86.15059662496986, 82.41581639581872, 78.79113804120628]
+        RefDict['flux_e_sec'] = [123.6580798711139, 604.0931661593202, 1337.3476393884694, 2008.2103610697675, 2428.626413721442, 2463.0016660331135, 2210.91986650868, 1809.2730842763335, 1354.4292762650773,
+                                 978.6279463735051, 690.3267842547574, 484.4212603063286, 359.4189128946231, 294.71705055807524, 224.47205877381782, 174.03032407514914, 154.50456888891176, 147.19958383247968, 140.2167124565155, 133.49508096240703]
+        RefDict['mag'] = [23.14528858064343, 21.423083353285417, 20.56022356557598, 20.11881516319673, 19.912440047007113, 19.89718092156664, 20.014412194983553, 20.23208061893674, 20.54645306914551, 20.899292352785235,
+                          21.278203341148284, 21.662784602641608, 21.986840998240314, 22.202328407512812, 22.497935185203982, 22.77428229900593, 22.90349048802979, 22.956077880337197, 23.00883863800245, 23.062178024888865]
+        RefDict['exptime'] = [300.0, 300.0, 300.0, 300.0, 300.0, 300.0, 300.0, 300.0, 300.0,
+                              300.0, 300.0, 300.0, 300.0, 300.0, 300.0, 300.0, 300.0, 300.0, 300.0, 300.0]
+        RefDict['magerr'] = [0.014785156160268641, 0.0038320123261757423, 0.002171766256755872, 0.0016702489694743652, 0.0014854593493129628, 0.0014728226192947038, 0.0015734235007773332, 0.0017837986457399778, 0.002153480764908541,
+                             0.0026900417843131294, 0.003464692571850694, 0.004549258007802665, 0.005790867232644643, 0.006837287500500082, 0.008644930740054348, 0.010832734975705863, 0.012060260691005175, 0.012602770581897977, 0.013173881570785641, 0.013779927943042398]
+        RefDict['band'] = ['LSST::g', 'LSST::g', 'LSST::g', 'LSST::g', 'LSST::g', 'LSST::g', 'LSST::g', 'LSST::g', 'LSST::g',
+                           'LSST::g', 'LSST::g', 'LSST::g', 'LSST::g', 'LSST::g', 'LSST::g', 'LSST::g', 'LSST::g', 'LSST::g', 'LSST::g', 'LSST::g']
+        RefDict['phase'] = [-12.818181818180495, -10.090909090907767, -7.36363636363504, -4.636363636362313, -1.909090909089586, 0.8181818181831411, 3.545454545455868, 6.272727272728595, 9.000000000001322,
+                            11.72727272727405, 14.454545454546777, 17.181818181819505, 19.90909090909223, 22.63636363636496, 25.363636363637685, 28.09090909091041, 30.818181818183138, 33.54545454545587, 36.272727272728595, 39.00000000000132]
 
         for key, vv in RefDict.items():
             if key not in ['band']:
