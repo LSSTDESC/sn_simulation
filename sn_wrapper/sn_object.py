@@ -1,4 +1,3 @@
-from sn_tools.sn_telescope import Telescope
 import numpy as np
 import astropy.units as u
 from astropy.table import Table
@@ -7,13 +6,12 @@ from collections import OrderedDict as odict
 
 class SN_Object:
     def __init__(self, name, sn_parameters, gen_parameters, cosmology,
-                 Telescope, snid, area, x0_grid,
+                 telescope, snid, area, x0_grid, salt2Dir='SALT2_Files',
                  mjdCol='mjd', RACol='pixRa', DecCol='pixDec',
                  filterCol='band', exptimeCol='exptime', nexpCol='numExposures',
                  m5Col='fiveSigmaDepth', seasonCol='season',
                  seeingEffCol='seeingFwhmEff', seeingGeomCol='seeingFwhmGeom',
-                 airmassCol='airmass', skyCol='sky', moonCol='moonPhase',
-                 salt2Dir='SALT2_Files'):
+                 airmassCol='airmass', skyCol='sky', moonCol='moonPhase'):
         """ class SN object
         handles sn name, parameters,
         cosmology, snid, telescope...
@@ -30,8 +28,7 @@ class SN_Object:
          simulation parameters
         cosmology: dict
          cosmological parameters used for simulation
-        telescope: dict
-         telescope parameters
+        telescope: sn_tools.Telescope
         snid: int
          supernova identifier
         area: float
@@ -71,7 +68,7 @@ class SN_Object:
         self._sn_parameters = sn_parameters
         self._gen_parameters = gen_parameters
         self._cosmology = cosmology
-        self._telescope = Telescope
+        self._telescope = telescope
         self._SNID = snid
 
         self.mjdCol = mjdCol

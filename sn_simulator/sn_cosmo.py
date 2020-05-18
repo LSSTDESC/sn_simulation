@@ -12,12 +12,12 @@ import h5py
 from lsst.sims.catUtils.dust import EBV
 from scipy.interpolate import griddata
 
-from sn_simulation.sn_object import SN_Object
+from sn_wrapper.sn_object import SN_Object
 from sn_tools.sn_throughputs import Throughputs
 
 
 class SN(SN_Object):
-    def __init__(self, param, simu_param):
+    def __init__(self, param, simu_param, reference_lc=None):
         super().__init__(param.name, param.sn_parameters, param.gen_parameters,
                          param.cosmology, param.telescope, param.SNID, param.area, param.x0_grid,
                          mjdCol=param.mjdCol, RACol=param.RACol, DecCol=param.DecCol,
@@ -103,15 +103,13 @@ class SN(SN_Object):
         self.defname = dict(zip(['healpixID', 'pixRA', 'pixDec'], [
                             'observationId', param.RACol, param.DecCol]))
 
-    def __call__(self, obs, index_hdf5, display=False, time_display=0.):
+    def __call__(self, obs, display=False, time_display=0.):
         """ Simulation of the light curve
 
         Parameters
         --------------
         obs: array
           a set of observations
-        index_hdf5: int
-          index of the light curve in the hdf5 file
         display: bool,opt
           if True: the simulated LC is displayed
           default: False
@@ -136,7 +134,6 @@ class SN(SN_Object):
           epsilon_color: epsilon added to color for simulation (float)
           z: SN redshift (float)
           survey_area: survey area for this SN (float)
-          index_hdf5: SN index in the hdf5 file
           pixID: pixel ID
           pixRA: pixel RA 
           pixDec: pixel Dec 
@@ -174,22 +171,20 @@ class SN(SN_Object):
                 pix[vv] = np.mean(obs[self.defname[vv]])
 
         # Metadata
-        index = '{}_{}_{}'.format(pix['healpixID'], int(season), index_hdf5)
-
         names_meta = ['SNID', 'RA', 'Dec',
                       'x0', 'epsilon_x0',
                       'x1', 'epsilon_x1',
                       'color', 'epsilon_color',
                       'daymax', 'epsilon_daymax',
-                      'z', 'survey_area', 'index_hdf5',
-                      'pixID', 'pixRA', 'pixDec',
+                      'z', 'survey_area',
+                      'healpixID', 'pixRA', 'pixDec',
                       'season', 'dL']
         val_meta = [self.SNID, ra, dec,
                     self.X0, self.gen_parameters['epsilon_x0'],
                     self.sn_parameters['x1'], self.gen_parameters['epsilon_x1'],
                     self.sn_parameters['color'], self.gen_parameters['epsilon_color'],
                     self.sn_parameters['daymax'], self.gen_parameters['epsilon_daymax'],
-                    self.sn_parameters['z'], area, index,
+                    self.sn_parameters['z'], area,
                     pix['healpixID'], pix['pixRA'], pix['pixDec'],
                     season, self.dL]
 
@@ -324,204 +319,4 @@ class SN(SN_Object):
             self.plotLC(table_lc['time', 'band',
                                  'flux', 'fluxerr', 'zp', 'zpsys'], time_display)
 
-        return table_lc, metadata
-
-
-"""
-    def X0_norm(self):
-        #Extimate X0 from flux at 10pc
-        using Vega spectrum
-
-        Parameters
-        --------------
-
-        Returns
-        ----------
-        x0: float
-          x0 from flux at 10pc
-        #
-
-        from lsst.sims.photUtils import Sed
-
-        name = 'STANDARD'
-        band = 'B'
-        #thedir = os.getenv('SALT2_DIR')
-        thedir = self.salt2Dir
-
-        os.environ[name] = thedir+'/Instruments/Landolt'
-
-        trans_standard = Throughputs(through_dir='STANDARD',
-                                     telescope_files=[],
-                                     filter_files=['sb_-41A.dat'],
-                                     atmos=False,
-                                     aerosol=False,
-                                     filterlist=('A'),
-                                     wave_min=3559,
-                                     wave_max=5559)
-
-        mag, spectrum_file = self.getMag(
-            thedir+'/MagSys/VegaBD17-2008-11-28.dat',
-            np.string_(name),
-            np.string_(band))
-
-        sourcewavelen, sourcefnu = self.readSED_fnu(
-            filename=thedir+'/'+spectrum_file)
-        CLIGHT_A_s = 2.99792458e18         # [A/s]
-        HPLANCK = 6.62606896e-27
-
-        sedb = Sed(wavelen=sourcewavelen, flambda=sourcewavelen *
-                   sourcefnu/(CLIGHT_A_s * HPLANCK))
-
-        flux = self.calcInteg(
-            bandpass=trans_standard.system['A'],
-            signal=sedb.flambda,
-            wavelen=sedb.wavelen)
-
-        zp = 2.5*np.log10(flux)+mag
-        flux_at_10pc = np.power(10., -0.4 * (self.sn_parameters['absmag']-zp))
-
-        source = sncosmo.get_source(self.model, version=self.version)
-        SN = sncosmo.Model(source=source)
-
-        SN.set(z=0.)
-        SN.set(t0=0)
-        SN.set(c=self.sn_parameters['color'])
-        SN.set(x1=self.sn_parameters['x1'])
-        SN.set(x0=1)
-
-        fluxes = 10.*SN.flux(0., self.wave)
-
-        wavelength = self.wave/10.
-        SED_time = Sed(wavelen=wavelength, flambda=fluxes)
-
-        expTime = 30.
-        photParams = PhotometricParameters(nexp=expTime/15.)
-        trans = Bandpass(
-            wavelen=trans_standard.system['A'].wavelen/10.,
-            sb=trans_standard.system['A'].sb)
-        # number of ADU counts for expTime
-        e_per_sec = SED_time.calcADU(bandpass=trans, photParams=photParams)
-        # e_per_sec = sed.calcADU(bandpass=self.transmission.lsst_atmos[filtre], photParams=photParams)
-        e_per_sec /= expTime/photParams.gain*photParams.effarea
-
-        return flux_at_10pc * 1.E-4 / e_per_sec
-
-    def getMag(self, filename, name, band):
-        #Get magnitude in filename
-
-        Parameters
-        --------------
-        filename: str
-          name of the file to scan
-        name: str
-           throughtput used
-        band: str
-          band to consider
-
-        Returns
-        ----------
-        mag: float
-         mag
-        spectrum_file: str
-         spectrum file
-
-        
-        sfile = open(filename, 'rb')
-        spectrum_file = 'unknown'
-        for line in sfile.readlines():
-            if np.string_('SPECTRUM') in line:
-                spectrum_file = line.decode().split(' ')[1].strip()
-            if name in line and band in line:
-                return float(line.decode().split(' ')[2]), spectrum_file
-
-        sfile.close()
-
-    def calcInteg(self, bandpass, signal, wavelen):
-        #Estimate integral of signal
-        over wavelength using bandpass
-
-        Parameters
-        --------------
-        bandpass: list(float)
-          bandpass
-        signal:  list(float)
-          signal to integrate (flux)
-        wavelength: list(float)
-          wavelength used for integration
-
-        Returns
-        -----------
-        integrated signal (float)
-        #
-
-        fa = interpolate.interp1d(bandpass.wavelen, bandpass.sb)
-        fb = interpolate.interp1d(wavelen, signal)
-
-        min_wave = np.max([np.min(bandpass.wavelen), np.min(wavelen)])
-        max_wave = np.min([np.max(bandpass.wavelen), np.max(wavelen)])
-
-        wavelength_integration_step = 5
-        waves = np.arange(min_wave, max_wave, wavelength_integration_step)
-
-        integrand = fa(waves) * fb(waves)
-
-        range_inf = min_wave
-        range_sup = max_wave
-        n_steps = int((range_sup-range_inf) / wavelength_integration_step)
-
-        x = np.core.function_base.linspace(range_inf, range_sup, n_steps)
-
-        return integrate.simps(integrand, x=waves)
-
-    def readSED_fnu(self, filename, name=None):
-        
-        Read a file containing [lambda Fnu] (lambda in nm) (Fnu in Jansky).
-        Extracted from sims/photUtils/Sed.py which does not seem to work
-
-        Parameters
-        --------------
-        filename: str
-          name of the file to process
-        name: str,opt
-          default: None
-
-        Returns
-        ----------
-        sourcewavelen: list(float)
-         wavelength with lambda in nm
-        sourcefnu: list(float)
-         signal with Fnu in Jansky
-        
-        # Try to open the data file.
-        try:
-            if filename.endswith('.gz'):
-                f = gzip.open(filename, 'rt')
-            else:
-                f = open(filename, 'r')
-        # if the above fails, look for the file with and without the gz
-        except IOError:
-            try:
-                if filename.endswith(".gz"):
-                    f = open(filename[:-3], 'r')
-                else:
-                    f = gzip.open(filename+".gz", 'rt')
-            except IOError:
-                raise IOError(
-                    "The throughput file %s does not exist" % (filename))
-        # Read source SED from file
-        # lambda, fnu should be first two columns in the file.
-        # lambda should be in nm and fnu should be in Jansky.
-        sourcewavelen = []
-        sourcefnu = []
-        for line in f:
-            if line.startswith("#"):
-                continue
-            values = line.split()
-            sourcewavelen.append(float(values[0]))
-            sourcefnu.append(float(values[1]))
-        f.close()
-        # Convert to numpy arrays.
-        sourcewavelen = np.array(sourcewavelen)
-        sourcefnu = np.array(sourcefnu)
-        return sourcewavelen, sourcefnu
-"""
+        return [table_lc]
