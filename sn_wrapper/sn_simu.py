@@ -280,8 +280,8 @@ class SNSimulation(BaseMetric):
         nlc = len(gen_params)
         batch = np.linspace(0, nlc, npp+1, dtype='int')
 
+        result_queue = multiprocessing.Queue()
         for i in range(npp):
-            result_queue = multiprocessing.Queue()
 
             ida = batch[i]
             idb = batch[i+1]
@@ -299,6 +299,7 @@ class SNSimulation(BaseMetric):
 
         SNID = 100
         index_hdf5 = self.index_hdf5
+
         for j in range(npp):
             # the output is supposed to be a list of astropytables
             # for each proc: loop on the list to:
@@ -371,7 +372,6 @@ class SNSimulation(BaseMetric):
         else:
             list_lc = self.simuLCs(obs, season, gen_params)
 
-        print('Simu done', time.time()-time_ref)
         if output_q is not None:
             output_q.put({j: list_lc})
         else:
