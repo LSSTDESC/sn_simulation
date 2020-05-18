@@ -10,9 +10,8 @@ Welcome to sn_simulation's documentation!
    :maxdepth: 3
    :caption: Contents:
 
-   sn_simulation <api/sn_simulation>
+   sn_wrapper <api/sn_wrapper>
    sn_simulator <api/sn_simulator>
-   sn_mafsim. <api/sn_mafsim>
 
 Indices and tables
 ==================

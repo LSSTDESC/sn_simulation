@@ -19,9 +19,9 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../sn_simulation'))
+sys.path.insert(0, os.path.abspath('../sn_wrapper'))
 sys.path.insert(0, os.path.abspath('../sn_simulator'))
-sys.path.insert(0, os.path.abspath('../sn_mafsim'))
+#sys.path.insert(0, os.path.abspath('../sn_mafsim'))
 
 # -- General configuration ------------------------------------------------
 
