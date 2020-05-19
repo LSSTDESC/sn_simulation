@@ -31,7 +31,7 @@ class SN(SN_Object):
             simu_param : dict
               parameters for the simulation:
                name: simulator name (str)
-               model: model name for SN (exempla: salt2-extended) (str) 
+               model: model name for SN (exempla: salt2-extended) (str)
                version: version of the model (str)
       """
         model = simu_param['model']
@@ -58,13 +58,14 @@ class SN(SN_Object):
         self.dustmap = sncosmo.OD94Dust()
 
         self.lsstmwebv = EBV.EBVbase()
-        """
-        self.SN = sncosmo.Model(source=source,
-                                effects=[self.dustmap, self.dustmap],
-                                effect_names=['host', 'mw'],
-                                effect_frames=['rest', 'obs'])
-        """
-        self.SN = sncosmo.Model(source=source)
+
+        if self.sn_parameters['dust']:
+            self.SN = sncosmo.Model(source=source,
+                                    effects=[self.dustmap, self.dustmap],
+                                    effect_names=['host', 'mw'],
+                                    effect_frames=['rest', 'obs'])
+        else:
+            self.SN = sncosmo.Model(source=source)
         self.SN.set(z=self.sn_parameters['z'])
         self.SN.set(t0=self.sn_parameters['daymax'] +
                     self.gen_parameters['epsilon_daymax'])
@@ -91,7 +92,7 @@ class SN(SN_Object):
         self.SN.set_source_peakabsmag(self.sn_parameters['absmag'],
         self.sn_parameters['band'], self.sn_parameters['magsys'])
 
-        self.X0=self.SN.get('x0')
+        self.X0 = self.SN.get('x0')
         """
 
         self.defname = dict(zip(['healpixID', 'pixRA', 'pixDec'], [
@@ -104,55 +105,55 @@ class SN(SN_Object):
         --------------
         obs: array
           a set of observations
-        display: bool,opt
+        display: bool, opt
           if True: the simulated LC is displayed
           default: False
         time_display: float
-          duration (sec) for which the display is visible
+          duration(sec) for which the display is visible
           default: 0
 
         Returns
         -----------
         astropy table:
         metadata:
-          SNID: ID of the supernova (int)
-          RA: SN RA (float)
-          Dec: SN Dec (float)
-          daymax: day of the max luminosity (float)
-          epsilon_daymax: epsilon added to daymax for simulation (float)
-          x0: SN x0 (float)
-          epsilon_x0: epsilon added to x0 for simulation (float)
-          x1: SN x1 (float)
-          epsilon_x1: epsilon added to x1 for simulation (float)
-          color: SN color (float)
-          epsilon_color: epsilon added to color for simulation (float)
-          z: SN redshift (float)
-          survey_area: survey area for this SN (float)
+          SNID: ID of the supernova(int)
+          RA: SN RA(float)
+          Dec: SN Dec(float)
+          daymax: day of the max luminosity(float)
+          epsilon_daymax: epsilon added to daymax for simulation(float)
+          x0: SN x0(float)
+          epsilon_x0: epsilon added to x0 for simulation(float)
+          x1: SN x1(float)
+          epsilon_x1: epsilon added to x1 for simulation(float)
+          color: SN color(float)
+          epsilon_color: epsilon added to color for simulation(float)
+          z: SN redshift(float)
+          survey_area: survey area for this SN(float)
           pixID: pixel ID
-          pixRA: pixel RA 
-          pixDec: pixel Dec 
+          pixRA: pixel RA
+          pixDec: pixel Dec
           season: season
           dL: luminosity distance
         fields:
-          flux: SN flux (Jy)
-          fluxerr: EN error flux (Jy)
-          snr_m5: Signal-to-Noise Ratio (float)
-          gamma: gamma parameter (see LSST: From Science...data products eq. 5) (float)
-          m5: five-sigma depth (float)
-          seeingFwhmEff: seeing eff (float)
-          seeingFwhmGeom: seeing geom (float)
+          flux: SN flux(Jy)
+          fluxerr: EN error flux(Jy)
+          snr_m5: Signal-to-Noise Ratio(float)
+          gamma: gamma parameter(see LSST: From Science...data products eq. 5)(float)
+          m5: five-sigma depth(float)
+          seeingFwhmEff: seeing eff(float)
+          seeingFwhmGeom: seeing geom(float)
           flux_e_sec: flux in pe.s-1 (float)
-          mag: magnitude (float)
-          exptime: exposure time (float)
-          magerr: magg error (float)
-          band: filter (str)
-          zp: zeropoint (float)
-          zpsys: zeropoint system (float)
-          time: time (days) (float)
-          phase: phase (float)
+          mag: magnitude(float)
+          exptime: exposure time(float)
+          magerr: magg error(float)
+          band: filter(str)
+          zp: zeropoint(float)
+          zpsys: zeropoint system(float)
+          time: time(days)(float)
+          phase: phase(float)
         """
-        #assert (len(np.unique(obs[self.RaCol])) == 1)
-        #assert (len(np.unique(obs[self.DecCol])) == 1)
+        # assert (len(np.unique(obs[self.RaCol])) == 1)
+        # assert (len(np.unique(obs[self.DecCol])) == 1)
         ra = np.mean(obs[self.RACol])
         dec = np.mean(obs[self.DecCol])
         area = self.area
@@ -193,12 +194,13 @@ class SN(SN_Object):
                           self.sn_parameters['red_cutoff'])
 
         """
-        print('after sel',obs.dtype)
+        print('after sel', obs.dtype)
         for band in np.unique(obs['filter']):
-            idx = obs['filter']==band
+            idx = obs['filter'] == band
             sel = obs[idx]
-            phase = (sel['observationStartMJD']-self.sn_parameters['daymax'])/(1.+self.sn_parameters['z'])
-            print(band,np.min(phase),np.max(phase))
+            phase = (sel['observationStartMJD'] -
+                     self.sn_parameters['daymax'])/(1.+self.sn_parameters['z'])
+            print(band, np.min(phase), np.max(phase))
         """
         for band in 'grizy':
             idb = obs[self.filterCol] == band
@@ -216,10 +218,10 @@ class SN(SN_Object):
 
         # apply dust here since Ra, Dec is known
         """
-        ebvofMW = self.lsstmwebv.calculateEbv(                                                           
+        ebvofMW = self.lsstmwebv.calculateEbv(
             equatorialCoordinates=np.array(
                 [[ra], [dec]]))[0]
-        self.SN.set(mwebv = ebvofMW)
+        self.SN.set(mwebv=ebvofMW)
         """
         # Get the fluxes (vs wavelength) for each obs
         fluxes = 10.*self.SN.flux(obs[self.mjdCol], self.wave)
@@ -241,7 +243,7 @@ class SN(SN_Object):
             [seds[i].calcFlux(bandpass=transes[i]) for i in nvals])
 
         #
-        #idx = int_fluxes > 0
+        # idx = int_fluxes > 0
         int_fluxes[int_fluxes < 0.] = 1.e-10
         """
         int_fluxes = int_fluxes[idx]
@@ -263,7 +265,7 @@ class SN(SN_Object):
         gamma_opsim = [calc[i][1] for i in nvals]
         exptime = [obs[self.exptimeCol][i] for i in nvals]
 
-        #print('Exposure time',exptime)
+        # print('Exposure time',exptime)
         # estimate the flux in elec.sec-1
         e_per_sec = self.telescope.mag_to_flux_e_sec(
             mag_SN, obs[self.filterCol], [30.]*len(mag_SN))

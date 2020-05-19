@@ -95,6 +95,8 @@ def getconfig(prodid,
     config['SN parameters']['salt2Dir'] = 'SALT2_Files'
     config['SN parameters']['blue_cutoff'] = 380.
     config['SN parameters']['red_cutoff'] = 800.
+    # MW dust
+    config['SN parameters']['dust'] = 0
 
     # ------------------cosmology ----------------------
     config['Cosmology'] = {}
