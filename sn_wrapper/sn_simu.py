@@ -298,7 +298,6 @@ class SNSimulation(BaseMetric):
             p.join()
 
         SNID = 100
-        index_hdf5 = self.index_hdf5
         for j in range(npp):
             # the output is supposed to be a list of astropytables
             # for each proc: loop on the list to:
@@ -311,12 +310,13 @@ class SNSimulation(BaseMetric):
                     if lc is not None:
                         SNID += 1
                         n_lc_points = len(lc)
-                        index_hdf5 += 1
                         index_hdf5 = '{}_{}_{}_{}_{}_{}'.format(lc.meta['healpixID'],
                                                                 lc.meta['x1'],
                                                                 lc.meta['color'],
-                                                                np.round(lc.meta['z'],2),
-                                                                np.round(lc.meta['daymax'],1),
+                                                                np.round(
+                                                                    lc.meta['z'], 2),
+                                                                np.round(
+                                                                    lc.meta['daymax'], 1),
                                                                 season)
                         lc.write(self.lc_out,
                                  path='lc_{}'.format(index_hdf5),
