@@ -9,7 +9,7 @@ setup(
     author='Philippe Gris',
     author_email='philippe.gris@clermont.in2p3.fr',
     license='BSD',
-    packages=['sn_simulation', 'sn_simulator', 'sn_mafsim'],
+    packages=['sn_simulator', 'sn_wrapper'],
     python_requires='>=3.5',
     zip_safe=False,
     install_requires=[
