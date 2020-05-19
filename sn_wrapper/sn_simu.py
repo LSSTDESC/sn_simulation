@@ -299,7 +299,6 @@ class SNSimulation(BaseMetric):
 
         SNID = 100
         index_hdf5 = self.index_hdf5
-
         for j in range(npp):
             # the output is supposed to be a list of astropytables
             # for each proc: loop on the list to:
@@ -309,26 +308,33 @@ class SNSimulation(BaseMetric):
             if self.save_status:
                 for lc in resultdict[j]:
                     # number of lc points
-                    SNID += 1
-                    n_lc_points = len(lc)
-                    index_hdf5 += 1
-                    lc.write(self.lc_out,
-                             path='lc_{}'.format(index_hdf5),
-                             append=True,
-                             compression=True)
-                    self.sn_meta.append((SNID, lc.meta['RA'],
-                                         lc.meta['Dec'],
-                                         lc.meta['x0'], lc.meta['epsilon_x0'],
-                                         lc.meta['x1'], lc.meta['epsilon_x1'],
-                                         lc.meta['color'], lc.meta['epsilon_color'],
-                                         lc.meta['daymax'], lc.meta['epsilon_daymax'],
-                                         lc.meta['z'], index_hdf5, season,
-                                         self.fieldname, self.fieldid,
-                                         n_lc_points, self.area,
-                                         lc.meta['healpixID'],
-                                         lc.meta['pixRA'],
-                                         lc.meta['pixDec'],
-                                         lc.meta['dL']))
+                    if lc is not None:
+                        SNID += 1
+                        n_lc_points = len(lc)
+                        index_hdf5 += 1
+                        index_hdf5 = '{}_{}_{}_{}_{}_{}'.format(lc.meta['healpixID'],
+                                                                lc.meta['x1'],
+                                                                lc.meta['color'],
+                                                                np.round(lc.meta['z'],2),
+                                                                np.round(lc.meta['daymax'],1),
+                                                                season)
+                        lc.write(self.lc_out,
+                                 path='lc_{}'.format(index_hdf5),
+                                 append=True,
+                                 compression=True)
+                        self.sn_meta.append((SNID, lc.meta['RA'],
+                                             lc.meta['Dec'],
+                                             lc.meta['x0'], lc.meta['epsilon_x0'],
+                                             lc.meta['x1'], lc.meta['epsilon_x1'],
+                                             lc.meta['color'], lc.meta['epsilon_color'],
+                                             lc.meta['daymax'], lc.meta['epsilon_daymax'],
+                                             lc.meta['z'], index_hdf5, season,
+                                             self.fieldname, self.fieldid,
+                                             n_lc_points, self.area,
+                                             lc.meta['healpixID'],
+                                             lc.meta['pixRA'],
+                                             lc.meta['pixDec'],
+                                             lc.meta['dL']))
 
             """
             if self.save_status:
