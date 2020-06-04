@@ -8,6 +8,8 @@ from lsst.sims.catUtils.dust import EBV
 from scipy.interpolate import griddata
 import h5py
 from sn_wrapper.sn_object import SN_Object
+import time
+from sn_tools.sn_utils import SNTimer
 
 
 class SN(SN_Object):
@@ -98,6 +100,27 @@ class SN(SN_Object):
         self.defname = dict(zip(['healpixID', 'pixRA', 'pixDec'], [
                             'observationId', param.RACol, param.DecCol]))
 
+        # names for metadata
+        self.names_meta = ['SNID', 'RA', 'Dec',
+                           'x0', 'epsilon_x0',
+                           'x1', 'epsilon_x1',
+                           'color', 'epsilon_color',
+                           'daymax', 'epsilon_daymax',
+                           'z', 'survey_area',
+                           'healpixID', 'pixRA', 'pixDec',
+                           'season', 'dL']
+
+        """
+        # get the magnitude system here
+        self.ab = sncosmo.get_magsystem('ab')
+
+        # band pass
+        for band in 'ugrizy':
+            bpass = sncosmo.Bandpass(
+                self.telescope.atmosphere[band].wavelen, self.telescope.atmosphere[band].sb, name='LSST::'+band, wave_unit=u.nm)
+            sncosmo.registry.register(bpass, force=True)
+        """
+
     def __call__(self, obs, display=False, time_display=0.):
         """ Simulation of the light curve
 
@@ -165,7 +188,11 @@ class SN(SN_Object):
             else:
                 pix[vv] = np.mean(obs[self.defname[vv]])
 
+        ti = SNTimer(time.time())
+        time_ref = time.time()
+        time_rof = time.time()
         # Metadata
+        """
         names_meta = ['SNID', 'RA', 'Dec',
                       'x0', 'epsilon_x0',
                       'x1', 'epsilon_x1',
@@ -184,7 +211,7 @@ class SN(SN_Object):
                     season, self.dL]
 
         metadata = dict(zip(names_meta, val_meta))
-
+        """
         # Select obs depending on min and max phases
         obs = self.cutoff(obs, self.sn_parameters['daymax'],
                           self.sn_parameters['z'],
@@ -192,6 +219,7 @@ class SN(SN_Object):
                           self.sn_parameters['max_rf_phase'],
                           self.sn_parameters['blue_cutoff'],
                           self.sn_parameters['red_cutoff'])
+        ti(time.time(), 'cutoff')
 
         """
         print('after sel', obs.dtype)
@@ -202,16 +230,11 @@ class SN(SN_Object):
                      self.sn_parameters['daymax'])/(1.+self.sn_parameters['z'])
             print(band, np.min(phase), np.max(phase))
         """
+        #print('bands', np.unique(obs[self.filterCol]))
         for band in 'grizy':
             idb = obs[self.filterCol] == band
         if len(obs) == 0:
             return None, metadata
-
-        # output table
-        table_lc = Table()
-
-        # set metadata
-        table_lc.meta = metadata
 
         # Sort data according to mjd
         obs.sort(order=self.mjdCol)
@@ -225,6 +248,9 @@ class SN(SN_Object):
         """
         # Get the fluxes (vs wavelength) for each obs
         fluxes = 10.*self.SN.flux(obs[self.mjdCol], self.wave)
+
+        #print('after fluxes', time.time()-time_ref, fluxes.shape, len(obs))
+        ti(time.time(), 'fluxes')
 
         wavelength = self.wave/10.
 
@@ -242,9 +268,12 @@ class SN(SN_Object):
         int_fluxes = np.asarray(
             [seds[i].calcFlux(bandpass=transes[i]) for i in nvals])
 
+        #print('after fluxes again ', time.time()-time_ref, int_fluxes)
+        ti(time.time(), 'fluxes_b')
+
         #
         # idx = int_fluxes > 0
-        int_fluxes[int_fluxes < 0.] = 1.e-10
+        int_fluxes[int_fluxes < 0.] = 1.e-5
         """
         int_fluxes = int_fluxes[idx]
         transes = transes[idx]
@@ -252,12 +281,18 @@ class SN(SN_Object):
         """
         nvals = range(len(obs))
 
+        # magnitude - integrated fluxes are in Jy
+        mag_SN = -2.5 * np.log10(int_fluxes / 3631.0)  # fluxes are in Jy
+
+        #print('mags', time.time()-time_ref)
+        ti(time.time(), 'mags')
+
+        time_ref = time.time()
+
+        # estimate SNR
         # Get photometric parameters to estimate SNR
         photParams = [PhotometricParameters(exptime=obs[self.exptimeCol][i]/obs[self.nexpCol][i],
                                             nexp=obs[self.nexpCol][i]) for i in nvals]
-        # magnitude - integrated fluxes are in Jy
-        mag_SN = -2.5 * np.log10(int_fluxes / 3631.0)  # fluxes are in Jy
-        # estimate SNR
         calc = [SignalToNoise.calcSNR_m5(
             mag_SN[i], transes[i], obs[self.m5Col][i],
             photParams[i]) for i in nvals]
@@ -265,11 +300,16 @@ class SN(SN_Object):
         gamma_opsim = [calc[i][1] for i in nvals]
         exptime = [obs[self.exptimeCol][i] for i in nvals]
 
-        # print('Exposure time',exptime)
+        ti(time.time(), 'estimate 1')
         # estimate the flux in elec.sec-1
         e_per_sec = self.telescope.mag_to_flux_e_sec(
             mag_SN, obs[self.filterCol], [30.]*len(mag_SN))
 
+        #print('after all estimates', time.time()-time_ref)
+        ti(time.time(), 'all estimates')
+
+        # output table
+        table_lc = Table()
         # Fill the astopy table
         table_lc.add_column(Column(int_fluxes, name='flux'))
         table_lc.add_column(Column(int_fluxes/snr_m5_opsim, name='fluxerr'))
@@ -315,4 +355,47 @@ class SN(SN_Object):
             self.plotLC(table_lc['time', 'band',
                                  'flux', 'fluxerr', 'zp', 'zpsys'], time_display)
 
+        ti(time.time(), 'finish')
+
+        #print('boo', ti.finish(time.time()))
+        ptime = ti.finish(time.time())['ptime'].item()
+        # set metadata
+        table_lc.meta = self.metadata(ra, dec, pix, area, season, ptime)
+
         return [table_lc]
+
+    def metadata(self, ra, dec, pix, area, season, ptime):
+        """
+        Method to fill metadata
+
+        Parameters
+        ---------------
+        ra: float
+          SN ra
+        dec: float
+          SN dec
+        pix: dict
+          pixel infos (ID, RA, Dec)
+        area: float
+           area of the survey
+        season: float
+           season number
+        ptime: float
+           processing time
+
+        Returns
+        -----------
+        dict of metadata
+
+        """
+
+        val_meta = [self.SNID, ra, dec,
+                    self.X0, self.gen_parameters['epsilon_x0'],
+                    self.sn_parameters['x1'], self.gen_parameters['epsilon_x1'],
+                    self.sn_parameters['color'], self.gen_parameters['epsilon_color'],
+                    self.sn_parameters['daymax'], self.gen_parameters['epsilon_daymax'],
+                    self.sn_parameters['z'], area,
+                    pix['healpixID'], pix['pixRA'], pix['pixDec'],
+                    season, self.dL]
+
+        return dict(zip(self.names_meta, val_meta))
