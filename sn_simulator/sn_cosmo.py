@@ -108,7 +108,7 @@ class SN(SN_Object):
                            'daymax', 'epsilon_daymax',
                            'z', 'survey_area',
                            'healpixID', 'pixRA', 'pixDec',
-                           'season', 'dL']
+                           'season', 'dL', 'ptime']
 
         """
         # get the magnitude system here
@@ -396,6 +396,6 @@ class SN(SN_Object):
                     self.sn_parameters['daymax'], self.gen_parameters['epsilon_daymax'],
                     self.sn_parameters['z'], area,
                     pix['healpixID'], pix['pixRA'], pix['pixDec'],
-                    season, self.dL]
+                    season, self.dL, ptime]
 
         return dict(zip(self.names_meta, val_meta))

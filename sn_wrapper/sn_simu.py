@@ -334,7 +334,8 @@ class SNSimulation(BaseMetric):
                                              lc.meta['healpixID'],
                                              lc.meta['pixRA'],
                                              lc.meta['pixDec'],
-                                             lc.meta['dL']))
+                                             lc.meta['dL'],
+                                             lc.meta['ptime']))
 
             """
             if self.save_status:
@@ -448,7 +449,7 @@ class SNSimulation(BaseMetric):
                          'daymax', 'epsilon_daymax',
                          'z', 'id_hdf5', 'season',
                          'fieldname', 'fieldid',
-                         'n_lc_points', 'survey_area', 'pixID', 'pixRA', 'pixDec', 'dL'],
+                         'n_lc_points', 'survey_area', 'pixID', 'pixRA', 'pixDec', 'dL', 'ptime'],
                   dtype=('i4', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8',
-                         'f8', 'f8', h5py.special_dtype(vlen=str), 'i4', 'S3', 'i8', 'i8', 'f8', 'i8', 'f8', 'f8', 'f8')).write(
+                         'f8', 'f8', h5py.special_dtype(vlen=str), 'i4', 'S3', 'i8', 'i8', 'f8', 'i8', 'f8', 'f8', 'f8', 'f8')).write(
                 self.simu_out, 'summary', compression=True)
