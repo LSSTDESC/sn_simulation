@@ -249,7 +249,8 @@ class SNSimulation(BaseMetric):
         # -> name : LC_prodid.hdf5
         self.simu_out = outdir+'/Simu_'+prodid+'.hdf5'
         self.lc_out = outdir+'/LC_'+prodid+'.hdf5'
-        self.sn_meta = []
+        # dict of meta data
+        self.sn_meta = {}
         # and these files will be removed now (before processing)
         # if they exist (to avoid confusions)
         if os.path.exists(self.simu_out):
@@ -309,66 +310,72 @@ class SNSimulation(BaseMetric):
                     # number of lc points
                     if lc is not None:
                         SNID += 1
-                        n_lc_points = len(lc)
-                        index_hdf5 = '{}_{}_{}_{}_{}_{}'.format(lc.meta['healpixID'],
-                                                                lc.meta['x1'],
-                                                                lc.meta['color'],
-                                                                np.round(
-                                                                    lc.meta['z'], 2),
-                                                                np.round(
-                                                                    lc.meta['daymax'], 1),
-                                                                season)
-                        lc.write(self.lc_out,
-                                 path='lc_{}'.format(index_hdf5),
-                                 append=True,
-                                 compression=True)
-                        self.sn_meta.append((SNID, lc.meta['RA'],
-                                             lc.meta['Dec'],
-                                             lc.meta['x0'], lc.meta['epsilon_x0'],
-                                             lc.meta['x1'], lc.meta['epsilon_x1'],
-                                             lc.meta['color'], lc.meta['epsilon_color'],
-                                             lc.meta['daymax'], lc.meta['epsilon_daymax'],
-                                             lc.meta['z'], index_hdf5, season,
-                                             self.fieldname, self.fieldid,
-                                             n_lc_points, self.area,
-                                             lc.meta['healpixID'],
-                                             lc.meta['pixRA'],
-                                             lc.meta['pixDec'],
-                                             lc.meta['dL'],
-                                             lc.meta['ptime']))
+                        self.writeLC(SNID, lc, season)
 
-            """
-            if self.save_status:
-                metadata = resultdict[j][1]
-                n_lc_points = 0
-                if resultdict[j][0] is not None:
-                    n_lc_points = len(resultdict[j][0])
-                    resultdict[j][0].write(self.lc_out,
-                                           path='lc_' +
-                                           str(metadata['index_hdf5']),
-                                           append=True,
-                                           compression=True)
-                    self.sn_meta.append((metadata['SNID'], metadata['RA'],
-                                         metadata['Dec'],
-                                         metadata['x0'], metadata['epsilon_x0'],
-                                         metadata['x1'], metadata['epsilon_x1'],
-                                         metadata['color'], metadata['epsilon_color'],
-                                         metadata['daymax'], metadata['epsilon_daymax'],
-                                         metadata['z'], metadata['index_hdf5'], season,
-                                         self.fieldname, self.fieldid,
-                                         n_lc_points, metadata['survey_area'],
-                                         metadata['pixID'],
-                                         metadata['pixRA'],
-                                         metadata['pixDec'],
-                                         metadata['dL']))
-            """
-            """
-            for i, val in enumerate(gen_params[:]):
-            self.index_hdf5 += 1
-            self.Process_Season_Single(obs,season,val)
-            """
+    def writeLC(self, SNID, lc, season):
+        """
+        Method to save lc on disk
+        and to update metadata
+
+        Parameters
+        ---------------
+        SNID: int
+         Supernova ID
+        lc: astropy Table
+           sn light curve
+
+        """
+        # save LC on disk
+
+        index_hdf5 = '{}_{}_{}_{}_{}_{}'.format(lc.meta['healpixID'],
+                                                lc.meta['x1'],
+                                                lc.meta['color'],
+                                                np.round(
+                                                    lc.meta['z'], 2),
+                                                np.round(
+                                                    lc.meta['daymax'], 1),
+                                                season)
+        lc.write(self.lc_out,
+                 path='lc_{}'.format(index_hdf5),
+                 append=True,
+                 compression=True)
+
+        # build metadata dict
+        n_lc_points = len(lc)
+        metanames = ['SNID', 'index_hdf5', 'season',
+                     'fieldname', 'fieldid', 'n_lc_points', 'area']
+        metavals = [SNID, index_hdf5, season,
+                    self.fieldname, self.fieldid,
+                    n_lc_points, self.area]
+        metadict = dict(zip(metanames, metavals))
+        metadict.update(lc.meta)
+
+        # update main metadata dict
+        if not self.sn_meta:
+            for key in metadict.keys():
+                self.sn_meta[key] = [metadict[key]]
+        else:
+            for key in metadict.keys():
+                self.sn_meta[key].extend([metadict[key]])
 
     def simuLoop(self, obs, season, gen_params, j, output_q):
+        """
+        Method to simulate LC
+
+        Parameters
+        ---------------
+        obs: numpy array
+          array of observations
+        season: int
+          season number
+        gen_params: numpy array
+          array of observations
+        j: int
+           internal parameter for multiprocessing
+        output_q: multiprocessing.Queue()
+
+
+        """
 
         time_ref = time.time()
         list_lc = []
@@ -441,15 +448,7 @@ class SNSimulation(BaseMetric):
         """ Copy metadata to disk
 
         """
-        if len(self.sn_meta) > 0:
-            Table(rows=self.sn_meta,
-                  names=['SNID', 'RA', 'Dec', 'x0', 'epsilon_x0',
-                         'x1', 'epsilon_x1',
-                         'color', 'epsilon_color',
-                         'daymax', 'epsilon_daymax',
-                         'z', 'id_hdf5', 'season',
-                         'fieldname', 'fieldid',
-                         'n_lc_points', 'survey_area', 'pixID', 'pixRA', 'pixDec', 'dL', 'ptime'],
-                  dtype=('i4', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8', 'f8',
-                         'f8', 'f8', h5py.special_dtype(vlen=str), 'i4', 'S3', 'i8', 'i8', 'f8', 'i8', 'f8', 'f8', 'f8', 'f8')).write(
+        print('metadata', self.sn_meta)
+        if self.sn_meta:
+            Table(self.sn_meta).write(
                 self.simu_out, 'summary', compression=True)
