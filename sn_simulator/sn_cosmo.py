@@ -10,10 +10,13 @@ import h5py
 from sn_wrapper.sn_object import SN_Object
 import time
 from sn_tools.sn_utils import SNTimer
+from sn_tools.sn_calcFast import srand
+import pandas as pd
+import operator
 
 
 class SN(SN_Object):
-    def __init__(self, param, simu_param, reference_lc=None):
+    def __init__(self, param, simu_param, reference_lc=None, gamma=None, mag_to_flux=None):
         super().__init__(param.name, param.sn_parameters, param.gen_parameters,
                          param.cosmology, param.telescope, param.SNID, param.area, param.x0_grid,
                          mjdCol=param.mjdCol, RACol=param.RACol, DecCol=param.DecCol,
@@ -40,6 +43,8 @@ class SN(SN_Object):
         version = str(simu_param['version'])
         self.model = model
         self.version = version
+        self.gamma = gamma
+        self.mag_to_flux = mag_to_flux
 
         if model == 'salt2-extended':
             model_min = 300.
@@ -230,7 +235,18 @@ class SN(SN_Object):
                      self.sn_parameters['daymax'])/(1.+self.sn_parameters['z'])
             print(band, np.min(phase), np.max(phase))
         """
-        #print('bands', np.unique(obs[self.filterCol]))
+
+        outvals = [self.m5Col, self.mjdCol,
+                   self.exptimeCol, self.nexpCol, self.filterCol]
+        for bb in [self.airmassCol, self.skyCol, self.moonCol, self.seeingEffCol, self.seeingGeomCol]:
+            if bb in obs.dtype.names:
+                outvals.append(bb)
+
+        lcdf = pd.DataFrame(obs[outvals])
+
+        print('ici', lcdf)
+
+        # print('bands', np.unique(obs[self.filterCol]))
         for band in 'grizy':
             idb = obs[self.filterCol] == band
         if len(obs) == 0:
@@ -249,7 +265,7 @@ class SN(SN_Object):
         # Get the fluxes (vs wavelength) for each obs
         fluxes = 10.*self.SN.flux(obs[self.mjdCol], self.wave)
 
-        #print('after fluxes', time.time()-time_ref, fluxes.shape, len(obs))
+        # print('after fluxes', time.time()-time_ref, fluxes.shape, len(obs))
         ti(time.time(), 'fluxes')
 
         wavelength = self.wave/10.
@@ -268,7 +284,9 @@ class SN(SN_Object):
         int_fluxes = np.asarray(
             [seds[i].calcFlux(bandpass=transes[i]) for i in nvals])
 
-        #print('after fluxes again ', time.time()-time_ref, int_fluxes)
+        lcdf['flux'] = int_fluxes
+
+        # print('after fluxes again ', time.time()-time_ref, int_fluxes)
         ti(time.time(), 'fluxes_b')
 
         #
@@ -283,8 +301,10 @@ class SN(SN_Object):
 
         # magnitude - integrated fluxes are in Jy
         mag_SN = -2.5 * np.log10(int_fluxes / 3631.0)  # fluxes are in Jy
+        # fluxes are in Jy
+        lcdf['mag'] = -2.5 * np.log10(lcdf['flux'] / 3631.0)
 
-        #print('mags', time.time()-time_ref)
+        # print('mags', time.time()-time_ref)
         ti(time.time(), 'mags')
 
         time_ref = time.time()
@@ -299,13 +319,34 @@ class SN(SN_Object):
         snr_m5_opsim = [calc[i][0] for i in nvals]
         gamma_opsim = [calc[i][1] for i in nvals]
         exptime = [obs[self.exptimeCol][i] for i in nvals]
+        print('here', snr_m5_opsim)
+
+        print(calc, type(calc))
+        lcdf['snr_m5_opsim'] = snr_m5_opsim
+        lcdf['gamma_opsim'] = gamma_opsim
+
+        lcdf = lcdf.groupby([self.filterCol]).apply(
+            lambda x: self.gammaint(x)).reset_index()
+
+        """
+        df1 = lcdf.groupby(self.filterCol).apply(lambda x: pd.Series(
+            self.gammaint(x), index=['gamma_interp'])).unstack()
+        lcdf = lcdf.join(df1, on=self.filterCol)
+        """
+        #print('there', df1)
+        print('go pal', lcdf['gamma_interp']/lcdf['gamma_opsim'])
+
+        lcdf['snr_interp'] = 1./srand(
+            lcdf['gamma_interp'].values, mag_SN, obs[self.m5Col])
+        print('new SNR', lcdf['snr_m5_opsim']/lcdf['snr_interp'])
 
         ti(time.time(), 'estimate 1')
         # estimate the flux in elec.sec-1
-        e_per_sec = self.telescope.mag_to_flux_e_sec(
-            mag_SN, obs[self.filterCol], [30.]*len(mag_SN))
+        lcdf['e_per_sec'] = self.telescope.mag_to_flux_e_sec(
+            lcdf['mag'].values, lcdf[self.filterCol].values, [30.]*len(lcdf))[:, 1]
 
-        #print('after all estimates', time.time()-time_ref)
+        e_per_sec = lcdf['e_per_sec'].values
+        print('after all estimates', lcdf['e_per_sec']/lcdf['e_per_sec_int'])
         ti(time.time(), 'all estimates')
 
         # output table
@@ -357,12 +398,32 @@ class SN(SN_Object):
 
         ti(time.time(), 'finish')
 
-        #print('boo', ti.finish(time.time()))
+        # print('boo', ti.finish(time.time()))
         ptime = ti.finish(time.time())['ptime'].item()
         # set metadata
         table_lc.meta = self.metadata(ra, dec, pix, area, season, ptime)
 
         return [table_lc]
+
+    def gammaint(self, grp):
+        """
+        Method to estimate gamma values from interpolation
+
+        Parameters
+        ---------------
+        grp: pandas group
+          data to process
+
+        Returns
+        ----------
+        original group with a new col: gamma_int: gamma values
+
+        """
+        res = self.gamma[grp.name](
+            (grp[self.m5Col].values, grp[self.exptimeCol].values))
+        grp.loc[:, 'gamma_interp'] = res
+        grp.loc[:, 'e_per_sec_int'] = self.mag_to_flux[grp.name](grp['mag'])
+        return grp
 
     def metadata(self, ra, dec, pix, area, season, ptime):
         """

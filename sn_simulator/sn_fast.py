@@ -19,7 +19,7 @@ class SN(SN_Object):
 
     """
 
-    def __init__(self, param, simu_param, reference_lc=None):
+    def __init__(self, param, simu_param, reference_lc=None, gamma=None, mag_to_flux=None):
         super().__init__(param.name, param.sn_parameters, param.gen_parameters,
                          param.cosmology, param.telescope, param.SNID, param.area, param.x0_grid,
                          param.salt2Dir,
