@@ -113,7 +113,7 @@ class SN(SN_Object):
                            'daymax', 'epsilon_daymax',
                            'z', 'survey_area',
                            'healpixID', 'pixRA', 'pixDec',
-                           'season', 'dL', 'ptime']
+                           'season', 'dL', 'ptime', 'status']
 
         """
         # get the magnitude system here
@@ -245,6 +245,11 @@ class SN(SN_Object):
         lcdf = pd.DataFrame(obs[outvals])
 
         print('ici', lcdf)
+        nvals = range(len(lcdf))
+        if len(lcdf) == 0:
+            ptime = ti.finish(time.time())['ptime'].item()
+            table_lc = self.nosim(ra, dec, pix, area, season, ptime, -1)
+            return [table_lc]
 
         # print('bands', np.unique(obs[self.filterCol]))
         for band in 'grizy':
@@ -279,7 +284,7 @@ class SN(SN_Object):
         # Arrays of SED, transmissions to estimate integrated fluxes
         seds = [Sed(wavelen=SED_time.wavelen[i], flambda=SED_time.flambda[i])
                 for i in nvals]
-        transes = np.asarray([self.telescope.atmosphere[obs[self.filterCol][i][-1]]
+        transes = np.asarray([self.telescope.atmosphere[lcdf.loc[i][self.filterCol]]
                               for i in nvals])
         int_fluxes = np.asarray(
             [seds[i].calcFlux(bandpass=transes[i]) for i in nvals])
@@ -297,11 +302,18 @@ class SN(SN_Object):
         transes = transes[idx]
         obs = obs[idx]
         """
-        nvals = range(len(obs))
 
-        # magnitude - integrated fluxes are in Jy
-        mag_SN = -2.5 * np.log10(int_fluxes / 3631.0)  # fluxes are in Jy
-        # fluxes are in Jy
+        # select only positive fluxes
+        idf = lcdf['flux'] > 0
+        lcdf = lcdf[idf]
+
+        nvals = range(len(lcdf))
+        if len(lcdf) == 0:
+            ptime = ti.finish(time.time())['ptime'].item()
+            table_lc = self.nosim(ra, dec, pix, area, season, ptime, -1)
+            return [table_lc]
+
+        # magnitudes - integrated  fluxes are in Jy
         lcdf['mag'] = -2.5 * np.log10(lcdf['flux'] / 3631.0)
 
         # print('mags', time.time()-time_ref)
@@ -311,51 +323,75 @@ class SN(SN_Object):
 
         # estimate SNR
         # Get photometric parameters to estimate SNR
-        photParams = [PhotometricParameters(exptime=obs[self.exptimeCol][i]/obs[self.nexpCol][i],
-                                            nexp=obs[self.nexpCol][i]) for i in nvals]
-        calc = [SignalToNoise.calcSNR_m5(
-            mag_SN[i], transes[i], obs[self.m5Col][i],
-            photParams[i]) for i in nvals]
-        snr_m5_opsim = [calc[i][0] for i in nvals]
-        gamma_opsim = [calc[i][1] for i in nvals]
-        exptime = [obs[self.exptimeCol][i] for i in nvals]
-        print('here', snr_m5_opsim)
+        # magnitude - integrated fluxes are in Jy
+        # mag_SN = -2.5 * np.log10(int_fluxes / 3631.0)  # fluxes are in Jy
+        photParams = [PhotometricParameters(exptime=vv[self.exptimeCol]/vv[self.nexpCol],
+                                            nexp=vv[self.nexpCol]) for index, vv in lcdf.iterrows()]
 
-        print(calc, type(calc))
-        lcdf['snr_m5_opsim'] = snr_m5_opsim
-        lcdf['gamma_opsim'] = gamma_opsim
+        """
+        photParams = [PhotometricParameters(
+            nexp=vv[self.exptimeCol]) for index, vv in lcdf.iterrows()]
+        """
+
+        calc = [SignalToNoise.calcSNR_m5(
+            lcdf.iloc[i]['mag'], transes[i], lcdf.iloc[i][self.m5Col],
+            photParams[i]) for i in nvals]
+
+        """
+        for i in nvals:
+            print(lcdf.iloc[i]['mag'], transes[i], lcdf.iloc[i][self.m5Col], photParams[i],
+                  lcdf.iloc[i][self.exptimeCol]/lcdf.iloc[i][self.nexpCol], lcdf.iloc[i][self.nexpCol])
+        """
+
+        gamms = self.telescope.gamma(
+            lcdf[self.m5Col], lcdf[self.filterCol], lcdf[self.exptimeCol]/lcdf[self.nexpCol], lcdf[self.nexpCol])
+
+        #print('new gamma', gamms)
+
+        snr_m5 = [calc[i][0] for i in nvals]
+        gamma = [calc[i][1] for i in nvals]
+
+        lcdf['snr_m5'] = [calc[i][0] for i in nvals]
+        lcdf['gamma'] = [calc[i][1] for i in nvals]
+        lcdf['magerr'] = (2.5/np.log(10.))/lcdf['snr_m5']
+        lcdf['fluxerr'] = lcdf['flux']/lcdf['snr_m5']
 
         lcdf = lcdf.groupby([self.filterCol]).apply(
             lambda x: self.gammaint(x)).reset_index()
 
-        """
-        df1 = lcdf.groupby(self.filterCol).apply(lambda x: pd.Series(
-            self.gammaint(x), index=['gamma_interp'])).unstack()
-        lcdf = lcdf.join(df1, on=self.filterCol)
-        """
-        #print('there', df1)
-        print('go pal', lcdf['gamma_interp']/lcdf['gamma_opsim'])
-
+        lcdf['gamma_interp'] = gamms
+        #print('interp', lcdf['gamma_interp'])
         lcdf['snr_interp'] = 1./srand(
-            lcdf['gamma_interp'].values, mag_SN, obs[self.m5Col])
-        print('new SNR', lcdf['snr_m5_opsim']/lcdf['snr_interp'])
+            lcdf['gamma_interp'].values, lcdf['mag'], lcdf[self.m5Col])
 
         ti(time.time(), 'estimate 1')
         # estimate the flux in elec.sec-1
-        lcdf['e_per_sec'] = self.telescope.mag_to_flux_e_sec(
-            lcdf['mag'].values, lcdf[self.filterCol].values, [30.]*len(lcdf))[:, 1]
+        lcdf['flux_e_sec'] = self.telescope.mag_to_flux_e_sec(
+            lcdf['mag'].values, lcdf[self.filterCol].values, lcdf[self.exptimeCol]/lcdf[self.nexpCol], lcdf[self.nexpCol])[:, 1]
 
-        e_per_sec = lcdf['e_per_sec'].values
-        print('after all estimates', lcdf['e_per_sec']/lcdf['e_per_sec_int'])
+        e_per_sec = lcdf['flux_e_sec'].values
+
         ti(time.time(), 'all estimates')
 
+        lcdf['zp'] = 2.5*np.log10(3631)
+        lcdf['zpsys'] = 'ab'
+        lcdf['phase'] = (lcdf[self.mjdCol]-self.sn_parameters['daymax']
+                         )/(1.+self.sn_parameters['z'])
+
+        lcdf = lcdf.rename(
+            columns={self.mjdCol: 'time', self.filterCol: 'band', self.m5Col: 'm5'})
+        lcdf['band'] = 'LSST::'+lcdf['band']
+        print('lcdf columns', lcdf.columns)
+        print(lcdf)
+
+        """
         # output table
         table_lc = Table()
         # Fill the astopy table
         table_lc.add_column(Column(int_fluxes, name='flux'))
-        table_lc.add_column(Column(int_fluxes/snr_m5_opsim, name='fluxerr'))
-        table_lc.add_column(Column(snr_m5_opsim, name='snr_m5'))
-        table_lc.add_column(Column(gamma_opsim, name='gamma'))
+        table_lc.add_column(Column(int_fluxes/snr_m5, name='fluxerr'))
+        table_lc.add_column(Column(snr_m5, name='snr_m5'))
+        table_lc.add_column(Column(gamma, name='gamma'))
         table_lc.add_column(Column(obs[self.m5Col], name='m5'))
         if self.airmassCol in obs.dtype.names:
             table_lc.add_column(
@@ -369,12 +405,12 @@ class SN(SN_Object):
             Column(obs[self.seeingEffCol], name=self.seeingEffCol))
         table_lc.add_column(
             Column(obs[self.seeingGeomCol], name=self.seeingGeomCol))
-        table_lc.add_column(Column(e_per_sec[:, 1], name='flux_e_sec'))
+        table_lc.add_column(Column(e_per_sec, name='flux_e_sec'))
         table_lc.add_column(Column(mag_SN, name='mag'))
         table_lc.add_column(Column(exptime, name='exptime'))
 
         table_lc.add_column(
-            Column((2.5/np.log(10.))/snr_m5_opsim, name='magerr'))
+            Column((2.5/np.log(10.))/snr_m5, name='magerr'))
         table_lc.add_column(
             Column(['LSST::'+obs[self.filterCol][i][-1]
                     for i in range(len(obs[self.filterCol]))], name='band',
@@ -391,18 +427,23 @@ class SN(SN_Object):
                   )/(1.+self.sn_parameters['z'])
         table_lc.add_column(Column(phases, name='phase'))
 
+        print('astropy cols', table_lc.columns)
+
+        print(test)
+        """
+
+        # print('boo', ti.finish(time.time()))
+        ptime = ti.finish(time.time())['ptime'].item()
+        table_lc = Table.from_pandas(lcdf)
+        # set metadata
+        table_lc.meta = self.metadata(ra, dec, pix, area, season, ptime, 1)
+
         # if the user chooses to display the results...
         if display:
             self.plotLC(table_lc['time', 'band',
                                  'flux', 'fluxerr', 'zp', 'zpsys'], time_display)
 
-        ti(time.time(), 'finish')
-
-        # print('boo', ti.finish(time.time()))
-        ptime = ti.finish(time.time())['ptime'].item()
-        # set metadata
-        table_lc.meta = self.metadata(ra, dec, pix, area, season, ptime)
-
+        # print(test)
         return [table_lc]
 
     def gammaint(self, grp):
@@ -422,10 +463,38 @@ class SN(SN_Object):
         res = self.gamma[grp.name](
             (grp[self.m5Col].values, grp[self.exptimeCol].values))
         grp.loc[:, 'gamma_interp'] = res
-        grp.loc[:, 'e_per_sec_int'] = self.mag_to_flux[grp.name](grp['mag'])
+        grp.loc[:, 'flux_e_sec_int'] = self.mag_to_flux[grp.name](grp['mag'])
         return grp
 
-    def metadata(self, ra, dec, pix, area, season, ptime):
+    def nosim(self, ra, dec, pix, area, season, ptime, status):
+        """
+        Method to construct an empty table when no simulation was possible
+
+        Parameters
+        ---------------
+        ra: float
+          SN RA
+        dec: float
+          SN Dec
+        pix:
+          pixel infos
+        area: float
+           survey area
+        season: int
+          season of interest
+        ptime: float
+           processing time
+        status: int
+          status of the processing (1=ok, -1=no simu)
+
+        """
+        table_lc = Table()
+        # set metadata
+        table_lc.meta = self.metadata(
+            ra, dec, pix, area, season, ptime, status)
+        return table_lc
+
+    def metadata(self, ra, dec, pix, area, season, ptime, status):
         """
         Method to fill metadata
 
@@ -443,6 +512,8 @@ class SN(SN_Object):
            season number
         ptime: float
            processing time
+        status: int
+          status of the simulation (1=ok, -1=not ok)
 
         Returns
         -----------
@@ -457,6 +528,6 @@ class SN(SN_Object):
                     self.sn_parameters['daymax'], self.gen_parameters['epsilon_daymax'],
                     self.sn_parameters['z'], area,
                     pix['healpixID'], pix['pixRA'], pix['pixDec'],
-                    season, self.dL, ptime]
+                    season, self.dL, ptime, status]
 
         return dict(zip(self.names_meta, val_meta))
