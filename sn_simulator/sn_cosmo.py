@@ -244,7 +244,7 @@ class SN(SN_Object):
 
         lcdf = pd.DataFrame(obs[outvals])
 
-        print('ici', lcdf)
+        print('ici', lcdf[self.mjdCol], self.sn_parameters['daymax'])
         nvals = range(len(lcdf))
         if len(lcdf) == 0:
             ptime = ti.finish(time.time())['ptime'].item()
@@ -270,7 +270,7 @@ class SN(SN_Object):
         # Get the fluxes (vs wavelength) for each obs
         fluxes = 10.*self.SN.flux(obs[self.mjdCol], self.wave)
 
-        # print('after fluxes', time.time()-time_ref, fluxes.shape, len(obs))
+        print('after fluxes', fluxes, len(obs))
         ti(time.time(), 'fluxes')
 
         wavelength = self.wave/10.
@@ -289,6 +289,8 @@ class SN(SN_Object):
         int_fluxes = np.asarray(
             [seds[i].calcFlux(bandpass=transes[i]) for i in nvals])
 
+        int_fluxes[int_fluxes < 0.] = 1.e-5
+        print(int_fluxes)
         lcdf['flux'] = int_fluxes
 
         # print('after fluxes again ', time.time()-time_ref, int_fluxes)
@@ -296,7 +298,7 @@ class SN(SN_Object):
 
         #
         # idx = int_fluxes > 0
-        int_fluxes[int_fluxes < 0.] = 1.e-5
+
         """
         int_fluxes = int_fluxes[idx]
         transes = transes[idx]
@@ -304,8 +306,8 @@ class SN(SN_Object):
         """
 
         # select only positive fluxes
-        idf = lcdf['flux'] > 0
-        lcdf = lcdf[idf]
+        #idf = lcdf['flux'] > 0
+        #lcdf = lcdf[idf]
 
         nvals = range(len(lcdf))
         if len(lcdf) == 0:
@@ -332,7 +334,7 @@ class SN(SN_Object):
         photParams = [PhotometricParameters(
             nexp=vv[self.exptimeCol]) for index, vv in lcdf.iterrows()]
         """
-
+        lcdf = lcdf.round({'mag': 4})
         calc = [SignalToNoise.calcSNR_m5(
             lcdf.iloc[i]['mag'], transes[i], lcdf.iloc[i][self.m5Col],
             photParams[i]) for i in nvals]
@@ -359,7 +361,7 @@ class SN(SN_Object):
         lcdf = lcdf.groupby([self.filterCol]).apply(
             lambda x: self.gammaint(x)).reset_index()
 
-        lcdf['gamma_interp'] = gamms
+        #lcdf['gamma_interp'] = gamms
         #print('interp', lcdf['gamma_interp'])
         lcdf['snr_interp'] = 1./srand(
             lcdf['gamma_interp'].values, lcdf['mag'], lcdf[self.m5Col])
@@ -370,6 +372,8 @@ class SN(SN_Object):
             lcdf['mag'].values, lcdf[self.filterCol].values, lcdf[self.exptimeCol]/lcdf[self.nexpCol], lcdf[self.nexpCol])[:, 1]
 
         e_per_sec = lcdf['flux_e_sec'].values
+
+        print(lcdf[['mag', 'flux_e_sec', 'flux_e_sec_int']])
 
         ti(time.time(), 'all estimates')
 
@@ -384,56 +388,10 @@ class SN(SN_Object):
         print('lcdf columns', lcdf.columns)
         print(lcdf)
 
-        """
-        # output table
-        table_lc = Table()
-        # Fill the astopy table
-        table_lc.add_column(Column(int_fluxes, name='flux'))
-        table_lc.add_column(Column(int_fluxes/snr_m5, name='fluxerr'))
-        table_lc.add_column(Column(snr_m5, name='snr_m5'))
-        table_lc.add_column(Column(gamma, name='gamma'))
-        table_lc.add_column(Column(obs[self.m5Col], name='m5'))
-        if self.airmassCol in obs.dtype.names:
-            table_lc.add_column(
-                Column(obs[self.airmassCol], name=self.airmassCol))
-        if self.skyCol in obs.dtype.names:
-            table_lc.add_column(Column(obs[self.skyCol], name=self.skyCol))
-        if self.moonCol in obs.dtype.names:
-            table_lc.add_column(Column(obs[self.moonCol], name=self.moonCol))
-        table_lc.add_column(Column(obs[self.nexpCol], name=self.nexpCol))
-        table_lc.add_column(
-            Column(obs[self.seeingEffCol], name=self.seeingEffCol))
-        table_lc.add_column(
-            Column(obs[self.seeingGeomCol], name=self.seeingGeomCol))
-        table_lc.add_column(Column(e_per_sec, name='flux_e_sec'))
-        table_lc.add_column(Column(mag_SN, name='mag'))
-        table_lc.add_column(Column(exptime, name='exptime'))
-
-        table_lc.add_column(
-            Column((2.5/np.log(10.))/snr_m5, name='magerr'))
-        table_lc.add_column(
-            Column(['LSST::'+obs[self.filterCol][i][-1]
-                    for i in range(len(obs[self.filterCol]))], name='band',
-                   dtype=h5py.special_dtype(vlen=str)))
-        # table_lc.add_column(Column([obs['band'][i][-1]
-        # for i in range(len(obs['band']))], name='band'))
-        table_lc.add_column(Column([2.5*np.log10(3631)]*len(obs),
-                                   name='zp'))
-        table_lc.add_column(
-            Column(['ab']*len(obs), name='zpsys',
-                   dtype=h5py.special_dtype(vlen=str)))
-        table_lc.add_column(Column(obs[self.mjdCol], name='time'))
-        phases = (table_lc['time']-self.sn_parameters['daymax']
-                  )/(1.+self.sn_parameters['z'])
-        table_lc.add_column(Column(phases, name='phase'))
-
-        print('astropy cols', table_lc.columns)
-
-        print(test)
-        """
-
-        # print('boo', ti.finish(time.time()))
+        # get the processing time
         ptime = ti.finish(time.time())['ptime'].item()
+
+        # transform pandas df to astropy Table
         table_lc = Table.from_pandas(lcdf)
         # set metadata
         table_lc.meta = self.metadata(ra, dec, pix, area, season, ptime, 1)
@@ -461,9 +419,10 @@ class SN(SN_Object):
 
         """
         res = self.gamma[grp.name](
-            (grp[self.m5Col].values, grp[self.exptimeCol].values))
+            (grp[self.m5Col].values, grp[self.exptimeCol]/grp[self.nexpCol], grp[self.nexpCol]))
         grp.loc[:, 'gamma_interp'] = res
-        grp.loc[:, 'flux_e_sec_int'] = self.mag_to_flux[grp.name](grp['mag'])
+        grp.loc[:, 'flux_e_sec_int'] = self.mag_to_flux[grp.name](
+            (grp['mag'], grp[self.exptimeCol]/grp[self.nexpCol], grp[self.nexpCol]))
         return grp
 
     def nosim(self, ra, dec, pix, area, season, ptime, status):
