@@ -185,8 +185,15 @@ class SNSimulation(BaseMetric):
                 fname, gammaFile, self.telescope)
 
         else:
+            """
             self.gamma = LoadGamma(
                 'grizy', self.simu_config['Gamma File']).gamma
+            """
+            gammas = LoadGamma('grizy', 'gamma_test.hdf5')
+
+            self.gamma = gammas.gamma
+            self.mag_to_flux = gammas.mag_to_flux
+            """
             magtoflux = np.load('reference_files/Mag_to_Flux_SNCosmo.npy')
             self.mag_to_flux = {}
             for b in np.unique(magtoflux['band']):
@@ -194,6 +201,7 @@ class SNSimulation(BaseMetric):
                 sel = magtoflux[idx]
                 self.mag_to_flux[b] = interp1d(
                     sel['m5'], sel['flux_e'], bounds_error=False, fill_value=0.)
+            """
 
     def run(self, obs, slicePoint=None):
         """ LC simulations
@@ -284,6 +292,7 @@ class SNSimulation(BaseMetric):
         """
 
         gen_params = self.gen_par.Params(obs)
+
         if gen_params is None:
             return
 
