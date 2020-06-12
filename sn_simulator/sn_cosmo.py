@@ -235,7 +235,6 @@ class SN(SN_Object):
                 equatorialCoordinates=np.array(
                     [[ra], [dec]]))[0]
             self.SN.set(mwebv=ebvofMW)
-            print('iiiiiii', ebvofMW)
 
         # Get the fluxes (vs wavelength) for each obs
         fluxes = 10.*self.SN.flux(lcdf[self.mjdCol], self.wave)
