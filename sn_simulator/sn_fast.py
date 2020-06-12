@@ -40,6 +40,8 @@ class SN(SN_Object):
             fname, self.gammaFile, param.telescope)
         """
         self.reference_lc = reference_lc
+        self.gamma = gamma
+        self.mag_to_flux = mag_to_flux
         # blue and red cutoffs are taken into account in the reference files
 
         # SN parameters for Fisher matrix estimation

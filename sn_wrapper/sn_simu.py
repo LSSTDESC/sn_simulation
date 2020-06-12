@@ -168,6 +168,7 @@ class SNSimulation(BaseMetric):
         # load reference LC if simulator is sn_fast
         self.reference_lc = None
         self.gamma = None
+        self.mag_to_flux = None
 
         if 'sn_fast' in self.simu_config['name']:
             templateDir = self.simu_config['Template Dir']
@@ -185,23 +186,10 @@ class SNSimulation(BaseMetric):
                 fname, gammaFile, self.telescope)
 
         else:
-            """
-            self.gamma = LoadGamma(
-                'grizy', self.simu_config['Gamma File']).gamma
-            """
-            gammas = LoadGamma('grizy', 'gamma_test.hdf5')
+            gammas = LoadGamma('grizy',  self.simu_config['Gamma File'])
 
             self.gamma = gammas.gamma
             self.mag_to_flux = gammas.mag_to_flux
-            """
-            magtoflux = np.load('reference_files/Mag_to_Flux_SNCosmo.npy')
-            self.mag_to_flux = {}
-            for b in np.unique(magtoflux['band']):
-                idx = magtoflux['band'] == b
-                sel = magtoflux[idx]
-                self.mag_to_flux[b] = interp1d(
-                    sel['m5'], sel['flux_e'], bounds_error=False, fill_value=0.)
-            """
 
     def run(self, obs, slicePoint=None):
         """ LC simulations
@@ -471,7 +459,6 @@ class SNSimulation(BaseMetric):
         """ Copy metadata to disk
 
         """
-        print('metadata', self.sn_meta)
         if self.sn_meta:
             Table(self.sn_meta).write(
                 self.simu_out, 'summary', compression=True)

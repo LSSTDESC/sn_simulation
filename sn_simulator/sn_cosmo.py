@@ -119,7 +119,7 @@ class SN(SN_Object):
                             'observationId', param.RACol, param.DecCol]))
 
         # names for metadata
-        self.names_meta = ['SNID', 'RA', 'Dec',
+        self.names_meta = ['RA', 'Dec',
                            'x0', 'epsilon_x0',
                            'x1', 'epsilon_x1',
                            'color', 'epsilon_color',
@@ -148,7 +148,7 @@ class SN(SN_Object):
         -----------
         astropy table:
         metadata:
-          SNID: ID of the supernova(int)
+          ##SNID: ID of the supernova(int)
           RA: SN RA(float)
           Dec: SN Dec(float)
           daymax: day of the max luminosity(float)
@@ -271,6 +271,8 @@ class SN(SN_Object):
 
         #ti(time.time(), 'mags')
 
+        # SNR and flux in pe.sec estimations
+
         if self.snr_fluxsec == 'all' or self.snr_fluxsec == 'lsstsim':
             lcdf = self.calcSNR_Flux(lcdf, transes)
 
@@ -302,7 +304,7 @@ class SN(SN_Object):
 
         # rename some of the columns
         lcdf = lcdf.rename(
-            columns={self.mjdCol: 'time', self.filterCol: 'band', self.m5Col: 'm5'})
+            columns={self.mjdCol: 'time', self.filterCol: 'band', self.m5Col: 'm5', self.exptimeCol: 'exptime'})
         lcdf['band'] = 'LSST::'+lcdf['band']
 
         # remove rows with mag_inf values
@@ -455,7 +457,7 @@ class SN(SN_Object):
 
         """
 
-        val_meta = [self.SNID, ra, dec,
+        val_meta = [ra, dec,
                     self.X0, self.gen_parameters['epsilon_x0'],
                     self.sn_parameters['x1'], self.gen_parameters['epsilon_x1'],
                     self.sn_parameters['color'], self.gen_parameters['epsilon_color'],
