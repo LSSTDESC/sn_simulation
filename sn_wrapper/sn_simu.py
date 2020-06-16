@@ -337,14 +337,19 @@ class SNSimulation(BaseMetric):
         """
         # save LC on disk
 
-        index_hdf5 = '{}_{}_{}_{}_{}_{}'.format(lc.meta['healpixID'],
-                                                lc.meta['x1'],
-                                                lc.meta['color'],
-                                                np.round(
-                                                    lc.meta['z'], 2),
-                                                np.round(
-                                                    lc.meta['daymax'], 1),
-                                                season)
+        epsilon = np.int(1000*1.e8*lc.meta['epsilon_x0'])
+        epsilon += np.int(100*1.e8*lc.meta['epsilon_x1'])
+        epsilon += np.int(10*1.e8*lc.meta['epsilon_color'])
+        epsilon += np.int(1*1.e8*lc.meta['epsilon_daymax'])
+
+        index_hdf5 = '{}_{}_{}_{}_{}_{}_{}'.format(lc.meta['healpixID'],
+                                                   lc.meta['x1'],
+                                                   lc.meta['color'],
+                                                   np.round(
+            lc.meta['z'], 2),
+            np.round(
+            lc.meta['daymax'], 1),
+            season, epsilon)
         lc.write(self.lc_out,
                  path='lc_{}'.format(index_hdf5),
                  append=True,
