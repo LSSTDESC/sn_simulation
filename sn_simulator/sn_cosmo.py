@@ -237,7 +237,7 @@ class SN(SN_Object):
             self.SN.set(mwebv=ebvofMW)
 
         # Get the fluxes (vs wavelength) for each obs
-        fluxes = 10.*self.SN.flux(lcdf[self.mjdCol], self.wave)
+        fluxes = 10.*self.SN.flux(obs[self.mjdCol], self.wave)
 
         #ti(time.time(), 'fluxes')
 
@@ -252,13 +252,13 @@ class SN(SN_Object):
         # Arrays of SED, transmissions to estimate integrated fluxes
         seds = [Sed(wavelen=SED_time.wavelen[i], flambda=SED_time.flambda[i])
                 for i in nvals]
-        transes = np.asarray([self.telescope.atmosphere[lcdf.loc[i][self.filterCol]]
+        transes = np.asarray([self.telescope.atmosphere[obs[self.filterCol][i]]
                               for i in nvals])
         int_fluxes = np.asarray(
             [seds[i].calcFlux(bandpass=transes[i]) for i in nvals])
 
         # negative fluxes are a pb for mag estimate -> set neg flux to nearly nothing
-        int_fluxes[int_fluxes < 0.] = 1.e-5
+        int_fluxes[int_fluxes < 0.] = 1.e-10
         lcdf['flux'] = int_fluxes
 
         #ti(time.time(), 'fluxes_b')
@@ -308,9 +308,10 @@ class SN(SN_Object):
         lcdf['band'] = 'LSST::'+lcdf['band']
 
         # remove rows with mag_inf values
+        """
         idf = lcdf['mag'] < self.mag_inf
         lcdf = lcdf[idf]
-
+        """
         if len(lcdf) == 0:
             return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1)]
 
