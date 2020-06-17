@@ -4,6 +4,7 @@ import time
 import pandas as pd
 from sn_tools.sn_calcFast import LCfast
 from sn_wrapper.sn_object import SN_Object
+from sn_tools.sn_utils import SNTimer
 
 
 class SN(SN_Object):
@@ -87,10 +88,19 @@ class SN(SN_Object):
         pixID = np.unique(obs['healpixID']).item()
         dL = -1
 
-        self.premeta.update(dict(zip(['RA', 'Dec', 'pixRA', 'pixDec', 'healpixID', 'dL'],
-                                     [RA, Dec, pixRA, pixDec, pixID, dL])))
+        # start timer
+        ti = SNTimer(time.time())
+        # Are there observations with the filters?
+        goodFilters = np.in1d(obs[self.filterCol],
+                              np.array([b for b in 'grizy']))
+
+        if len(obs[goodFilters]) == 0:
+            return [self.nosim(ra, dec, pixRA, pixDec, pixID, season, ti, -1)]
 
         tab_tot = self.lcFast(obs, self.gen_parameters)
+        ptime = ti.finish(time.time())['ptime'].item()
+        self.premeta.update(dict(zip(['RA', 'Dec', 'pixRA', 'pixDec', 'healpixID', 'dL', 'ptime', 'status'],
+                                     [RA, Dec, pixRA, pixDec, pixID, dL, ptime, 1])))
 
         list_tables = self.transform(tab_tot)
 
@@ -98,7 +108,7 @@ class SN(SN_Object):
 
     def transform(self, tab):
         """
-        Method to transform a pandas df to a set of astropytables with metedata
+        Method to transform a pandas df to a set of astropytables with metadata
 
         Parameters
         ---------------
@@ -121,3 +131,34 @@ class SN(SN_Object):
             tab_tot.append(newtab)
 
         return tab_tot
+
+    def nosim(self, RA, Dec, pixRA, pixDec, healpixID, season, ti, status):
+        """
+        Method to construct an empty table when no simulation was not possible
+
+        Parameters
+        ---------------
+        ra: float
+          SN RA
+        dec: float
+          SN Dec
+        pixRA: float
+          pixel RA
+        pixDec: float
+          pixel Dec
+        pixID: int
+          healpixID
+        season: int
+          season of interest
+        ptime: float
+           processing time
+        status: int
+          status of the processing (1=ok, -1=no simu)
+
+        """
+        ptime = ti.finish(time.time())['ptime'].item()
+        table_lc = Table()
+        # set metadata
+        table_lc.meta = self.metadata(
+            ra, dec, pix, area, season, ptime, snr_fluxsec, status)
+        return table_lc
