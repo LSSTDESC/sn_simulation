@@ -400,7 +400,7 @@ class SN(SN_Object):
 
     def nosim(self, ra, dec, pix, area, season, ti, snr_fluxsec, status):
         """
-        Method to construct an empty table when no simulation was possible
+        Method to construct an empty table when no simulation was not possible
 
         Parameters
         ---------------
