@@ -126,7 +126,7 @@ class SN(SN_Object):
                            'daymax', 'epsilon_daymax',
                            'z', 'survey_area',
                            'healpixID', 'pixRA', 'pixDec',
-                           'season', 'dL', 'ptime', 'snr_fluxsec_meth', 'status']
+                           'season', 'dL', 'ptime', 'snr_fluxsec_meth', 'status', 'dust', 'ebvofMW']
 
         self.mag_inf = 100.  # mag values to replace infs
 
@@ -195,6 +195,17 @@ class SN(SN_Object):
             else:
                 pix[vv] = np.mean(obs[self.defname[vv]])
 
+        dust = self.sn_parameters['dust']
+        ebvofMW = self.sn_parameters['ebvofMW']
+        # apply dust here since Ra, Dec is known
+
+        if dust:
+            if ebvofMW < 0.:
+                ebvofMW = self.lsstmwebv.calculateEbv(
+                    equatorialCoordinates=np.array(
+                        [[ra], [dec]]))[0]
+            self.SN.set(mwebv=ebvofMW)
+
         # start timer
         ti = SNTimer(time.time())
 
@@ -203,7 +214,7 @@ class SN(SN_Object):
                               np.array([b for b in 'grizy']))
 
         if len(obs[goodFilters]) == 0:
-            return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1)]
+            return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1, dust, ebvofMW)]
 
         # Select obs depending on min and max phases
         # blue and red cutoffs applied
@@ -215,7 +226,7 @@ class SN(SN_Object):
                           self.sn_parameters['red_cutoff'])
 
         if len(obs) == 0:
-            return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1)]
+            return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1, dust, ebvofMW)]
 
         # Sort data according to mjd
         obs.sort(order=self.mjdCol)
@@ -228,13 +239,6 @@ class SN(SN_Object):
                 outvals.append(bb)
 
         lcdf = pd.DataFrame(obs[outvals])
-
-        # apply dust here since Ra, Dec is known
-        if self.sn_parameters['dust']:
-            ebvofMW = self.lsstmwebv.calculateEbv(
-                equatorialCoordinates=np.array(
-                    [[ra], [dec]]))[0]
-            self.SN.set(mwebv=ebvofMW)
 
         # Get the fluxes (vs wavelength) for each obs
         fluxes = 10.*self.SN.flux(obs[self.mjdCol], self.wave)
@@ -313,7 +317,7 @@ class SN(SN_Object):
         lcdf = lcdf[idf]
         """
         if len(lcdf) == 0:
-            return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1)]
+            return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1, dust, ebvofMW)]
 
         # get the processing time
         ptime = ti.finish(time.time())['ptime'].item()
@@ -322,7 +326,7 @@ class SN(SN_Object):
         table_lc = Table.from_pandas(lcdf)
         # set metadata
         table_lc.meta = self.metadata(
-            ra, dec, pix, area, season, ptime, self.snr_fluxsec, 1)
+            ra, dec, pix, area, season, ptime, self.snr_fluxsec, 1, dust, ebvofMW)
 
         # if the user chooses to display the results...
         if display:
@@ -426,10 +430,10 @@ class SN(SN_Object):
         table_lc = Table()
         # set metadata
         table_lc.meta = self.metadata(
-            ra, dec, pix, area, season, ptime, snr_fluxsec, status)
+            ra, dec, pix, area, season, ptime, snr_fluxsec, status, dust, ebvofMW)
         return table_lc
 
-    def metadata(self, ra, dec, pix, area, season, ptime, snr_fluxsec, status):
+    def metadata(self, ra, dec, pix, area, season, ptime, snr_fluxsec, status, dust, ebvofMW):
         """
         Method to fill metadata
 
@@ -465,6 +469,6 @@ class SN(SN_Object):
                     self.sn_parameters['daymax'], self.gen_parameters['epsilon_daymax'],
                     self.sn_parameters['z'], area,
                     pix['healpixID'], pix['pixRA'], pix['pixDec'],
-                    season, self.dL, ptime, snr_fluxsec, status]
+                    season, self.dL, ptime, snr_fluxsec, status, dust, ebvofMW]
 
         return dict(zip(self.names_meta, val_meta))
