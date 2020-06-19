@@ -2,7 +2,7 @@ import numpy as np
 from astropy.table import Table
 import time
 import pandas as pd
-from sn_tools.sn_calcFast import LCfast
+from sn_tools.sn_calcFast import LCfast, srand
 from sn_wrapper.sn_object import SN_Object
 from sn_tools.sn_utils import SNTimer
 
@@ -20,7 +20,7 @@ class SN(SN_Object):
 
     """
 
-    def __init__(self, param, simu_param, reference_lc=None, gamma=None, mag_to_flux=None):
+    def __init__(self, param, simu_param, reference_lc=None, gamma=None, mag_to_flux=None, dustcorr=None, snr_fluxsec=''):
         super().__init__(param.name, param.sn_parameters, param.gen_parameters,
                          param.cosmology, param.telescope, param.SNID, param.area, param.x0_grid,
                          param.salt2Dir,
@@ -43,6 +43,7 @@ class SN(SN_Object):
         self.reference_lc = reference_lc
         self.gamma = gamma
         self.mag_to_flux = mag_to_flux
+        self.dustcorr = dustcorr
         # blue and red cutoffs are taken into account in the reference files
 
         # SN parameters for Fisher matrix estimation
@@ -98,10 +99,22 @@ class SN(SN_Object):
             return [self.nosim(ra, dec, pixRA, pixDec, pixID, season, ti, -1)]
 
         tab_tot = self.lcFast(obs, self.gen_parameters)
+
+        # apply dust correction here
+        tab_tot = self.dust_corrections(tab_tot)
+
         ptime = ti.finish(time.time())['ptime'].item()
         self.premeta.update(dict(zip(['RA', 'Dec', 'pixRA', 'pixDec', 'healpixID', 'dL', 'ptime', 'status'],
                                      [RA, Dec, pixRA, pixDec, pixID, dL, ptime, 1])))
 
+        """
+        ii = tab_tot['band'] == 'LSST::z'
+
+        sel = tab_tot[ii]
+        for io, row in sel.iterrows():
+            print(row[['phase', 'z', 'band', 'flux',
+                       'old_flux', 'fluxerr', 'old_fluxerr']].values)
+        """
         list_tables = self.transform(tab_tot)
 
         return list_tables
@@ -153,7 +166,7 @@ class SN(SN_Object):
         ptime: float
            processing time
         status: int
-          status of the processing (1=ok, -1=no simu)
+          status of the processing(1=ok, -1=no simu)
 
         """
         ptime = ti.finish(time.time())['ptime'].item()
@@ -162,3 +175,83 @@ class SN(SN_Object):
         table_lc.meta = self.metadata(
             ra, dec, pix, area, season, ptime, snr_fluxsec, status)
         return table_lc
+
+    def dust_corrections(self, tab):
+        """
+        Method to apply dust corrections on flux and related data
+
+        Parameters
+        ---------------
+        tab: astropy Table
+          LC points to apply dust corrections on
+
+        Returns
+        -----------
+        tab: astropy Table
+          LC points with dust corrections applied
+        """
+
+        ebvofMW = self.sn_parameters['ebvofMW']
+
+        if np.abs(ebvofMW) < 1.e-5:
+            return tab
+
+        tab['ebvofMW'] = ebvofMW
+
+        """
+        for vv in ['F_x0x0', 'F_x0x1', 'F_x0daymax', 'F_x0color', 'F_x1x1',
+                   'F_x1daymax', 'F_x1color', 'F_daymaxdaymax', 'F_daymaxcolor',
+                   'F_colorcolor']:
+            tab[vv] *= tab['fluxerr']**2
+        """
+        #test = pd.DataFrame(tab)
+
+        tab = tab.groupby(['band']).apply(
+            lambda x: self.corrFlux(x)).reset_index()
+
+        # mag correction - after flux correction
+        tab['mag'] = -2.5 * np.log10(tab['flux'] / 3631.0)
+        # snr_m5 correction
+        tab['snr_m5'] = 1./srand(tab['gamma'], tab['mag'], tab['m5'])
+        tab['magerr'] = (2.5/np.log(10.))/tab['snr_m5']
+        tab['fluxerr'] = tab['flux']/tab['snr_m5']
+
+        #tab['old_flux'] = test['flux']
+        #tab['old_fluxerr'] = test['fluxerr']
+
+        # print(toat)
+
+        """
+        for vv in ['F_x0x0', 'F_x0x1', 'F_x0daymax', 'F_x0color', 'F_x1x1',
+                   'F_x1daymax', 'F_x1color', 'F_daymaxdaymax', 'F_daymaxcolor',
+                   'F_colorcolor']:
+            tab[vv] /= tab['fluxerr']**2
+        """
+        return tab
+
+    def corrFlux(self, grp):
+        """
+        Method to correct flux and Fisher matrix elements for dust
+
+        Parameters
+        ---------------
+        grp: pandas group
+           data to process
+
+        Returns
+        ----------
+        pandas grp with corrected values
+
+        """
+
+        corrdust = self.dustcorr[grp.name.split(':')[-1]](
+            (grp['phase'], grp['z'], grp['ebvofMW']))
+
+        for vv in ['flux', 'flux_e_sec']:
+            grp[vv] *= corrdust
+        for vv in ['F_x0x0', 'F_x0x1', 'F_x0daymax', 'F_x0color', 'F_x1x1',
+                   'F_x1daymax', 'F_x1color', 'F_daymaxdaymax', 'F_daymaxcolor',
+                   'F_colorcolor']:
+            grp[vv] *= corrdust*corrdust
+
+        return grp

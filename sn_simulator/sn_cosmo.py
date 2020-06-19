@@ -16,7 +16,7 @@ import operator
 
 
 class SN(SN_Object):
-    def __init__(self, param, simu_param, reference_lc=None, gamma=None, mag_to_flux=None, snr_fluxsec='interp'):
+    def __init__(self, param, simu_param, reference_lc=None, gamma=None, mag_to_flux=None, dustcorr=None, snr_fluxsec='interp'):
         super().__init__(param.name, param.sn_parameters, param.gen_parameters,
                          param.cosmology, param.telescope, param.SNID, param.area, param.x0_grid,
                          mjdCol=param.mjdCol, RACol=param.RACol, DecCol=param.DecCol,
@@ -79,13 +79,14 @@ class SN(SN_Object):
 
         self.lsstmwebv = EBV.EBVbase()
 
-        if self.sn_parameters['dust']:
-            self.SN = sncosmo.Model(source=source,
-                                    effects=[self.dustmap, self.dustmap],
-                                    effect_names=['host', 'mw'],
-                                    effect_frames=['rest', 'obs'])
+        self.SN = sncosmo.Model(source=source,
+                                effects=[self.dustmap, self.dustmap],
+                                effect_names=['host', 'mw'],
+                                effect_frames=['rest', 'obs'])
+        """
         else:
             self.SN = sncosmo.Model(source=source)
+        """
         self.SN.set(z=self.sn_parameters['z'])
         self.SN.set(t0=self.sn_parameters['daymax'] +
                     self.gen_parameters['epsilon_daymax'])
@@ -126,7 +127,7 @@ class SN(SN_Object):
                            'daymax', 'epsilon_daymax',
                            'z', 'survey_area',
                            'healpixID', 'pixRA', 'pixDec',
-                           'season', 'dL', 'ptime', 'snr_fluxsec_meth', 'status', 'dust', 'ebvofMW']
+                           'season', 'dL', 'ptime', 'snr_fluxsec_meth', 'status', 'ebvofMW']
 
         self.mag_inf = 100.  # mag values to replace infs
 
@@ -195,16 +196,15 @@ class SN(SN_Object):
             else:
                 pix[vv] = np.mean(obs[self.defname[vv]])
 
-        dust = self.sn_parameters['dust']
         ebvofMW = self.sn_parameters['ebvofMW']
         # apply dust here since Ra, Dec is known
 
-        if dust:
-            if ebvofMW < 0.:
-                ebvofMW = self.lsstmwebv.calculateEbv(
-                    equatorialCoordinates=np.array(
-                        [[ra], [dec]]))[0]
-            self.SN.set(mwebv=ebvofMW)
+        if ebvofMW < 0.:
+            ebvofMW = self.lsstmwebv.calculateEbv(
+                equatorialCoordinates=np.array(
+                    [[ra], [dec]]))[0]
+
+        self.SN.set(mwebv=ebvofMW)
 
         # start timer
         ti = SNTimer(time.time())
@@ -214,7 +214,7 @@ class SN(SN_Object):
                               np.array([b for b in 'grizy']))
 
         if len(obs[goodFilters]) == 0:
-            return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1, dust, ebvofMW)]
+            return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1, ebvofMW)]
 
         # Select obs depending on min and max phases
         # blue and red cutoffs applied
@@ -226,7 +226,7 @@ class SN(SN_Object):
                           self.sn_parameters['red_cutoff'])
 
         if len(obs) == 0:
-            return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1, dust, ebvofMW)]
+            return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1, ebvofMW)]
 
         # Sort data according to mjd
         obs.sort(order=self.mjdCol)
@@ -317,7 +317,7 @@ class SN(SN_Object):
         lcdf = lcdf[idf]
         """
         if len(lcdf) == 0:
-            return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1, dust, ebvofMW)]
+            return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1, ebvofMW)]
 
         # get the processing time
         ptime = ti.finish(time.time())['ptime'].item()
@@ -326,7 +326,7 @@ class SN(SN_Object):
         table_lc = Table.from_pandas(lcdf)
         # set metadata
         table_lc.meta = self.metadata(
-            ra, dec, pix, area, season, ptime, self.snr_fluxsec, 1, dust, ebvofMW)
+            ra, dec, pix, area, season, ptime, self.snr_fluxsec, 1, ebvofMW)
 
         # if the user chooses to display the results...
         if display:
@@ -430,10 +430,10 @@ class SN(SN_Object):
         table_lc = Table()
         # set metadata
         table_lc.meta = self.metadata(
-            ra, dec, pix, area, season, ptime, snr_fluxsec, status, dust, ebvofMW)
+            ra, dec, pix, area, season, ptime, snr_fluxsec, status, ebvofMW)
         return table_lc
 
-    def metadata(self, ra, dec, pix, area, season, ptime, snr_fluxsec, status, dust, ebvofMW):
+    def metadata(self, ra, dec, pix, area, season, ptime, snr_fluxsec, status, ebvofMW):
         """
         Method to fill metadata
 
@@ -469,6 +469,6 @@ class SN(SN_Object):
                     self.sn_parameters['daymax'], self.gen_parameters['epsilon_daymax'],
                     self.sn_parameters['z'], area,
                     pix['healpixID'], pix['pixRA'], pix['pixDec'],
-                    season, self.dL, ptime, snr_fluxsec, status, dust, ebvofMW]
+                    season, self.dL, ptime, snr_fluxsec, status, ebvofMW]
 
         return dict(zip(self.names_meta, val_meta))

@@ -13,7 +13,7 @@ from sn_tools.sn_telescope import Telescope
 from sn_wrapper.sn_object import SN_Object
 from sn_tools.sn_utils import SimuParameters
 from sn_tools.sn_obs import season as seasoncalc
-from sn_tools.sn_utils import GetReference, LoadGamma
+from sn_tools.sn_utils import GetReference, LoadGamma, LoadDust
 from scipy.interpolate import interp1d
 
 
@@ -169,10 +169,12 @@ class SNSimulation(BaseMetric):
         self.reference_lc = None
         self.gamma = None
         self.mag_to_flux = None
-
+        self.dustcorr = None
+        web_path = config['Web path']
         if 'sn_fast' in self.simu_config['name']:
             templateDir = self.simu_config['Template Dir']
             gammaFile = self.simu_config['Gamma File']
+            dustDir = self.simu_config['DustCorr Dir']
 
             # x1 and color are unique for this simulator
             x1 = self.sn_parameters['x1']['min']
@@ -184,6 +186,9 @@ class SNSimulation(BaseMetric):
 
             self.reference_lc = GetReference(
                 fname, gammaFile, self.telescope)
+
+            dustFile = 'Dust_{}_{}.hdf5'.format(x1, color)
+            self.dustcorr = LoadDust(dustDir, dustFile, web_path).dustcorr
 
         else:
             gammas = LoadGamma('grizy',  self.simu_config['Gamma File'])
@@ -454,7 +459,7 @@ class SNSimulation(BaseMetric):
 
         module = import_module(self.simu_config['name'])
         simu = module.SN(sn_object, self.simu_config,
-                         self.reference_lc, self.gamma, self.mag_to_flux)
+                         self.reference_lc, self.gamma, self.mag_to_flux, self.dustcorr)
         # simulation - this is supposed to be a list of astropytables
         lc_table = simu(obs, self.display_lc, self.time_display)
 
