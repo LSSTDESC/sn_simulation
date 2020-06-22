@@ -5,6 +5,9 @@ import pandas as pd
 from sn_tools.sn_calcFast import LCfast, srand
 from sn_wrapper.sn_object import SN_Object
 from sn_tools.sn_utils import SNTimer
+from sn_tools.sn_io import dustmaps
+from astropy.coordinates import SkyCoord
+from dustmaps.sfd import SFDQuery
 
 
 class SN(SN_Object):
@@ -101,7 +104,7 @@ class SN(SN_Object):
         tab_tot = self.lcFast(obs, self.gen_parameters)
 
         # apply dust correction here
-        tab_tot = self.dust_corrections(tab_tot)
+        tab_tot = self.dust_corrections(tab_tot, pixRA, pixDec)
 
         ptime = ti.finish(time.time())['ptime'].item()
         self.premeta.update(dict(zip(['RA', 'Dec', 'pixRA', 'pixDec', 'healpixID', 'dL', 'ptime', 'status'],
@@ -176,7 +179,7 @@ class SN(SN_Object):
             ra, dec, pix, area, season, ptime, snr_fluxsec, status)
         return table_lc
 
-    def dust_corrections(self, tab):
+    def dust_corrections(self, tab, pixRA, pixDec):
         """
         Method to apply dust corrections on flux and related data
 
@@ -184,7 +187,10 @@ class SN(SN_Object):
         ---------------
         tab: astropy Table
           LC points to apply dust corrections on
-
+        pixRA: float
+           pixel RA
+        pixDec: float
+           pixel Dec
         Returns
         -----------
         tab: astropy Table
@@ -193,6 +199,17 @@ class SN(SN_Object):
 
         ebvofMW = self.sn_parameters['ebvofMW']
 
+        if ebvofMW < 0.:
+            # in that case ebvofMW value is taken from a map
+            coords = SkyCoord(pixRA, pixDec, unit='deg')
+            try:
+                sfd = SFDQuery()
+            except Exception as err:
+                dustmaps('dustmaps')
+            sfd = SFDQuery()
+            ebvofMW = sfd(coords)
+
+        # no dust correction here
         if np.abs(ebvofMW) < 1.e-5:
             return tab
 
@@ -204,7 +221,7 @@ class SN(SN_Object):
                    'F_colorcolor']:
             tab[vv] *= tab['fluxerr']**2
         """
-        #test = pd.DataFrame(tab)
+        # test = pd.DataFrame(tab)
 
         tab = tab.groupby(['band']).apply(
             lambda x: self.corrFlux(x)).reset_index()
@@ -216,8 +233,8 @@ class SN(SN_Object):
         tab['magerr'] = (2.5/np.log(10.))/tab['snr_m5']
         tab['fluxerr'] = tab['flux']/tab['snr_m5']
 
-        #tab['old_flux'] = test['flux']
-        #tab['old_fluxerr'] = test['fluxerr']
+        # tab['old_flux'] = test['flux']
+        # tab['old_fluxerr'] = test['fluxerr']
 
         # print(toat)
 
