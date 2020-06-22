@@ -129,7 +129,8 @@ class SNSimulation(BaseMetric):
         self.gen_par = SimuParameters(self.sn_parameters, cosmo_par, mjdCol=self.mjdCol, area=self.area,
                                       min_rf_phase=self.sn_parameters['min_rf_phase_qual'],
                                       max_rf_phase=self.sn_parameters['max_rf_phase_qual'],
-                                      dirFiles=self.sn_parameters['x1_color']['dirFile'])
+                                      dirFiles=self.sn_parameters['x1_color']['dirFile'],
+                                      web_path=config['Web path'])
 
         # this is for output
 
@@ -173,6 +174,7 @@ class SNSimulation(BaseMetric):
         web_path = config['Web path']
         if 'sn_fast' in self.simu_config['name']:
             templateDir = self.simu_config['Template Dir']
+            gammaDir = self.simu_config['Gamma Dir']
             gammaFile = self.simu_config['Gamma File']
             dustDir = self.simu_config['DustCorr Dir']
 
@@ -181,17 +183,19 @@ class SNSimulation(BaseMetric):
             color = self.sn_parameters['color']['min']
 
             # Loading reference file
-            fname = '{}/LC_{}_{}_vstack.hdf5'.format(
-                templateDir, x1, color)
+            lcname = 'LC_{}_{}_vstack.hdf5'.format(x1, color)
 
-            self.reference_lc = GetReference(
-                fname, gammaFile, self.telescope)
+            self.reference_lc = GetReference(templateDir,
+                                             lcname, gammaDir, gammaFile, web_path, self.telescope)
 
             dustFile = 'Dust_{}_{}.hdf5'.format(x1, color)
             self.dustcorr = LoadDust(dustDir, dustFile, web_path).dustcorr
 
         else:
-            gammas = LoadGamma('grizy',  self.simu_config['Gamma File'])
+            gammas = LoadGamma(
+                'grizy',  self.simu_config['Gamma Dir'],
+                self.simu_config['Gamma File'],
+                config['Web path'], self.telescope)
 
             self.gamma = gammas.gamma
             self.mag_to_flux = gammas.mag_to_flux
