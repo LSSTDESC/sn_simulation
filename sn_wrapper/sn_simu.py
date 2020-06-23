@@ -181,9 +181,11 @@ class SNSimulation(BaseMetric):
             # x1 and color are unique for this simulator
             x1 = self.sn_parameters['x1']['min']
             color = self.sn_parameters['color']['min']
-
+            bluecutoff = self.sn_parameters['blue_cutoff']
+            redcutoff = self.sn_parameters['red_cutoff']
             # Loading reference file
-            lcname = 'LC_{}_{}_vstack.hdf5'.format(x1, color)
+            lcname = 'LC_{}_{}_{}_{}_ebvofMW_0.0_vstack.hdf5'.format(
+                x1, color, bluecutoff, redcutoff)
 
             self.reference_lc = GetReference(templateDir,
                                              lcname, gammaDir, gammaFile, web_path, self.telescope)
