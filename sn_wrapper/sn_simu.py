@@ -222,14 +222,16 @@ class SNSimulation(BaseMetric):
         else:
             seasons = self.season
 
+        time_ref = time.time()
         for seas in seasons:
             self.index_hdf5 += 10000*(seas-1)
-            time_ref = time.time()
+
             idxa = obs[self.seasonCol] == seas
             obs_season = obs[idxa]
             # remove the u band
             idx = [i for i, val in enumerate(
                 obs_season[self.filterCol]) if val[-1] != 'u']
+
             if len(obs_season[idx]) >= 5:
                 self.simuSeason(obs_season[idx], seas)
 
@@ -351,14 +353,28 @@ class SNSimulation(BaseMetric):
         epsilon += np.int(10*1.e8*lc.meta['epsilon_color'])
         epsilon += np.int(1*1.e8*lc.meta['epsilon_daymax'])
 
-        index_hdf5 = '{}_{}_{}_{}_{}_{}_{}'.format(lc.meta['healpixID'],
-                                                   lc.meta['x1'],
-                                                   lc.meta['color'],
-                                                   np.round(
-            lc.meta['z'], 2),
-            np.round(
-            lc.meta['daymax'], 1),
-            season, epsilon)
+        index_hdf5 = self.setIndex(lc.meta['healpixID'],
+                                   lc.meta['x1'],
+                                   lc.meta['color'],
+                                   np.round(lc.meta['z'], 2),
+                                   np.round(lc.meta['daymax'], 3),
+                                   season, epsilon)
+        """
+        if os.path.isfile(self.lc_out):
+            # check if the key exist
+            fFile = h5py.File(self.lc_out, 'r')
+            keys = list(fFile.keys())
+            fFile.close()
+            print(keys, index_hdf5)
+            if index_hdf5 in keys:
+                index_hdf5 = self.setIndex(lc.meta['healpixID'],
+                                           lc.meta['x1'],
+                                           lc.meta['color'],
+                                           np.round(lc.meta['z'], 2),
+                                           np.round(lc.meta['daymax'], 2),
+                                           season, epsilon)
+                print('new index', index_hdf5)
+        """
         lc.write(self.lc_out,
                  path='lc_{}'.format(index_hdf5),
                  append=True,
@@ -381,6 +397,16 @@ class SNSimulation(BaseMetric):
         else:
             for key in metadict.keys():
                 self.sn_meta[key].extend([metadict[key]])
+
+    def setIndex(self, healpixID, x1, color, z, daymax, season, epsilon):
+
+        index_hdf5 = '{}_{}_{}_{}_{}_{}_{}'.format(healpixID,
+                                                   x1,
+                                                   color,
+                                                   z,
+                                                   daymax, season, epsilon)
+
+        return index_hdf5
 
     def simuLoop(self, obs, season, gen_params, j, output_q):
         """

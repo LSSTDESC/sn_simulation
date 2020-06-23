@@ -87,8 +87,8 @@ class SN(SN_Object):
 
         RA = np.mean(obs[self.RACol])
         Dec = np.mean(obs[self.DecCol])
-        pixRA = np.unique(obs['pixRA']).item()
-        pixDec = np.unique(obs['pixDec']).item()
+        pixRA = np.mean(obs['pixRA'])
+        pixDec = np.mean(obs['pixDec'])
         pixID = np.unique(obs['healpixID']).item()
         dL = -1
 
