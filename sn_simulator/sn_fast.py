@@ -46,16 +46,20 @@ class SN(SN_Object):
         self.reference_lc = reference_lc
         self.gamma = gamma
         self.mag_to_flux = mag_to_flux
-        self.dustcorr = dustcorr
         # blue and red cutoffs are taken into account in the reference files
 
         # SN parameters for Fisher matrix estimation
         self.param_Fisher = ['x0', 'x1', 'color', 'daymax']
 
-        self.lcFast = LCfast(reference_lc, x1, color, param.telescope,
+        bluecutoff = self.sn_parameters['blue_cutoff']
+        redcutoff = self.sn_parameters['red_cutoff']
+        self.lcFast = LCfast(reference_lc, dustcorr, x1, color, param.telescope,
                              param.mjdCol, param.RACol, param.DecCol,
                              param.filterCol, param.exptimeCol,
-                             param.m5Col, param.seasonCol, lightOutput=False)
+                             param.m5Col, param.seasonCol,
+                             lightOutput=False,
+                             bluecutoff=bluecutoff,
+                             redcutoff=redcutoff)
 
         self.premeta = dict(zip(['x1', 'color', 'x0', ], [x1, color, -1.]))
         for vv in self.param_Fisher:
@@ -92,6 +96,18 @@ class SN(SN_Object):
         pixID = np.unique(obs['healpixID']).item()
         dL = -1
 
+        # get ebvofMW from dust maps
+        ebvofMW = self.sn_parameters['ebvofMW']
+        if ebvofMW < 0.:
+            # in that case ebvofMW value is taken from a map
+            coords = SkyCoord(pixRA, pixDec, unit='deg')
+            try:
+                sfd = SFDQuery()
+            except Exception as err:
+                dustmaps('dustmaps')
+            sfd = SFDQuery()
+            ebvofMW = sfd(coords)
+
         # start timer
         ti = SNTimer(time.time())
         # Are there observations with the filters?
@@ -101,11 +117,12 @@ class SN(SN_Object):
         if len(obs[goodFilters]) == 0:
             return [self.nosim(ra, dec, pixRA, pixDec, pixID, season, ti, -1)]
 
-        tab_tot = self.lcFast(obs, self.gen_parameters)
+        tab_tot = self.lcFast(obs, ebvofMW, self.gen_parameters)
 
+        """
         # apply dust correction here
         tab_tot = self.dust_corrections(tab_tot, pixRA, pixDec)
-
+        """
         ptime = ti.finish(time.time())['ptime'].item()
         self.premeta.update(dict(zip(['RA', 'Dec', 'pixRA', 'pixDec', 'healpixID', 'dL', 'ptime', 'status'],
                                      [RA, Dec, pixRA, pixDec, pixID, dL, ptime, 1])))
@@ -178,97 +195,3 @@ class SN(SN_Object):
         table_lc.meta = self.metadata(
             ra, dec, pix, area, season, ptime, snr_fluxsec, status)
         return table_lc
-
-    def dust_corrections(self, tab, pixRA, pixDec):
-        """
-        Method to apply dust corrections on flux and related data
-
-        Parameters
-        ---------------
-        tab: astropy Table
-          LC points to apply dust corrections on
-        pixRA: float
-           pixel RA
-        pixDec: float
-           pixel Dec
-        Returns
-        -----------
-        tab: astropy Table
-          LC points with dust corrections applied
-        """
-
-        ebvofMW = self.sn_parameters['ebvofMW']
-
-        if ebvofMW < 0.:
-            # in that case ebvofMW value is taken from a map
-            coords = SkyCoord(pixRA, pixDec, unit='deg')
-            try:
-                sfd = SFDQuery()
-            except Exception as err:
-                dustmaps('dustmaps')
-            sfd = SFDQuery()
-            ebvofMW = sfd(coords)
-
-        # no dust correction here
-        if np.abs(ebvofMW) < 1.e-5:
-            return tab
-
-        tab['ebvofMW'] = ebvofMW
-
-        """
-        for vv in ['F_x0x0', 'F_x0x1', 'F_x0daymax', 'F_x0color', 'F_x1x1',
-                   'F_x1daymax', 'F_x1color', 'F_daymaxdaymax', 'F_daymaxcolor',
-                   'F_colorcolor']:
-            tab[vv] *= tab['fluxerr']**2
-        """
-        # test = pd.DataFrame(tab)
-
-        tab = tab.groupby(['band']).apply(
-            lambda x: self.corrFlux(x)).reset_index()
-
-        # mag correction - after flux correction
-        tab['mag'] = -2.5 * np.log10(tab['flux'] / 3631.0)
-        # snr_m5 correction
-        tab['snr_m5'] = 1./srand(tab['gamma'], tab['mag'], tab['m5'])
-        tab['magerr'] = (2.5/np.log(10.))/tab['snr_m5']
-        tab['fluxerr'] = tab['flux']/tab['snr_m5']
-
-        # tab['old_flux'] = test['flux']
-        # tab['old_fluxerr'] = test['fluxerr']
-
-        # print(toat)
-
-        """
-        for vv in ['F_x0x0', 'F_x0x1', 'F_x0daymax', 'F_x0color', 'F_x1x1',
-                   'F_x1daymax', 'F_x1color', 'F_daymaxdaymax', 'F_daymaxcolor',
-                   'F_colorcolor']:
-            tab[vv] /= tab['fluxerr']**2
-        """
-        return tab
-
-    def corrFlux(self, grp):
-        """
-        Method to correct flux and Fisher matrix elements for dust
-
-        Parameters
-        ---------------
-        grp: pandas group
-           data to process
-
-        Returns
-        ----------
-        pandas grp with corrected values
-
-        """
-
-        corrdust = self.dustcorr[grp.name.split(':')[-1]](
-            (grp['phase'], grp['z'], grp['ebvofMW']))
-
-        for vv in ['flux', 'flux_e_sec']:
-            grp[vv] *= corrdust
-        for vv in ['F_x0x0', 'F_x0x1', 'F_x0daymax', 'F_x0color', 'F_x1x1',
-                   'F_x1daymax', 'F_x1color', 'F_daymaxdaymax', 'F_daymaxcolor',
-                   'F_colorcolor']:
-            grp[vv] *= corrdust*corrdust
-
-        return grp
