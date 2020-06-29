@@ -83,10 +83,7 @@ class SN(SN_Object):
                                 effects=[self.dustmap, self.dustmap],
                                 effect_names=['host', 'mw'],
                                 effect_frames=['rest', 'obs'])
-        """
-        else:
-            self.SN = sncosmo.Model(source=source)
-        """
+
         self.SN.set(z=self.sn_parameters['z'])
         self.SN.set(t0=self.sn_parameters['daymax'] +
                     self.gen_parameters['epsilon_daymax'])
@@ -218,6 +215,7 @@ class SN(SN_Object):
 
         # Select obs depending on min and max phases
         # blue and red cutoffs applied
+
         obs = self.cutoff(obs, self.sn_parameters['daymax'],
                           self.sn_parameters['z'],
                           self.sn_parameters['min_rf_phase'],
@@ -312,10 +310,10 @@ class SN(SN_Object):
         lcdf['band'] = 'LSST::'+lcdf['band']
 
         # remove rows with mag_inf values
-        """
+
         idf = lcdf['mag'] < self.mag_inf
         lcdf = lcdf[idf]
-        """
+
         if len(lcdf) == 0:
             return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1, ebvofMW)]
 
@@ -402,7 +400,7 @@ class SN(SN_Object):
 
         return grp
 
-    def nosim(self, ra, dec, pix, area, season, ti, snr_fluxsec, status):
+    def nosim(self, ra, dec, pix, area, season, ti, snr_fluxsec, status, ebvofMW):
         """
         Method to construct an empty table when no simulation was not possible
 
@@ -424,7 +422,8 @@ class SN(SN_Object):
           method used to estimate snr and flux in pe.s-1
         status: int
           status of the processing (1=ok, -1=no simu)
-
+        ebvofMW : float
+          E(B-V) of MW
         """
         ptime = ti.finish(time.time())['ptime'].item()
         table_lc = Table()
