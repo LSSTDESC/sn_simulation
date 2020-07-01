@@ -13,6 +13,7 @@ from sn_tools.sn_utils import SNTimer
 from sn_tools.sn_calcFast import srand
 import pandas as pd
 import operator
+from astropy import units as u
 
 
 class SN(SN_Object):
@@ -49,7 +50,7 @@ class SN(SN_Object):
           lsstsim: estimated from lsstsims tools
           interp: estimated from interpolation (default)
           all : estimated from the two above-mentioned methods
-          
+
         """
         model = simu_param['model']
         version = str(simu_param['version'])
@@ -128,6 +129,13 @@ class SN(SN_Object):
 
         self.mag_inf = 100.  # mag values to replace infs
 
+        # band registery in sncosmo
+        for band in 'grizy':
+            throughput = self.telescope.atmosphere[band]
+            bandcosmo = sncosmo.Bandpass(
+                throughput.wavelen, throughput.sb, name='LSST::'+band, wave_unit=u.nm)
+            sncosmo.registry.register(bandcosmo, force=True)
+
     def __call__(self, obs, display=False, time_display=0.):
         """ Simulation of the light curve
 
@@ -146,7 +154,7 @@ class SN(SN_Object):
         -----------
         astropy table:
         metadata:
-          ##SNID: ID of the supernova(int)
+          # SNID: ID of the supernova(int)
           RA: SN RA(float)
           Dec: SN Dec(float)
           daymax: day of the max luminosity(float)
@@ -238,32 +246,15 @@ class SN(SN_Object):
 
         lcdf = pd.DataFrame(obs[outvals])
 
-        # Get the fluxes (vs wavelength) for each obs
-        fluxes = 10.*self.SN.flux(obs[self.mjdCol], self.wave)
+        # print(self.fluxSED(lcdf))
 
-        #ti(time.time(), 'fluxes')
+        band_cosmo = '{}_cosmo'.format(self.filterCol)
+        lcdf[band_cosmo] = 'LSST::'+lcdf[self.filterCol]
+        lcdf['flux'] = self.SN.bandflux(
+            lcdf[band_cosmo], lcdf[self.mjdCol], zpsys='ab', zp=2.5*np.log10(3631))
 
-        wavelength = self.wave/10.
-
-        wavelength = np.repeat(wavelength[np.newaxis, :], len(fluxes), 0)
-        SED_time = Sed(wavelen=wavelength, flambda=fluxes)
-
-        fluxes = []
-        transes = []
-        nvals = range(len(SED_time.wavelen))
-        # Arrays of SED, transmissions to estimate integrated fluxes
-        seds = [Sed(wavelen=SED_time.wavelen[i], flambda=SED_time.flambda[i])
-                for i in nvals]
-        transes = np.asarray([self.telescope.atmosphere[obs[self.filterCol][i]]
-                              for i in nvals])
-        int_fluxes = np.asarray(
-            [seds[i].calcFlux(bandpass=transes[i]) for i in nvals])
-
-        # negative fluxes are a pb for mag estimate -> set neg flux to nearly nothing
-        int_fluxes[int_fluxes < 0.] = 1.e-10
-        lcdf['flux'] = int_fluxes
-
-        #ti(time.time(), 'fluxes_b')
+        lcdf['flux'] = lcdf['flux'].clip(lower=0.)
+        # ti(time.time(), 'fluxes_b')
 
         # magnitudes - integrated  fluxes are in Jy
         lcdf['mag'] = -2.5 * np.log10(lcdf['flux'] / 3631.0)
@@ -271,7 +262,7 @@ class SN(SN_Object):
         # if mag have inf values -> set to 50.
         lcdf['mag'] = lcdf['mag'].replace([np.inf, -np.inf], self.mag_inf)
 
-        #ti(time.time(), 'mags')
+        # ti(time.time(), 'mags')
 
         # SNR and flux in pe.sec estimations
 
@@ -294,7 +285,7 @@ class SN(SN_Object):
             lcdf[snrName] = 1./srand(
                 lcdf[gammaName].values, lcdf['mag'], lcdf[self.m5Col])
 
-        #ti(time.time(), 'estimate 1')
+        # ti(time.time(), 'estimate 1')
 
         # complete the LC
         lcdf['magerr'] = (2.5/np.log(10.))/lcdf['snr_m5']  # mag error
@@ -340,7 +331,7 @@ class SN(SN_Object):
 
         Parameters
         ---------------
-        df: pandas df 
+        df: pandas df
            data to process
         transm : array
            throughputs
@@ -383,7 +374,7 @@ class SN(SN_Object):
 
         Returns
         ----------
-        original group with two new cols: 
+        original group with two new cols:
           gamma: gamma values
           flux_e_sec: flux in pe.sec-1
         """
@@ -471,3 +462,46 @@ class SN(SN_Object):
                     season, self.dL, ptime, snr_fluxsec, status, ebvofMW]
 
         return dict(zip(self.names_meta, val_meta))
+
+    def fluxSED(self, obs):
+        """
+        Method to estimate the fluxes (in Jy) using
+        integration of the flux over bandwidth
+
+        Parameters
+        --------------
+        obs: array
+          observations to consider
+
+        Returns
+        ----------
+        int_fluxes: array
+         the fluxes
+
+        """
+
+        # Get the fluxes (vs wavelength) for each obs
+        fluxes = 10.*self.SN.flux(obs[self.mjdCol], self.wave)
+
+        # ti(time.time(), 'fluxes')
+
+        wavelength = self.wave/10.
+
+        wavelength = np.repeat(wavelength[np.newaxis, :], len(fluxes), 0)
+        SED_time = Sed(wavelen=wavelength, flambda=fluxes)
+
+        fluxes = []
+        transes = []
+        nvals = range(len(SED_time.wavelen))
+        # Arrays of SED, transmissions to estimate integrated fluxes
+        seds = [Sed(wavelen=SED_time.wavelen[i], flambda=SED_time.flambda[i])
+                for i in nvals]
+        transes = np.asarray([self.telescope.atmosphere[obs[self.filterCol][i]]
+                              for i in nvals])
+        int_fluxes = np.asarray(
+            [seds[i].calcFlux(bandpass=transes[i]) for i in nvals])
+
+        # negative fluxes are a pb for mag estimate -> set neg flux to nearly nothing
+        int_fluxes[int_fluxes < 0.] = 1.e-10
+
+        return int_fluxes
