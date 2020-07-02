@@ -103,13 +103,12 @@ class SN(SN_Object):
             coords = SkyCoord(pixRA, pixDec, unit='deg')
             try:
                 sfd = SFDQuery()
-             except Exception as err:
+            except Exception as err:
                 from dustmaps.config import config
                 config['data_dir'] = 'dustmaps'
                 import dustmaps.sfd
                 dustmaps.sfd.fetch()
-                
-                
+
             sfd = SFDQuery()
             ebvofMW = sfd(coords)
 
