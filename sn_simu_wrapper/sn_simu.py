@@ -10,7 +10,7 @@ import h5py
 from astropy.cosmology import w0waCDM
 from importlib import import_module
 from sn_tools.sn_telescope import Telescope
-from sn_wrapper.sn_object import SN_Object
+from sn_simu_wrapper.sn_object import SN_Object
 from sn_tools.sn_utils import SimuParameters
 from sn_tools.sn_obs import season as seasoncalc
 from sn_tools.sn_utils import GetReference, LoadGamma, LoadDust
@@ -190,7 +190,8 @@ class SNSimulation(BaseMetric):
             self.reference_lc = GetReference(templateDir,
                                              lcname, gammaDir, gammaFile, web_path, self.telescope)
 
-            dustFile = 'Dust_{}_{}.hdf5'.format(x1, color)
+            dustFile = 'Dust_{}_{}_{}_{}.hdf5'.format(
+                x1, color, bluecutoff, redcutoff)
             self.dustcorr = LoadDust(dustDir, dustFile, web_path).dustcorr
 
         else:

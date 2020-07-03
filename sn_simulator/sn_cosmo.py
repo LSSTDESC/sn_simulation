@@ -7,7 +7,7 @@ from astropy.table import Table, Column
 from lsst.sims.catUtils.dust import EBV
 from scipy.interpolate import griddata
 import h5py
-from sn_wrapper.sn_object import SN_Object
+from sn_simu_wrapper.sn_object import SN_Object
 import time
 from sn_tools.sn_utils import SNTimer
 from sn_tools.sn_calcFast import srand

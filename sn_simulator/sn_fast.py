@@ -3,7 +3,7 @@ from astropy.table import Table
 import time
 import pandas as pd
 from sn_tools.sn_calcFast import LCfast, srand
-from sn_wrapper.sn_object import SN_Object
+from sn_simu_wrapper.sn_object import SN_Object
 from sn_tools.sn_utils import SNTimer
 from sn_tools.sn_io import dustmaps
 from astropy.coordinates import SkyCoord
