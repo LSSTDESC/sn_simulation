@@ -253,7 +253,10 @@ class SN(SN_Object):
         lcdf['flux'] = self.SN.bandflux(
             lcdf[band_cosmo], lcdf[self.mjdCol], zpsys='ab', zp=2.5*np.log10(3631))
 
-        lcdf['flux'] = lcdf['flux'].clip(lower=0.)
+        #lcdf['flux'] = lcdf['flux'].clip(lower=1.e-30.)
+        
+        idx = lcdf['flux'] > 0.
+        lcdf = lcdf[idx]
         # ti(time.time(), 'fluxes_b')
 
         # magnitudes - integrated  fluxes are in Jy
