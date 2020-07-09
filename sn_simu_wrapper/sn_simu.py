@@ -63,6 +63,8 @@ class SNSimulation(BaseMetric):
                  filterCol='filter', m5Col='fiveSigmaDepth', exptimeCol='visitExposureTime',
                  nightCol='night', obsidCol='observationId', nexpCol='numExposures',
                  vistimeCol='visitTime', seeingEffCol='seeingFwhmEff',
+                 airmassCol='airmass',
+                 skyCol='sky', moonCol='moonPhase',
                  seeingGeomCol='seeingFwhmGeom',
                  uniqueBlocks=False, config=None, x0_norm=None, **kwargs):
 
@@ -79,12 +81,19 @@ class SNSimulation(BaseMetric):
         self.vistimeCol = vistimeCol
         self.seeingEffCol = seeingEffCol
         self.seeingGeomCol = seeingGeomCol
+        self.airmassCol = airmassCol
+        self.skyCol = skyCol
+        self.moonCol = moonCol
 
         cols = [self.RACol, self.DecCol, self.nightCol, self.m5Col, self.filterCol, self.mjdCol, self.obsidCol,
-                self.nexpCol, self.vistimeCol, self.exptimeCol, self.seeingEffCol, self.seeingGeomCol, self.nightCol]
+                self.nexpCol, self.vistimeCol, self.exptimeCol, self.seeingEffCol, self.seeingGeomCol, self.nightCol,
+                self.airmassCol, self.moonCol]
+
+        # self.airmassCol, self.skyCol, self.moonCol]
         self.stacker = None
 
         coadd = config['Observations']['coadd']
+
         if coadd:
             # cols += ['sn_coadd']
             self.stacker = CoaddStacker(mjdCol=self.mjdCol,
@@ -137,7 +146,7 @@ class SNSimulation(BaseMetric):
         save_status = config['Output']['save']
         self.save_status = save_status
         self.outdir = config['Output']['directory']
-        
+
         # number of procs to run simu here
         self.nprocs = config['Multiprocessing']['nproc']
 
@@ -161,7 +170,6 @@ class SNSimulation(BaseMetric):
 
         # get the x0_norm values to be put on a 2D(x1,color) griddata
         self.x0_grid = x0_norm
-
 
         # SALT2DIR
         self.salt2Dir = self.sn_parameters['salt2Dir']
@@ -206,7 +214,7 @@ class SNSimulation(BaseMetric):
             self.gamma = gammas.gamma
             self.mag_to_flux = gammas.mag_to_flux
 
-        self.nprocdict ={}
+        self.nprocdict = {}
         self.simu_out = {}
         self.lc_out = {}
         self.SNID = {}
@@ -227,10 +235,22 @@ class SNSimulation(BaseMetric):
             iproc = int(np.mean(obs['iproc']))
 
         if iproc not in self.nprocdict:
-            self.nprocdict[iproc]=iproc
+            self.nprocdict[iproc] = iproc
             if self.save_status:
-                self.prepareSave(self.outdir,self.prodid,iproc)
+                self.prepareSave(self.outdir, self.prodid, iproc)
 
+        # if 'healpixID' not in obs.dtype.names:
+        if slicePoint is not None:
+            import numpy.lib.recfunctions as rf
+            healpixID = hp.ang2pix(
+                slicePoint['nside'], np.rad2deg(slicePoint['ra']), np.rad2deg(slicePoint['dec']), nest=True, lonlat=True)
+            pixRA, pixDec = hp.pix2ang(
+                self.nside, healpixID, nest=True, lonlat=True)
+            obs = rf.append_fields(obs, 'healpixID', [healpixID]*len(obs))
+            obs = rf.append_fields(obs, 'pixRA', [pixRA]*len(obs))
+            obs = rf.append_fields(obs, 'pixDec', [pixDec]*len(obs))
+
+            print('processing pixel', healpixID)
 
         # estimate seasons
         obs = seasoncalc(obs)
@@ -245,7 +265,6 @@ class SNSimulation(BaseMetric):
         else:
             seasons = self.season
 
-       
         time_ref = time.time()
         for seas in seasons:
             self.index_hdf5 += 10000*(seas-1)
@@ -257,11 +276,11 @@ class SNSimulation(BaseMetric):
                 obs_season[self.filterCol]) if val[-1] != 'u']
 
             if len(obs_season[idx]) >= 5:
-                self.simuSeason(obs_season[idx], seas,iproc)
+                self.simuSeason(obs_season[idx], seas, iproc)
 
         # save metadata
         self.save_metadata(np.unique(obs['healpixID']).item())
-        #reset metadata dict
+        # reset metadata dict
         self.sn_meta[iproc] = {}
 
         #print('End of simulation', time.time()-time_ref)
@@ -277,7 +296,7 @@ class SNSimulation(BaseMetric):
          production id (label for input files)
         iproc: int
           internal tag for multiprocessing
-        
+
 
         Returns
         ----------
@@ -292,20 +311,20 @@ class SNSimulation(BaseMetric):
         if not os.path.exists(outdir):
             print('Creating output directory', outdir)
             os.makedirs(outdir)
-        # Two files  to be opened - tagged by iproc 
+        # Two files  to be opened - tagged by iproc
         # One containing a summary of the simulation:
         # astropy table with (SNID,RA,Dec,X1,Color,z) parameters
         # -> name: Simu_prodid.hdf5
         # A second containing the Light curves (list of astropy tables)
         # -> name : LC_prodid.hdf5
-     
-        self.simu_out[iproc] = '{}/Simu_{}_{}.hdf5'.format(outdir,prodid,iproc)
-        self.lc_out[iproc] = '{}/LC_{}_{}.hdf5'.format(outdir,prodid,iproc)
+
+        self.simu_out[iproc] = '{}/Simu_{}_{}.hdf5'.format(
+            outdir, prodid, iproc)
+        self.lc_out[iproc] = '{}/LC_{}_{}.hdf5'.format(outdir, prodid, iproc)
         self.check_del(self.simu_out[iproc])
         self.check_del(self.lc_out[iproc])
         self.SNID[iproc] = 10**iproc
         self.sn_meta[iproc] = {}
-        
 
         """
         # and these files will be removed now (before processing)
@@ -315,6 +334,7 @@ class SNSimulation(BaseMetric):
         if os.path.exists(self.lc_out):
             os.remove(self.lc_out)
         """
+
     def check_del(self, fileName):
         """
         Method to remove a file if already exist
@@ -328,8 +348,7 @@ class SNSimulation(BaseMetric):
         if os.path.exists(fileName):
             os.remove(fileName)
 
-
-    def simuSeason(self, obs, season,iproc):
+    def simuSeason(self, obs, season, iproc):
         """ Generate LC for a season (multiprocessing available) and all simu parameters
 
         Parameters
@@ -358,24 +377,22 @@ class SNSimulation(BaseMetric):
         batch = np.linspace(0, nlc, npp+1, dtype='int')
 
         result_queue = multiprocessing.Queue()
-        
+
         for i in range(npp):
 
             ida = batch[i]
             idb = batch[i+1]
 
             p = multiprocessing.Process(name='Subprocess', target=self.simuLoop, args=(
-                obs, season, gen_params[ida:idb], iproc,i, result_queue))
+                obs, season, gen_params[ida:idb], iproc, i, result_queue))
             p.start()
-        
-        
+
         resultdict = {}
         for j in range(npp):
             resultdict.update(result_queue.get())
 
         for p in multiprocessing.active_children():
             p.join()
-        
 
         for j in range(npp):
             metadict = resultdict[j]
@@ -384,9 +401,9 @@ class SNSimulation(BaseMetric):
             else:
                 #self.sn_meta[iproc]= self.sn_meta[iproc].update(metadict)
                 for key in metadict.keys():
-                    self.sn_meta[iproc][key]+= metadict[key]
-                
-        #self.save_metadata()
+                    self.sn_meta[iproc][key] += metadict[key]
+
+        # self.save_metadata()
         """
         SNID = 100
         for j in range(npp):
@@ -402,7 +419,8 @@ class SNSimulation(BaseMetric):
                         SNID += 1
                         self.writeLC(SNID, lc, season)
         """
-    def writeLC(self, SNID, lc, season,iproc,meta_lc):
+
+    def writeLC(self, SNID, lc, season, iproc, meta_lc):
         """
         Method to save lc on disk
         and to update metadata
@@ -432,7 +450,7 @@ class SNSimulation(BaseMetric):
                                    np.round(lc.meta['z'], 2),
                                    np.round(lc.meta['daymax'], 3),
                                    season, epsilon)
-       
+
         lc.write(self.lc_out[iproc],
                  path='lc_{}'.format(index_hdf5),
                  append=True,
@@ -464,7 +482,6 @@ class SNSimulation(BaseMetric):
         else:
             for key in metadict.keys():
                 meta_lc[key].extend([metadict[key]])
-
 
     def setIndex(self, healpixID, x1, color, z, daymax, season, epsilon):
 
@@ -505,23 +522,22 @@ class SNSimulation(BaseMetric):
                 lc = self.simuLCs(obs, season, genpar)
                 list_lc += lc
                 # every 20 SN: dump to file
-                if len(list_lc)>= 20:
-                    self.dump(list_lc,season,iproc,meta_lc)
+                if len(list_lc) >= 20:
+                    self.dump(list_lc, season, iproc, meta_lc)
                     list_lc = []
 
         else:
             list_lc = self.simuLCs(obs, season, gen_params)
 
-    
-        if len(list_lc)>0:
-            self.dump(list_lc,season,iproc,meta_lc)
+        if len(list_lc) > 0:
+            self.dump(list_lc, season, iproc, meta_lc)
 
         if output_q is not None:
             output_q.put({j: meta_lc})
         else:
             return meta_lc
-        
-    def dump(self, list_lc, season, j,meta_lc):
+
+    def dump(self, list_lc, season, j, meta_lc):
         """
         Method to write a list of lc on disk
 
@@ -537,9 +553,7 @@ class SNSimulation(BaseMetric):
         """
         for lc in list_lc:
             self.SNID[j] += 1
-            self.writeLC(self.SNID[j],lc,season,j,meta_lc)
-
-
+            self.writeLC(self.SNID[j], lc, season, j, meta_lc)
 
     def simuLCs(self, obs, season, gen_params):
         """ Generate LC for one season and a set of simu parameters
@@ -593,12 +607,11 @@ class SNSimulation(BaseMetric):
 
         return lc_table
 
-    def save_metadata(self,isav=-1):
+    def save_metadata(self, isav=-1):
         """ Copy metadata to disk
 
         """
         for key, vals in self.sn_meta.items():
-            if vals: 
+            if vals:
                 Table(vals).write(
-                    self.simu_out[key], 'summary_{}'.format(isav), append=True,compression=True)
-
+                    self.simu_out[key], 'summary_{}'.format(isav), append=True, compression=True)
