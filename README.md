@@ -21,3 +21,47 @@ This is open source software, available for re-use under the modified BSD licens
 Copyright (c) 2020, the sn_simulation contributors on GitHub, https://github.com/LSSTDESC/sn_simulation/graphs/contributors.
 All rights reserved.
 ```
+
+## Content of sn_simulation ##
+* **docs**: documentation for sphinx
+* **\_\_init\_\_.py**
+* **LICENCE**: licence file
+* **README.md**: this readme
+* **setup.py**: setup file for pip installation
+* [**sn_simulator**](doc_package/sn_simulator.md): set of simulators
+* [**sn_simu_wrapper**](doc_package/sn_simu_wrapper.md): set of wrappers to run the simulation
+* **tests**: unit tests
+
+
+## Complete tree ##
+```bash
+
+|-- doc_package
+|   |-- sn_simulator.md
+|   |-- sn_simu_wrapper.md
+|-- docs
+|   |-- api
+|   |   |-- sn_simulator.rst
+|   |   |-- sn_simulator.sn_cosmo.rst
+|   |   |-- sn_simulator.sn_fast.rst
+|   |   |-- sn_simu_wrapper.rst
+|   |   |-- sn_simu_wrapper.sn_object.rst
+|   |   |-- sn_simu_wrapper.sn_simu.rst
+|   |-- conf.py
+|   |-- index.rst
+|   |-- make.bat
+|   |-- Makefile
+|-- LICENCE
+|-- README.md
+|-- setup.py
+|-- sn_simulator
+|   |-- __init__.py
+|   |-- sn_cosmo.py
+|   |-- sn_fast.py
+|-- sn_simu_wrapper
+|   |-- __init__.py
+|   |-- sn_object.py
+|   |-- sn_simu.py
+|-- tests
+    |-- testSNsimulation.py
+```
