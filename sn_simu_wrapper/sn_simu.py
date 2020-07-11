@@ -520,7 +520,8 @@ class SNSimulation(BaseMetric):
         if 'sn_fast' not in self.simu_config['name']:
             for genpar in gen_params:
                 lc = self.simuLCs(obs, season, genpar)
-                list_lc += lc
+                if lc:
+                    list_lc += lc
                 # every 20 SN: dump to file
                 if len(list_lc) >= 20:
                     self.dump(list_lc, season, iproc, meta_lc)

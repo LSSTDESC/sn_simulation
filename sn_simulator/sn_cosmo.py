@@ -257,6 +257,9 @@ class SN(SN_Object):
         
         idx = lcdf['flux'] > 0.
         lcdf = lcdf[idx]
+        #print('simulating',season,len(lcdf))
+        if len(lcdf) == 0:
+            return []
         # ti(time.time(), 'fluxes_b')
 
         # magnitudes - integrated  fluxes are in Jy
@@ -282,9 +285,11 @@ class SN(SN_Object):
                 fluxName += '_interp'
                 snrName += '_interp'
 
+            
             lcdf = lcdf.groupby([self.filterCol]).apply(
                 lambda x: self.interp_gamma_flux(x, gammaName, fluxName)).reset_index()
 
+            
             lcdf[snrName] = 1./srand(
                 lcdf[gammaName].values, lcdf['mag'], lcdf[self.m5Col])
 
