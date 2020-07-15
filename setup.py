@@ -1,9 +1,14 @@
 from setuptools import setup
 
+# get the version here
+pkg_vars  = {}
+
+with open("version.py") as fp:
+    exec(fp.read(), pkg_vars)
 
 setup(
     name='sn_simulation',
-    version=__version__,
+    version= pkg_vars['__version__'],
     description='Simulations for supernovae',
     url='http://github.com/lsstdesc/sn_simulation',
     author='Philippe Gris',
