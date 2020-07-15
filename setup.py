@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='sn_simulation',
-    version='v1.0.0',
+    version=__version__,
     description='Simulations for supernovae',
     url='http://github.com/lsstdesc/sn_simulation',
     author='Philippe Gris',
