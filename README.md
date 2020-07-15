@@ -35,33 +35,36 @@ All rights reserved.
 
 ## Complete tree ##
 ```bash
-
+|-- LICENCE
+|-- README.md
+|-- __init__.py
 |-- doc_package
-|   |-- sn_simulator.md
 |   |-- sn_simu_wrapper.md
+|   |-- sn_simulator.md
 |-- docs
+|   |-- Makefile
 |   |-- api
-|   |   |-- sn_simulator.rst
-|   |   |-- sn_simulator.sn_cosmo.rst
-|   |   |-- sn_simulator.sn_fast.rst
 |   |   |-- sn_simu_wrapper.rst
 |   |   |-- sn_simu_wrapper.sn_object.rst
 |   |   |-- sn_simu_wrapper.sn_simu.rst
+|   |   |-- sn_simulator.rst
+|   |   |-- sn_simulator.sn_cosmo.rst
+|   |   |-- sn_simulator.sn_fast.rst
 |   |-- conf.py
 |   |-- index.rst
 |   |-- make.bat
-|   |-- Makefile
-|-- LICENCE
-|-- README.md
 |-- setup.py
-|-- sn_simulator
-|   |-- __init__.py
-|   |-- sn_cosmo.py
-|   |-- sn_fast.py
 |-- sn_simu_wrapper
 |   |-- __init__.py
 |   |-- sn_object.py
 |   |-- sn_simu.py
+|   |-- version.py
+|-- sn_simulator
+|   |-- __init__.py
+|   |-- sn_cosmo.py
+|   |-- sn_fast.py
+|   |-- version.py
 |-- tests
-    |-- testSNsimulation.py
+|   |-- testSNsimulation.py
+|-- version.py
 ```
