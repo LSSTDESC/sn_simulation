@@ -11,8 +11,7 @@ We welcome requests to access code for non-DESC use; if you wish to use the code
 
 |Release|Date|packages|
 |---|---|---|
-|v1.0.0|2020/07/15|sn_simu_wrapper_v1.0.0|
-| | sn_simulator_v1.0.0|
+|v1.0.0|2020/07/15|sn_simu_wrapper_v1.0.0, sn_simulator_v1.0.0|
 
 ## Feedback, License etc
 
