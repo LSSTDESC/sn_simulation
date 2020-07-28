@@ -15,9 +15,8 @@ import pandas as pd
 import operator
 from astropy import units as u
 
-
 class SN(SN_Object):
-    def __init__(self, param, simu_param, reference_lc=None, gamma=None, mag_to_flux=None, dustcorr=None, snr_fluxsec='interp'):
+    def __init__(self, param, simu_param, reference_lc=None, gamma=None, mag_to_flux=None, dustcorr=None, snr_fluxsec='interp',error_model=True):
         super().__init__(param.name, param.sn_parameters, param.gen_parameters,
                          param.cosmology, param.telescope, param.SNID, param.area, param.x0_grid,
                          mjdCol=param.mjdCol, RACol=param.RACol, DecCol=param.DecCol,
@@ -59,6 +58,7 @@ class SN(SN_Object):
         self.gamma = gamma
         self.mag_to_flux = mag_to_flux
         self.snr_fluxsec = snr_fluxsec
+        self.error_model = error_model
 
         if model == 'salt2-extended':
             model_min = 300.
@@ -74,8 +74,14 @@ class SN(SN_Object):
 
         self.wave = np.arange(wave_min, wave_max, 1.)
 
-        source = sncosmo.get_source(model, version=version)
+        if not self.error_model:
+            source = sncosmo.get_source(model, version=version)
+        else:
+            SALT2Dir = 'SALT2.Guy10_UV2IR'
+            self.SALT2Templates(SALT2Dir=SALT2Dir, blue_cutoff=10.*self.sn_parameters['blue_cutoff'])
+            source = sncosmo.SALT2Source(modeldir=SALT2Dir)
 
+            
         self.dustmap = sncosmo.OD94Dust()
 
         self.lsstmwebv = EBV.EBVbase()
@@ -95,18 +101,10 @@ class SN(SN_Object):
         # need to correct X0 for alpha and beta
         lumidist = self.cosmology.luminosity_distance(
             self.sn_parameters['z']).value*1.e3
-        X0_grid = griddata((self.x0_grid['x1'], self.x0_grid['color']), self.x0_grid['x0_norm'], (
-            self.sn_parameters['x1'], self.sn_parameters['color']),  method='nearest')
-        X0 = X0_grid / lumidist ** 2
-        alpha = 0.13
-        beta = 3.
-        X0 *= np.power(10., 0.4*(alpha *
-                                 self.sn_parameters['x1'] - beta *
-                                 self.sn_parameters['color']))
-        X0 += self.gen_parameters['epsilon_x0']
-        self.X0 = X0
+       
+        self.X0 = self.x0(lumidist)
         self.dL = lumidist
-        self.SN.set(x0=X0)
+        self.SN.set(x0=self.X0)
         """
         self.SN.set_source_peakabsmag(self.sn_parameters['absmag'],
         self.sn_parameters['band'], self.sn_parameters['magsys'])
@@ -136,6 +134,55 @@ class SN(SN_Object):
                 throughput.wavelen, throughput.sb, name='LSST::'+band, wave_unit=u.nm)
             sncosmo.registry.register(bandcosmo, force=True)
 
+
+    def x0(self, lumidist):
+        """"
+        Method to estimate x0 from a griddata
+
+        Parameters
+        ---------------
+        lumidist: float
+          luminosity distance
+
+        """
+
+        X0_grid = griddata((self.x0_grid['x1'], self.x0_grid['color']), self.x0_grid['x0_norm'], (
+            self.sn_parameters['x1'], self.sn_parameters['color']),  method='nearest')
+        X0 = X0_grid / lumidist ** 2
+        alpha = 0.13
+        beta = 3.
+        X0 *= np.power(10., 0.4*(alpha *
+                                 self.sn_parameters['x1'] - beta *
+                                 self.sn_parameters['color']))
+        X0 += self.gen_parameters['epsilon_x0']
+        
+        return X0
+
+
+    def SALT2Templates(self,SALT2Dir='SALT2.Guy10_UV2IR', blue_cutoff=3800.):
+        """
+        Method to load SALT2 templates and apply cutoff on SED.
+        
+        Parameters
+        --------------
+        SALT2Dir: str, opt
+          SALT2 directory (default: SALT2.Guy10_UV2IR)
+        blue_cutoff: float, opt
+           blue cut off to apply (in nm - default: 3800.)
+
+        """
+
+        for vv in ['salt2_template_0', 'salt2_template_1']:
+            fName = '{}/{}_orig.dat'.format(SALT2Dir, vv)
+            data = np.loadtxt(fName, dtype={'names': ('phase', 'wavelength', 'flux'),
+                                        'formats': ('f8', 'i4', 'f8')})
+            #print(data)
+            data['flux'][data['wavelength'] <= blue_cutoff] = 0.0
+
+            #print(data)
+            np.savetxt('{}/{}.dat'.format(SALT2Dir, vv),
+                       data, fmt=['%1.2f', '%4d', '%.7e', ])
+    
     def __call__(self, obs, display=False, time_display=0.):
         """ Simulation of the light curve
 
@@ -224,12 +271,13 @@ class SN(SN_Object):
         # Select obs depending on min and max phases
         # blue and red cutoffs applied
 
-        obs = self.cutoff(obs, self.sn_parameters['daymax'],
-                          self.sn_parameters['z'],
-                          self.sn_parameters['min_rf_phase'],
-                          self.sn_parameters['max_rf_phase'],
-                          self.sn_parameters['blue_cutoff'],
-                          self.sn_parameters['red_cutoff'])
+        if not self.error_model:
+            obs = self.cutoff(obs, self.sn_parameters['daymax'],
+                              self.sn_parameters['z'],
+                              self.sn_parameters['min_rf_phase'],
+                              self.sn_parameters['max_rf_phase'],
+                              self.sn_parameters['blue_cutoff'],
+                              self.sn_parameters['red_cutoff'])
 
         if len(obs) == 0:
             return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1, ebvofMW)]
@@ -253,7 +301,11 @@ class SN(SN_Object):
         lcdf['flux'] = self.SN.bandflux(
             lcdf[band_cosmo], lcdf[self.mjdCol], zpsys='ab', zp=2.5*np.log10(3631))
 
-        #lcdf['flux'] = lcdf['flux'].clip(lower=1.e-30.)
+        # estimate error model (if necessary)
+        if self.error_model:
+            fluxcov_cosmo = self.SN.bandfluxcov(
+                lcdf[band_cosmo], lcdf[self.mjdCol], zpsys='ab', zp=2.5*np.log10(3631))
+            lcdf['variance_model'] = np.diag(fluxcov_cosmo[1])
         
         idx = lcdf['flux'] > 0.
         lcdf = lcdf[idx]
@@ -295,13 +347,25 @@ class SN(SN_Object):
 
         # ti(time.time(), 'estimate 1')
 
+            
         # complete the LC
         lcdf['magerr'] = (2.5/np.log(10.))/lcdf['snr_m5']  # mag error
         lcdf['fluxerr'] = lcdf['flux']/lcdf['snr_m5']  # flux error
+        
+        if self.error_model:
+            #print(z,lcdf[['variance_model','fluxerr']])
+            lcdf['fluxerr'] = np.sqrt(lcdf['variance_model']+lcdf['fluxerr']**2) #flux error
+            lcdf['snr_m5'] = lcdf['flux']/lcdf['fluxerr'] # snr
+            lcdf['magerr'] = (2.5/np.log(10.))/lcdf['snr_m5']  # mag error
+        
+        
         lcdf['zp'] = 2.5*np.log10(3631)  # zp
         lcdf['zpsys'] = 'ab'  # zpsys
         lcdf['phase'] = (lcdf[self.mjdCol]-self.sn_parameters['daymax']
                          )/(1.+self.sn_parameters['z'])  # phase
+
+        
+        
 
         # rename some of the columns
         lcdf = lcdf.rename(

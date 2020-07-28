@@ -136,6 +136,7 @@ def getconfig(prodid,
         simulator)    # Simulator name= sn_cosmo,sn_sim,sn_ana, sn_fast
     config['Simulator']['model'] = 'salt2-extended'   # spectra model
     config['Simulator']['version'] = 1.0  # version
+    config['Simulator']['error_model'] = 0 # error model for fluxerr estimation
     # Reference File= SN_MAF/Reference_Files/LC_Ref_-2.0_0.2.hdf5
     config['Simulator']['Template Dir'] = 'Template_LC'
     config['Simulator']['Gamma Dir'] = 'reference_files'
@@ -338,7 +339,6 @@ class TestSNsimulation(unittest.TestCase):
         RefDict['fieldname'] = ['unknown', 'unknown', 'unknown',
                                 'unknown', 'unknown', 'unknown', 'unknown', 'unknown']
         RefDict['fieldid'] = [0, 0, 0, 0, 0, 0, 0, 0]
-        RefDict['n_lc_points'] = [99, 106, 114, 127, 132, 142, 112, 119]
         RefDict['area'] = [0.8392936452111668, 0.8392936452111668, 0.8392936452111668, 0.8392936452111668,
                            0.8392936452111668, 0.8392936452111668, 0.8392936452111668, 0.8392936452111668]
         RefDict['RA'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
@@ -376,7 +376,7 @@ class TestSNsimulation(unittest.TestCase):
         # now grab LC
 
         vars = ['snr_m5', 'flux_e_sec', 'mag',
-                'exptime', 'magerr', 'band', 'phase']
+                'exptime', 'magerr', 'band', 'phase','snr_tot']
 
         for simu in simul:
             lc = Table.read(lc_name, path='lc_{}'.format(simu['index_hdf5']))
