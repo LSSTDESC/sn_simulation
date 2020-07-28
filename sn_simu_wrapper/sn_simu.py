@@ -15,7 +15,7 @@ from sn_tools.sn_utils import SimuParameters
 from sn_tools.sn_obs import season as seasoncalc
 from sn_tools.sn_utils import GetReference, LoadGamma, LoadDust
 from scipy.interpolate import interp1d
-
+from sn_tools.sn_io import check_get_dir
 
 class SNSimulation(BaseMetric):
     """LC simulation wrapper class
@@ -66,7 +66,7 @@ class SNSimulation(BaseMetric):
                  airmassCol='airmass',
                  skyCol='sky', moonCol='moonPhase',
                  seeingGeomCol='seeingFwhmGeom',
-                 uniqueBlocks=False, config=None, x0_norm=None, **kwargs):
+                 uniqueBlocks=False, config=None, x0_norm=None,**kwargs):
 
         self.mjdCol = mjdCol
         self.m5Col = m5Col
@@ -183,6 +183,8 @@ class SNSimulation(BaseMetric):
         self.mag_to_flux = None
         self.dustcorr = None
         web_path = config['Web path']
+        self.error_model = self.simu_config['error_model']
+        
         if 'sn_fast' in self.simu_config['name']:
             templateDir = self.simu_config['Template Dir']
             gammaDir = self.simu_config['Gamma Dir']
@@ -209,10 +211,15 @@ class SNSimulation(BaseMetric):
             gammas = LoadGamma(
                 'grizy',  self.simu_config['Gamma Dir'],
                 self.simu_config['Gamma File'],
-                config['Web path'], self.telescope)
+                web_path, self.telescope)
 
             self.gamma = gammas.gamma
             self.mag_to_flux = gammas.mag_to_flux
+
+        
+        if self.error_model:
+            SALT2Dir = 'SALT2.Guy10_UV2IR'
+            check_get_dir(web_path,SALT2Dir,SALT2Dir)
 
         self.nprocdict = {}
         self.simu_out = {}
@@ -602,7 +609,7 @@ class SNSimulation(BaseMetric):
 
         module = import_module(self.simu_config['name'])
         simu = module.SN(sn_object, self.simu_config,
-                         self.reference_lc, self.gamma, self.mag_to_flux, self.dustcorr)
+                         self.reference_lc, self.gamma, self.mag_to_flux, self.dustcorr,error_model=self.error_model)
         # simulation - this is supposed to be a list of astropytables
         lc_table = simu(obs, self.display_lc, self.time_display)
 
