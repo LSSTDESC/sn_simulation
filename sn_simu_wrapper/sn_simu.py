@@ -382,7 +382,7 @@ class SNSimulation(BaseMetric):
 
         nlc = len(gen_params)
         batch = np.linspace(0, nlc, npp+1, dtype='int')
-
+        
         result_queue = multiprocessing.Queue()
 
         for i in range(npp):
@@ -454,7 +454,7 @@ class SNSimulation(BaseMetric):
         index_hdf5 = self.setIndex(lc.meta['healpixID'],
                                    lc.meta['x1'],
                                    lc.meta['color'],
-                                   np.round(lc.meta['z'], 2),
+                                   np.round(lc.meta['z'], 3),
                                    np.round(lc.meta['daymax'], 3),
                                    season, epsilon)
 
