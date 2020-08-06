@@ -141,6 +141,13 @@ class SN(SN_Object):
         """
         list_tables = self.transform(tab_tot)
 
+        # if the user chooses to display the results...
+        if display:
+            for table_lc in list_tables:
+                self.plotLC(table_lc['time', 'band',
+                                     'flux', 'fluxerr', 'zp', 'zpsys'], time_display)
+
+        
         return list_tables
 
     def transform(self, tab):

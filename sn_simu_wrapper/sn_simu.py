@@ -136,8 +136,6 @@ class SNSimulation(BaseMetric):
         # sn parameters
         self.sn_parameters = config['SN parameters']
         self.gen_par = SimuParameters(self.sn_parameters, cosmo_par, mjdCol=self.mjdCol, area=self.area,
-                                      min_rf_phase=self.sn_parameters['min_rf_phase_qual'],
-                                      max_rf_phase=self.sn_parameters['max_rf_phase_qual'],
                                       dirFiles=self.sn_parameters['x1_color']['dirFile'],
                                       web_path=config['Web path'])
 
