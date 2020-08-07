@@ -136,8 +136,6 @@ class SNSimulation(BaseMetric):
         # sn parameters
         self.sn_parameters = config['SN parameters']
         self.gen_par = SimuParameters(self.sn_parameters, cosmo_par, mjdCol=self.mjdCol, area=self.area,
-                                      min_rf_phase=self.sn_parameters['min_rf_phase_qual'],
-                                      max_rf_phase=self.sn_parameters['max_rf_phase_qual'],
                                       dirFiles=self.sn_parameters['x1_color']['dirFile'],
                                       web_path=config['Web path'])
 
@@ -382,7 +380,7 @@ class SNSimulation(BaseMetric):
 
         nlc = len(gen_params)
         batch = np.linspace(0, nlc, npp+1, dtype='int')
-
+        
         result_queue = multiprocessing.Queue()
 
         for i in range(npp):
@@ -454,7 +452,7 @@ class SNSimulation(BaseMetric):
         index_hdf5 = self.setIndex(lc.meta['healpixID'],
                                    lc.meta['x1'],
                                    lc.meta['color'],
-                                   np.round(lc.meta['z'], 2),
+                                   np.round(lc.meta['z'], 3),
                                    np.round(lc.meta['daymax'], 3),
                                    season, epsilon)
 
