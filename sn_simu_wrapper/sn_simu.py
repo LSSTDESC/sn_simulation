@@ -16,6 +16,7 @@ from sn_tools.sn_obs import season as seasoncalc
 from sn_tools.sn_utils import GetReference, LoadGamma, LoadDust
 from scipy.interpolate import interp1d
 from sn_tools.sn_io import check_get_dir
+import multiprocessing
 
 class SNSimulation(BaseMetric):
     """LC simulation wrapper class
@@ -197,14 +198,40 @@ class SNSimulation(BaseMetric):
             # Loading reference file
             lcname = 'LC_{}_{}_{}_{}_ebvofMW_0.0_vstack.hdf5'.format(
                 x1, color, bluecutoff, redcutoff)
-
-            self.reference_lc = GetReference(templateDir,
-                                             lcname, gammaDir, gammaFile, web_path, self.telescope)
-
             dustFile = 'Dust_{}_{}_{}_{}.hdf5'.format(
                 x1, color, bluecutoff, redcutoff)
-            self.dustcorr = LoadDust(dustDir, dustFile, web_path).dustcorr
+            
 
+            print('loading reference and dust files')
+            time_ref = time.time()
+            
+            result_queue = multiprocessing.Queue()
+            p = multiprocessing.Process(name='Subprocess-0', target=self.loadReference, args=(templateDir,lcname, gammaDir, gammaFile, web_path,0, result_queue))
+            p.start()
+            
+
+            """
+            self.reference_lc = GetReference(templateDir,
+                                             lcname, gammaDir, gammaFile, web_path, self.telescope)
+            """
+            
+            pb = multiprocessing.Process(name='Subprocess-1', target=self.loadDust, args=(dustDir, dustFile, web_path,1, result_queue))
+            pb.start()
+
+            resultdict = {}
+            for j in range(2):
+                resultdict.update(result_queue.get())
+
+            for p in multiprocessing.active_children():
+                p.join()
+
+            
+
+            self.reference_lc = resultdict[0]
+            self.dustcorr = resultdict[1]
+            
+            #self.dustcorr = LoadDust(dustDir, dustFile, web_path).dustcorr
+            print('Files loaded',time.time()-time_ref)
         else:
             gammas = LoadGamma(
                 'grizy',  self.simu_config['Gamma Dir'],
@@ -224,6 +251,25 @@ class SNSimulation(BaseMetric):
         self.lc_out = {}
         self.SNID = {}
         self.sn_meta = {}
+
+    def loadReference(self,templateDir,lcname, gammaDir, gammaFile, web_path, j=-1, output_q=None):
+
+        reference_lc = GetReference(templateDir,
+                                         lcname, gammaDir, gammaFile, web_path, self.telescope)
+
+        if output_q is not None:
+            output_q.put({j: reference_lc})
+        else:
+            return None
+        
+    def loadDust(self,dustDir, dustFile, web_path, j=-1, output_q=None):
+
+        dustcorr = LoadDust(dustDir, dustFile, web_path).dustcorr
+
+        if output_q is not None:
+            output_q.put({j: dustcorr})
+        else:
+            return None
 
     def run(self, obs, slicePoint=None):
         """ LC simulations
@@ -378,9 +424,28 @@ class SNSimulation(BaseMetric):
         if 'sn_fast' in self.simu_config['name']:
             npp = 1
 
+
+        if npp == 1:
+            metadict = self.simuLoop(obs, season, gen_params, iproc)
+            if not self.sn_meta[iproc]:
+                self.sn_meta[iproc] = metadict
+            else:
+                #self.sn_meta[iproc]= self.sn_meta[iproc].update(metadict)
+                for key in metadict.keys():
+                    self.sn_meta[iproc][key] += metadict[key]
+            
+        else:
+            self.multiSeason(obs,season,gen_params,iproc,npp)
+
+
+    def multiSeason(self,obs,season,gen_params,iproc,npp):
+
+        
         nlc = len(gen_params)
         batch = np.linspace(0, nlc, npp+1, dtype='int')
+        print('batch for seasons',npp,batch,season)
         
+
         result_queue = multiprocessing.Queue()
 
         for i in range(npp):
@@ -456,10 +521,16 @@ class SNSimulation(BaseMetric):
                                    np.round(lc.meta['daymax'], 3),
                                    season, epsilon)
 
+        """
+        idx = lc['snr_m5'] > 0.
+        lc = lc[idx]
+        lc.meta = {}
+        """
+        #print('writing',lc,lc.meta)
         lc.write(self.lc_out[iproc],
                  path='lc_{}'.format(index_hdf5),
                  append=True,
-                 compression=True)
+                 compression=True, serialize_meta=True)
 
         # build metadata dict
         n_lc_points = len(lc)
@@ -619,5 +690,6 @@ class SNSimulation(BaseMetric):
         """
         for key, vals in self.sn_meta.items():
             if vals:
+                #print('metadata',vals)
                 Table(vals).write(
                     self.simu_out[key], 'summary_{}'.format(isav), append=True, compression=True)
