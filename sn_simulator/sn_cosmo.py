@@ -74,14 +74,15 @@ class SN(SN_Object):
 
         self.wave = np.arange(wave_min, wave_max, 1.)
 
+        """
         if not self.error_model:
             source = sncosmo.get_source(model, version=version)
         else:
             SALT2Dir = 'SALT2.Guy10_UV2IR'
             self.SALT2Templates(SALT2Dir=SALT2Dir, blue_cutoff=10.*self.sn_parameters['blue_cutoff'])
             source = sncosmo.SALT2Source(modeldir=SALT2Dir)
-
-            
+        """
+        source = sncosmo.get_source(model, version=version)
         self.dustmap = sncosmo.OD94Dust()
 
         self.lsstmwebv = EBV.EBVbase()
