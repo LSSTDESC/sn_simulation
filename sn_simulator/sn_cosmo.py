@@ -279,6 +279,13 @@ class SN(SN_Object):
                               self.sn_parameters['max_rf_phase'],
                               self.sn_parameters['blue_cutoff'],
                               self.sn_parameters['red_cutoff'])
+        else:
+            obs = self.cutoff(obs, self.sn_parameters['daymax'],
+                            self.sn_parameters['z'],
+                            self.sn_parameters['min_rf_phase'],
+                            self.sn_parameters['max_rf_phase'],
+                            0.,
+                            self.sn_parameters['red_cutoff'])
 
         if len(obs) == 0:
             return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1, ebvofMW)]
