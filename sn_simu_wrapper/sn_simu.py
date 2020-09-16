@@ -241,10 +241,12 @@ class SNSimulation(BaseMetric):
             self.gamma = gammas.gamma
             self.mag_to_flux = gammas.mag_to_flux
 
-        
+        # this is deprecated
+        """
         if self.error_model:
             SALT2Dir = 'SALT2.Guy10_UV2IR'
             check_get_dir(web_path,SALT2Dir,SALT2Dir)
+        """
 
         self.nprocdict = {}
         self.simu_out = {}
