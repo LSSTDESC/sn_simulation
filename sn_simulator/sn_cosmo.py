@@ -279,6 +279,7 @@ class SN(SN_Object):
                               self.sn_parameters['max_rf_phase'],
                               self.sn_parameters['blue_cutoff'],
                               self.sn_parameters['red_cutoff'])
+        """
         else:
             obs = self.cutoff(obs, self.sn_parameters['daymax'],
                             self.sn_parameters['z'],
@@ -286,7 +287,7 @@ class SN(SN_Object):
                             self.sn_parameters['max_rf_phase'],
                             0.,
                             self.sn_parameters['red_cutoff'])
-
+        """
         if len(obs) == 0:
             return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1, ebvofMW)]
 
@@ -313,10 +314,15 @@ class SN(SN_Object):
         if self.error_model:
             fluxcov_cosmo = self.SN.bandfluxcov(
                 lcdf[band_cosmo], lcdf[self.mjdCol], zpsys='ab', zp=2.5*np.log10(3631))
-            lcdf['variance_model'] = np.diag(fluxcov_cosmo[1])
+            lcdf['fluxerr_model'] = np.sqrt(np.diag(fluxcov_cosmo[1]))
+        else:
+            lcdf['fluxerr_model'] = 0.
         
         idx = lcdf['flux'] > 0.
-        lcdf = lcdf[idx]
+        #lcdf = lcdf[idx]
+        lcdf.loc[lcdf.flux<0,'flux'] = 1.e-8
+        #deltaT.loc[deltaT['data'] < 0, 'data'] = 0
+
         #print('simulating',season,len(lcdf))
         if len(lcdf) == 0:
             return []
@@ -357,14 +363,14 @@ class SN(SN_Object):
 
             
         # complete the LC
-        lcdf['magerr'] = (2.5/np.log(10.))/lcdf['snr_m5']  # mag error
-        lcdf['fluxerr'] = lcdf['flux']/lcdf['snr_m5']  # flux error
+        lcdf['magerr_phot'] = (2.5/np.log(10.))/lcdf['snr_m5']  # mag error
+        lcdf['fluxerr'] = lcdf['flux']/lcdf['snr_m5']  # flux error - photometry
+        lcdf['fluxerr_photo'] = lcdf['flux']/lcdf['snr_m5']  # flux error - photometry
         
-        if self.error_model:
-            #print(z,lcdf[['variance_model','fluxerr']])
-            lcdf['fluxerr'] = np.sqrt(lcdf['variance_model']+lcdf['fluxerr']**2) #flux error
-            lcdf['snr_m5'] = lcdf['flux']/lcdf['fluxerr'] # snr
-            lcdf['magerr'] = (2.5/np.log(10.))/lcdf['snr_m5']  # mag error
+        
+        lcdf['fluxerr'] = np.sqrt(lcdf['fluxerr_model']**2+lcdf['fluxerr_photo']**2) #flux error
+        lcdf['snr'] = lcdf['flux']/lcdf['fluxerr'] # snr
+        lcdf['magerr'] = (2.5/np.log(10.))/lcdf['snr']  # mag error
         
         
         lcdf['zp'] = 2.5*np.log10(3631)  # zp
