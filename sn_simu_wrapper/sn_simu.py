@@ -195,9 +195,13 @@ class SNSimulation(BaseMetric):
             color = self.sn_parameters['color']['min']
             bluecutoff = self.sn_parameters['blue_cutoff']
             redcutoff = self.sn_parameters['red_cutoff']
+            
             # Loading reference file
-            lcname = 'LC_{}_{}_{}_{}_ebvofMW_0.0_vstack.hdf5'.format(
-                x1, color, bluecutoff, redcutoff)
+            cutoff = '{}_{}'.format(bluecutoff, redcutoff)
+            if self.error_model:
+                cutoff='error_model'
+            lcname = 'LC_{}_{}_{}_ebvofMW_0.0_vstack.hdf5'.format(
+                x1, color, cutoff)
             dustFile = 'Dust_{}_{}_{}_{}.hdf5'.format(
                 x1, color, bluecutoff, redcutoff)
             
