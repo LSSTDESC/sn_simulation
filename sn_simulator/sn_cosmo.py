@@ -319,8 +319,8 @@ class SN(SN_Object):
             lcdf['fluxerr_model'] = 0.
         
         idx = lcdf['flux'] > 0.
-        #lcdf = lcdf[idx]
-        lcdf.loc[lcdf.flux<0,'flux'] = 1.e-8
+        lcdf = lcdf[idx]
+        #lcdf.loc[lcdf.flux<0,'flux'] = 1.e-8
         #deltaT.loc[deltaT['data'] < 0, 'data'] = 0
 
         #print('simulating',season,len(lcdf))
