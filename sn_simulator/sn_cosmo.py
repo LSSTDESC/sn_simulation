@@ -238,6 +238,9 @@ class SN(SN_Object):
           time: time(days)(float)
           phase: phase(float)
         """
+        display = True
+        time_display = 10
+
         ra = np.mean(obs[self.RACol])
         dec = np.mean(obs[self.DecCol])
         area = self.area
@@ -310,6 +313,8 @@ class SN(SN_Object):
         lcdf['flux'] = self.SN.bandflux(
             lcdf[band_cosmo], lcdf[self.mjdCol], zpsys='ab', zp=2.5*np.log10(3631))
 
+        print('fluxa',lcdf['flux'])
+
         # estimate error model (if necessary)
         if self.error_model:
             fluxcov_cosmo = self.SN.bandfluxcov(
@@ -320,9 +325,12 @@ class SN(SN_Object):
         
         idx = lcdf['flux'] > 0.
         #lcdf = lcdf[idx]
-        lcdf.loc[lcdf.flux<0,'fluxerr'] = 10.
-        lcdf.loc[lcdf.flux<0,'fluxerr_model'] = 10.
-        lcdf.loc[lcdf.flux<0,'flux'] = 1.e-10
+        lcdf.loc[lcdf.flux<=0.,'fluxerr_photo'] = -1.
+        lcdf.loc[lcdf.flux<=0.,'fluxerr_model'] = -1.
+        lcdf.loc[lcdf.flux<=0.,'flux'] = 9999.
+
+        
+
         #deltaT.loc[deltaT['data'] < 0, 'data'] = 0
 
         #print('simulating',season,len(lcdf))
@@ -366,7 +374,7 @@ class SN(SN_Object):
             
         # complete the LC
         lcdf['magerr_phot'] = (2.5/np.log(10.))/lcdf['snr_m5']  # mag error
-        lcdf['fluxerr'] = lcdf['flux']/lcdf['snr_m5']  # flux error - photometry
+        #lcdf['fluxerr'] = lcdf['flux']/lcdf['snr_m5']  # flux error - photometry
         lcdf['fluxerr_photo'] = lcdf['flux']/lcdf['snr_m5']  # flux error - photometry
         
         
@@ -393,6 +401,13 @@ class SN(SN_Object):
         idf = lcdf['mag'] < self.mag_inf
         lcdf = lcdf[idf]
 
+        lcdf.loc[lcdf.fluxerr_model<0,'flux'] = 0.
+        lcdf.loc[lcdf.fluxerr_model<0,'fluxerr_photo'] = 10.
+        lcdf.loc[lcdf.fluxerr_model<0,'fluxerr'] = 10.
+        lcdf.loc[lcdf.fluxerr_model<0,'snr_m5'] = 0.
+        lcdf.loc[lcdf.fluxerr_model<0,'fluxerr_model'] = 10.
+
+        print('fluxb',lcdf[['flux','fluxerr','fluxerr_photo','snr_m5']])
         if len(lcdf) == 0:
             return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1, ebvofMW)]
 
