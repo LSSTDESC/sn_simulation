@@ -8,7 +8,7 @@ import h5py
 from astropy.table import Table, vstack
 from sn_simu_wrapper.sn_simu import SNSimulation
 from sn_tools.sn_io import check_get_file
-
+import yaml
 
 main_repo = 'https://me.lsst.eu/gris/DESC_SN_pipeline'
 m5_ref = dict(zip('ugrizy', [23.60, 24.83, 24.38, 23.92, 23.35, 22.44]))
@@ -34,138 +34,48 @@ def getRefDir(dirname):
         os.system(cmd)
 
 
-def getconfig(prodid,
+def getconfig(prodid,sn_type,sn_model,sn_model_version,
               x1Type, x1min, x1max, x1step,
               colorType, colormin, colormax, colorstep,
               zType, zmin, zmax, zstep,
               daymaxType, daymaxstep, diffflux,
-              fulldbName, fieldType, fcoadd, seasval,
-              simulator='sn_cosmo', nside=64, nproc=1, outputDir='.'):
+              fulldbName, fieldType, fcoadd, seasval,ebvofMW=0.0,bluecutoff=380.,redcutoff=800.,error_model=0,
+              simu='sn_cosmo', nside=64, nproc=1, outputDir='Output_Simu',config_orig='param_simulation_gen.yaml'):
 
-    config = {}
-    config['ProductionID'] = prodid+'_'+simulator
+    prodid = prodid+'_'+simu
+    with open(config_orig, 'r') as file:
+            filedata = file.read()
+            filedata = filedata.replace('prodid', prodid)
+            filedata = filedata.replace('sn_type', sn_type)
+            filedata = filedata.replace('x1Type', x1Type)
+            filedata = filedata.replace('x1min', str(x1min))
+            filedata = filedata.replace('x1max', str(x1max))
+            filedata = filedata.replace('x1step', str(x1step))
+            filedata = filedata.replace('colorType', colorType)
+            filedata = filedata.replace('colormin', str(colormin))
+            filedata = filedata.replace('colormax', str(colormax))
+            filedata = filedata.replace('colorstep', str(colorstep))
+            filedata = filedata.replace('zmin', str(zmin))
+            filedata = filedata.replace('zmax', str(zmax))
+            filedata = filedata.replace('zstep', str(zstep))
+            filedata = filedata.replace('zType', zType)
+            filedata = filedata.replace('daymaxType', daymaxType)
+            filedata = filedata.replace('daymaxstep', str(daymaxstep))
+            filedata = filedata.replace('fcoadd', str(fcoadd))
+            filedata = filedata.replace('seasval', str(seasval))
+            filedata = filedata.replace('mysimu', simu)
+            filedata = filedata.replace('ebvofMWval', str(ebvofMW))
+            filedata = filedata.replace('bluecutoffval', str(bluecutoff))
+            filedata = filedata.replace('redcutoffval', str(redcutoff))
+            filedata = filedata.replace('errmod', str(error_model))
+            filedata = filedata.replace('sn_model', sn_model)
+            filedata = filedata.replace('sn_mod_version', sn_model_version)
+            filedata = filedata.replace('nnside', str(nside))
+            filedata = filedata.replace('nnproc', str(nproc))
+            filedata = filedata.replace('outputDir', outputDir)
+            filedata = filedata.replace('diffflux', str(diffflux))
 
-    # -------------- Supernova parameters ----------------------------------------
-    config['SN parameters'] = {}
-    config['SN parameters']['Id'] = 100                   # Id of the first SN
-    # stretch and color
-    config['SN parameters']['x1'] = {}
-    config['SN parameters']['x1']['type'] = x1Type  # unique, uniform or random
-    config['SN parameters']['x1']['min'] = x1min
-    config['SN parameters']['x1']['max'] = x1max
-    config['SN parameters']['x1']['step'] = 1.
-    config['SN parameters']['color'] = {}
-    # unique, uniform or random
-    config['SN parameters']['color']['type'] = colorType
-    config['SN parameters']['color']['min'] = colormin
-    config['SN parameters']['color']['max'] = colormax
-    config['SN parameters']['color']['step'] = 0.05
-
-    config['SN parameters']['x1_color'] = {}
-    """
-    config['SN parameters']['x1_color']['type'] = x1colorType  # random or fixed
-    config['SN parameters']['x1_color']['min'] = [x1min, colormin]
-    config['SN parameters']['x1_color']['max'] = [0.2, 0.2]
-    """
-    config['SN parameters']['x1_color']['rate'] = 'JLA'
-    config['SN parameters']['x1_color']['dirFile'] = 'reference_files'
-    config['SN parameters']['z'] = {}               # redshift
-    config['SN parameters']['z']['type'] = zType
-    config['SN parameters']['z']['min'] = zmin
-    config['SN parameters']['z']['max'] = zmax
-    config['SN parameters']['z']['step'] = zstep
-    # Type Ia volumetric rate = Perrett, Ripoche, Dilday.
-    config['SN parameters']['z']['rate'] = 'Perrett'
-    config['SN parameters']['daymax'] = {}                 # Tmax (obs. frame)
-    # unique, uniform or random
-    config['SN parameters']['daymax']['type'] = daymaxType
-    # if uniform: step (in day) between Tmin(obs) and Tmax(obs)
-    config['SN parameters']['daymax']['step'] = daymaxstep
-    # obs min and max phase (rest frame) for LC points
-    config['SN parameters']['min_rf_phase'] = - 20.
-    config['SN parameters']['max_rf_phase'] = 60.
-    # obs min and max phase (rest frame) for T0 estimation
-    config['SN parameters']['min_rf_phase_qual'] = -15
-    config['SN parameters']['max_rf_phase_qual'] = 45
-    config['SN parameters']['absmag'] = -19.0906          # peak abs mag
-    config['SN parameters']['band'] = 'bessellB'             # band for absmag
-    config['SN parameters']['magsys'] = 'vega'              # magsys for absmag
-    # to estimate differential flux
-    config['SN parameters']['differential_flux'] = diffflux
-    # dir where SALT2 files are located
-    config['SN parameters']['salt2Dir'] = 'SALT2_Files'
-    config['SN parameters']['blue_cutoff'] = 380.
-    config['SN parameters']['red_cutoff'] = 800.
-    # MW dust
-    config['SN parameters']['ebvofMW'] = 0
-    # NSN factor
-    config['SN parameters']['NSN factor'] = 1
-
-    # ------------------cosmology ----------------------
-    config['Cosmology'] = {}
-    config['Cosmology']['Model'] = 'w0waCDM'      # Cosmological model
-    config['Cosmology']['Omega_m'] = 0.30             # Omega_m
-    config['Cosmology']['Omega_l'] = 0.70             # Omega_l
-    config['Cosmology']['H0'] = 72.0                  # H0
-    config['Cosmology']['w0'] = -1.0                  # w0
-    config['Cosmology']['wa'] = 0.0                   # wa
-
-    # -------------------instrument -----------------------
-    config['Instrument'] = {}
-    config['Instrument']['name'] = 'LSST'  # name of the telescope (internal)
-    # dir of throughput
-    config['Instrument']['throughput_dir'] = 'LSST_THROUGHPUTS_BASELINE'
-    config['Instrument']['atmos_dir'] = 'THROUGHPUTS_DIR'  # dir of atmos
-    config['Instrument']['airmass'] = 1.2  # airmass value
-    config['Instrument']['atmos'] = True  # atmos
-    config['Instrument']['aerosol'] = False  # aerosol
-
-    # -------------------observations ------------------------
-    config['Observations'] = {}
-    # filename: /sps/lsst/cadence/LSST_SN_PhG/cadence_db/opsim_db/kraken_2026.db # Name of db obs file (full path)
-    config['Observations']['filename'] = fulldbName
-    config['Observations']['fieldtype'] = fieldType  # DD or WFD
-    # this is the coaddition per night
-    config['Observations']['coadd'] = fcoadd
-    # season to simulate (-1 = all seasons)
-    config['Observations']['season'] = seasval
-
-    # --------------------simulator -------------------------
-    config['Simulator'] = {}
-    config['Simulator']['name'] = 'sn_simulator.{}'.format(
-        simulator)    # Simulator name= sn_cosmo,sn_sim,sn_ana, sn_fast
-    config['Simulator']['model'] = 'salt2-extended'   # spectra model
-    config['Simulator']['version'] = 1.0  # version
-    config['Simulator']['error_model'] = 0 # error model for fluxerr estimation
-    # Reference File= SN_MAF/Reference_Files/LC_Ref_-2.0_0.2.hdf5
-    config['Simulator']['Template Dir'] = 'Template_LC'
-    config['Simulator']['Gamma Dir'] = 'reference_files'
-    config['Simulator']['Gamma File'] = 'gamma.hdf5'
-    config['Simulator']['DustCorr Dir'] = 'Template_Dust'
-    # -------------------------host ---------------------
-    config['Host Parameters'] = None         # Host parameters
-
-    # --------------------miscellanea ----------------
-    config['Display_LC'] = {}  # display during LC simulations
-    config['Display_LC']['display'] = False
-    # display during time (sec) before closing
-    config['Display_LC']['time'] = 30
-
-    config['Output'] = {}
-    config['Output']['directory'] = 'Output_Simu'
-    config['Output']['save'] = True
-
-    config['Multiprocessing'] = {}
-    config['Multiprocessing']['nproc'] = nproc
-
-    config['Metric'] = 'sn_mafsim.sn_maf_simulation'
-
-    config['Pixelisation'] = {}
-    config['Pixelisation']['nside'] = nside
-    config['Web path'] = 'https://me.lsst.eu/gris/DESC_SN_pipeline'
-
-    return config
-
+    return yaml.load(filedata, Loader=yaml.FullLoader)
 
 def Observations_band(day0=59000, daymin=59000, cadence=3., season_length=140., band='r'):
     # Define fake data
@@ -235,10 +145,145 @@ def Observations_season(day0=59000, mjdmin=59000, cadence=3.):
 
     return data
 
+def fake_data(day0 = 59000, diff_season = 280.,nseasons = 1):
+
+    # Generate fake data
+   
+    data = None
+    
+    for val in np.arange(59000, 59000+nseasons*diff_season, diff_season):
+        dat = Observations_season(day0, val)
+        if data is None:
+            data = dat
+        else:
+            data = np.concatenate((data, dat))
+
+    return data
+
+def getSimu(prodid,sn_type,sn_model,sn_model_version,
+         x1Type, x1min, x1max, x1step,
+         colorType, colormin, colormax, colorstep,
+         zType, zmin, zmax, zstep,
+         daymaxtype, daymaxstep, difflux,
+            fulldbName, fieldType, fcoadd, seasval,error_model):
+    
+    # get the config file from these
+    conf = getconfig(prodid,sn_type,sn_model,sn_model_version,
+                     x1Type, x1min, x1max, x1step,
+                     colorType, colormin, colormax, colorstep,
+                     zType, zmin, zmax, zstep,
+                     daymaxtype, daymaxstep, difflux,
+                     fulldbName, fieldType, fcoadd, seasval,error_model=error_model)
+
+    print('hello conf',conf,error_model)
+    absMag = conf['SN parameters']['absmag']
+    x0normFile = 'reference_files/X0_norm_{}.npy'.format(absMag)
+
+    if not os.path.isfile(x0normFile):
+        # if this file does not exist, grab it from a web server
+        check_get_file(conf['Web path'], 'reference_files',
+                       'X0_norm_{}.npy'.format(absMag))
+    x0_norm = np.load(x0normFile)
+    
+    area = 9.6  # survey area (deg2)
+
+    simu = SNSimulation(mjdCol='observationStartMJD',
+                        filterCol='filter',
+                        nexpCol='numExposures',
+                        exptimeCol='visitExposureTime',
+                        config=conf, x0_norm=x0_norm)
+
+    return simu,conf
+        
+def testSimu(data,prodid,sn_type,sn_model,sn_model_version,
+                        x1Type, x1min, x1max, x1step,
+                        colorType, colormin, colormax, colorstep,
+                        zType, zmin, zmax, zstep,
+                        daymaxtype, daymaxstep, difflux,
+                        fulldbName, fieldType, fcoadd, seasval,error_model):
+    
+    simu,conf = getSimu(prodid,sn_type,sn_model,sn_model_version,
+                        x1Type, x1min, x1max, x1step,
+                        colorType, colormin, colormax, colorstep,
+                        zType, zmin, zmax, zstep,
+                        daymaxtype, daymaxstep, difflux,
+                        fulldbName, fieldType, fcoadd, seasval,error_model)
+
+    # now simulate LC on this data
+
+    simu.run(data)
+    
+    # save metadata
+    
+    simu.save_metadata()
+    
+    # check what we have inside the data
+
+    simu_name = '{}/Simu_{}_1.hdf5'.format(
+        conf['Output']['directory'], conf['ProductionID'])
+    lc_name = '{}/LC_{}_1.hdf5'.format(
+        conf['Output']['directory'], conf['ProductionID'])
+
+    f = h5py.File(simu_name, 'r')
+    # reading the simu file
+    simul = Table()
+    for i, key in enumerate(f.keys()):
+        simul = vstack([simul, Table.read(simu_name, path=key)])
+
+    # first check on simulation parameters
+        
+    ref_simul = 'data_tests/ref_simu_{}_error_model_{}.hdf5'.format(sn_type,error_model)
+
+    if not os.path.exists(ref_simul):
+        simul.write(ref_simul,'simu_parameters', append=True, compression=True)
+
+    # load reference parameters
+    tab_simu_ref = Table.read(ref_simul,path='simu_parameters')
+    if 'ptime' in tab_simu_ref.columns:
+        tab_simu_ref.remove_column('ptime')
+            
+    for key in tab_simu_ref.columns:
+        if key not in ['index_hdf5', 'fieldname', 'snr_fluxsec_meth']:
+            assert(np.isclose(tab_simu_ref[key].tolist(), simul[key].tolist()).all())
+        else:
+            assert((tab_simu_ref[key]== simul[key]).all())
+                
+    # now grab LC
+
+    vars = ['snr_m5', 'flux_e_sec', 'mag',
+            'exptime', 'magerr', 'band', 'phase']
+
+    for simu in simul:
+        lc = Table.read(lc_name, path='lc_{}'.format(simu['index_hdf5']))
+        idx = lc['snr_m5'] >= 5.
+        lc = lc[idx][:20]
+        break
+
+    ref_lc =  'data_tests/ref_lc_{}_error_model_{}.hdf5'.format(sn_type,error_model)
+    if not os.path.exists(ref_lc):
+        lc.write(ref_lc,'lc_points', append=True, compression=True)
+
+    # load lc reference points
+    tab_lc_ref = Table.read(ref_lc,path='lc_points')
+    if 'index' in tab_lc_ref.columns:
+         tab_lc_ref.remove_column('index')
+    
+    for key in tab_lc_ref.columns:
+        if key not in ['band','filter_cosmo','zpsys']:
+            assert(np.isclose(tab_lc_ref[key].tolist(), lc[key].tolist()).all())
+        else:
+            assert(set(tab_lc_ref[key].tolist()) == set(lc[key].tolist()))
+
 
 class TestSNsimulation(unittest.TestCase):
 
     def testSimuSNCosmo(self):
+
+        # fake data
+        data = fake_data()
+
+        # test Ia simulation
+        
         # set simulation parameters
         prodid = 'Fake'
         # x1colorType = 'unique'
@@ -261,159 +306,46 @@ class TestSNsimulation(unittest.TestCase):
         fieldType = 'Fake'
         fcoadd = 1
         seasval = [1]
-
-        # get the config file from these
-        conf = getconfig(prodid,
-                         x1Type, x1min, x1max, x1step,
-                         colorType, colormin, colormax, colorstep,
-                         zType, zmin, zmax, zstep,
-                         daymaxtype, daymaxstep, difflux,
-                         fulldbName, fieldType, fcoadd, seasval)
-
-        # SN_Simulation instance
-        # getRefDir('SALT2_Files')
-        # getRefDir('reference_files')
-
-        absMag = conf['SN parameters']['absmag']
-        x0normFile = 'reference_files/X0_norm_{}.npy'.format(absMag)
-
-        if not os.path.isfile(x0normFile):
-            # if this file does not exist, grab it from a web server
-            check_get_file(conf['Web path'], 'reference_files',
-                           'X0_norm_{}.npy'.format(absMag))
-        x0_norm = np.load(x0normFile)
-
-        area = 9.6  # survey area (deg2)
-
-        simu = SNSimulation(mjdCol='observationStartMJD',
-                            filterCol='filter',
-                            nexpCol='numExposures',
-                            exptimeCol='visitExposureTime',
-                            config=conf, x0_norm=x0_norm)
-
-        # Generate fake data
-        day0 = 59000
-        data = None
-
-        diff_season = 280.
-        nseasons = 1
-        for val in np.arange(59000, 59000+nseasons*diff_season, diff_season):
-            dat = Observations_season(day0, val)
-            if data is None:
-                data = dat
-            else:
-                data = np.concatenate((data, dat))
-
-        # now simulate LC on this data
-
-        simu.run(data)
-
-        # save metadata
-
-        simu.save_metadata()
-
-        # check what we have inside the data
-
-        simu_name = '{}/Simu_{}_1.hdf5'.format(
-            conf['Output']['directory'], conf['ProductionID'])
-        lc_name = '{}/LC_{}_1.hdf5'.format(
-            conf['Output']['directory'], conf['ProductionID'])
-
-        f = h5py.File(simu_name, 'r')
-        # reading the simu file
-        simul = Table()
-        for i, key in enumerate(f.keys()):
-            simul = vstack([simul, Table.read(simu_name, path=key)])
-
-        # first check on simulation parameters
+        sn_type='SN_Ia'
+        sn_model = 'salt2-extended'
+        sn_model_version = '1.0'
 
         """
-        for cc in simul.columns:
-            print('RefDict[\'{}\']='.format(cc), simul[cc].tolist())
-        """
-        RefDict = {}
-        RefDict['SNID'] = [11, 12, 13, 14, 15, 16, 17, 18]
-        RefDict['index_hdf5'] = ['10_-2.0_0.2_0.1_59023.102_1_0', '10_-2.0_0.2_0.2_59025.202_1_0', '10_-2.0_0.2_0.3_59027.302_1_0', '10_-2.0_0.2_0.4_59029.402_1_0',
-                                 '10_-2.0_0.2_0.5_59031.502_1_0', '10_-2.0_0.2_0.6_59033.602_1_0', '10_-2.0_0.2_0.7_59035.702_1_0', '10_-2.0_0.2_0.8_59037.802_1_0']
-        RefDict['season'] = [1, 1, 1, 1, 1, 1, 1, 1]
-        RefDict['fieldname'] = ['unknown', 'unknown', 'unknown',
-                                'unknown', 'unknown', 'unknown', 'unknown', 'unknown']
-        RefDict['fieldid'] = [0, 0, 0, 0, 0, 0, 0, 0]
-        RefDict['area'] = [0.8392936452111668, 0.8392936452111668, 0.8392936452111668, 0.8392936452111668,
-                           0.8392936452111668, 0.8392936452111668, 0.8392936452111668, 0.8392936452111668]
-        RefDict['RA'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        RefDict['Dec'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        RefDict['x0'] = [0.0001740043427228556, 3.838217653816398e-05, 1.5291775006387726e-05, 7.813694452227428e-06,
-                         4.593754146993177e-06, 2.958319253169902e-06, 2.031812357572594e-06, 1.4642465313185475e-06]
-        RefDict['epsilon_x0'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        RefDict['x1'] = [-2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0]
-        RefDict['epsilon_x1'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        RefDict['color'] = [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]
-        RefDict['epsilon_color'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        RefDict['daymax'] = [59023.10190972222, 59025.20190972222, 59027.30190972223, 59029.401909722226,
-                             59031.501909722225, 59033.60190972222, 59035.70190972222, 59037.80190972223]
-        RefDict['epsilon_daymax'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        RefDict['z'] = [0.1, 0.2, 0.30000000000000004,
-                        0.4, 0.5, 0.6, 0.7000000000000001, 0.8]
-        RefDict['survey_area'] = [0.8392936452111668, 0.8392936452111668, 0.8392936452111668,
-                                  0.8392936452111668, 0.8392936452111668, 0.8392936452111668, 0.8392936452111668, 0.8392936452111668]
-        RefDict['healpixID'] = [10, 10, 10, 10, 10, 10, 10, 10]
-        RefDict['pixRA'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        RefDict['pixDec'] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        RefDict['dL'] = [447513.8270462983, 952843.778897064, 1509584.9325567451, 2111826.765549938,
-                         2754245.369069551, 3432131.997266213, 4141376.3917280077, 4878422.389153463]
-        RefDict['snr_fluxsec_meth'] = ['interp', 'interp', 'interp',
-                                       'interp', 'interp', 'interp', 'interp', 'interp']
-        RefDict['status'] = [1, 1, 1, 1, 1, 1, 1, 1]
-        RefDict['ebvofMW'] = [0, 0, 0, 0, 0, 0, 0, 0]
+        # test Ia - no error model
+        error_model = 0
+        testSimu(data,prodid,sn_type,sn_model,sn_model_version,
+                       x1Type, x1min, x1max, x1step,
+                       colorType, colormin, colormax, colorstep,
+                       zType, zmin, zmax, zstep,
+                       daymaxtype, daymaxstep, difflux,
+                       fulldbName, fieldType, fcoadd, seasval,error_model)
 
-        for key, vv in RefDict.items():
-            if key not in ['index_hdf5', 'fieldname', 'snr_fluxsec_meth']:
-                assert(np.isclose(vv, simul[key].tolist()).all())
-            else:
-                assert((vv == simul[key]).all())
-
-        # now grab LC
-
-        vars = ['snr_m5', 'flux_e_sec', 'mag',
-                'exptime', 'magerr', 'band', 'phase','snr_tot']
-
-        for simu in simul:
-            lc = Table.read(lc_name, path='lc_{}'.format(simu['index_hdf5']))
-            idx = lc['snr_m5'] >= 5.
-            lc = lc[idx][:20]
-            break
-
-        """
-        for cc in vars:
-            print('RefDict[\'{}\']='.format(cc), lc[cc].tolist())
+        # test Ia - with error model
+        error_model = 1
+        testSimu(data,prodid,sn_type,sn_model,sn_model_version,
+                       x1Type, x1min, x1max, x1step,
+                       colorType, colormin, colormax, colorstep,
+                       zType, zmin, zmax, zstep,
+                       daymaxtype, daymaxstep, difflux,
+                       fulldbName, fieldType, fcoadd, seasval,error_model)
         """
 
-        RefDict = {}
+        # test non Ia - error_model=0
+        error_model = 0
+        sn_type='SN_Ib'
+        sn_model = 'nugent-sn2p'
+        sn_model_version = '1.2'
 
-        RefDict['snr_m5'] = [27.77258180379027, 18.98377096566505, 72.79590570928633, 152.87684647830162, 156.06666693213177, 29.621529233519308, 285.0437939047469, 367.04307444774975, 359.1500294310009,
-                             171.59301350412957, 506.58512140687225, 646.2792675349654, 598.4544644527755, 288.72360876534253, 661.3175452293224, 849.9877278958845, 734.1754283838669, 389.3160994765804, 745.0362859344243, 966.9961020792483]
-        RefDict['flux_e_sec'] = [38.63207940525376, 30.058075022627055, 121.90767409695435, 229.50791298666263, 265.77760354105226, 47.616478031948624, 597.1868291509262, 626.8365327579263, 680.7371214592486,
-                                 292.13548602917916, 1321.4612615401911, 1298.4282257064317, 1283.1179646726964, 515.1858166393667, 1986.2944122972094, 1911.7598017542887, 1684.8650500083472, 723.2044598429111, 2404.500751077161, 2314.677056897036]
-        RefDict['mag'] = [24.197549880640725, 24.157628846869798, 23.160950966140664, 22.263092425796074, 21.79125631239912, 23.244278569706797, 21.435793513964224, 21.17226381616802, 20.77021232574782,
-                          21.27488067257211, 20.5734837320662, 20.381589712793957, 20.081984493733383, 20.658809391021087, 20.130996540814564, 19.96148438529608, 19.7862032720865, 20.290578693537636, 19.92355764391396, 19.75371788930898]
-        RefDict['exptime'] = [600.0, 600.0, 300.0, 600.0, 600.0, 780.0, 300.0, 600.0, 600.0,
-                              780.0, 300.0, 600.0, 600.0, 780.0, 300.0, 600.0, 600.0, 780.0, 300.0, 600.0]
-        RefDict['magerr'] = [0.039093816067541594, 0.05719286261522241, 0.014914797668622531, 0.007102031666464496, 0.006956874431298518, 0.03665361758330578, 0.003809015414385587, 0.0029580620922809125, 0.0030230714625814016, 0.0063273916728084035,
-                             0.0021432453478753125, 0.0016799799394762239, 0.0018142336121611566, 0.0037604690846066266, 0.0016417774072236856, 0.0012773551536394909, 0.0014788511883980504, 0.0027888294530276484, 0.001457293054386471, 0.001122792741794475]
-        RefDict['band'] = ['LSST::r', 'LSST::i', 'LSST::g', 'LSST::r', 'LSST::i', 'LSST::z', 'LSST::g', 'LSST::r', 'LSST::i',
-                           'LSST::z', 'LSST::g', 'LSST::r', 'LSST::i', 'LSST::z', 'LSST::g', 'LSST::r', 'LSST::i', 'LSST::z', 'LSST::g', 'LSST::r']
-        RefDict['phase'] = [-15.54029882153951, -15.536721380459229, -12.818181818180495, -12.813026094266784, -12.809448653186502, -12.808501683486444, -10.090909090907767, -10.085753366994057, -10.082175925913774, -
-                            10.081228956213717, -7.36363636363504, -7.35848063972133, -7.354903198641047, -7.353956228940991, -4.636363636362313, -4.631207912448603, -4.62763047136832, -4.626683501668263, -1.909090909089586, -1.9039351851758757]
+        # test Ib
+        testSimu(data,prodid,sn_type,sn_model,sn_model_version,
+                       x1Type, x1min, x1max, x1step,
+                       colorType, colormin, colormax, colorstep,
+                       zType, zmin, zmax, zstep,
+                       daymaxtype, daymaxstep, difflux,
+                       fulldbName, fieldType, fcoadd, seasval,error_model)
+        
 
-        for key, vv in RefDict.items():
-            #print('testing', key)
-            if key not in ['band']:
-                assert(np.isclose(vv, lc[key].tolist()).all())
-            else:
-                assert(set(vv) == set(lc[key].tolist()))
-
-    def testSimuSNFast(self):
+    def testSimuSNFast():
         # set simulation parameters
         prodid = 'Fake'
         # x1colorType = 'unique'
@@ -436,6 +368,7 @@ class TestSNsimulation(unittest.TestCase):
         fieldType = 'Fake'
         fcoadd = 1
         seasval = [1]
+        error_model = 0
 
         # get the config file from these
         conf = getconfig(prodid,
@@ -444,7 +377,7 @@ class TestSNsimulation(unittest.TestCase):
                          zType, zmin, zmax, zstep,
                          daymaxtype, daymaxstep, difflux,
                          fulldbName, fieldType, fcoadd, seasval,
-                         simulator='sn_fast')
+                         error_model,simulator='sn_fast')
 
         # get the reference LC file
 

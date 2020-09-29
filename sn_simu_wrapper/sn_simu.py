@@ -515,14 +515,22 @@ class SNSimulation(BaseMetric):
         """
         # save LC on disk
 
-        epsilon = np.int(1000*1.e8*lc.meta['epsilon_x0'])
-        epsilon += np.int(100*1.e8*lc.meta['epsilon_x1'])
-        epsilon += np.int(10*1.e8*lc.meta['epsilon_color'])
-        epsilon += np.int(1*1.e8*lc.meta['epsilon_daymax'])
+        epsilon = 0.
+        if 'epsilon_x0' in lc.meta.keys():
+            epsilon = np.int(1000*1.e8*lc.meta['epsilon_x0'])
+            epsilon += np.int(100*1.e8*lc.meta['epsilon_x1'])
+            epsilon += np.int(10*1.e8*lc.meta['epsilon_color'])
+            epsilon += np.int(1*1.e8*lc.meta['epsilon_daymax'])
 
+        if 'x1' not in lc.meta.keys():
+            x1 = 'undef'
+            color = 'undef'
+        else:
+            x1 = lc.meta['x1'],
+            color = lc.meta['color'],
+            
         index_hdf5 = self.setIndex(lc.meta['healpixID'],
-                                   lc.meta['x1'],
-                                   lc.meta['color'],
+                                   x1,color,
                                    np.round(lc.meta['z'], 3),
                                    np.round(lc.meta['daymax'], 3),
                                    season, epsilon)
@@ -567,12 +575,11 @@ class SNSimulation(BaseMetric):
 
     def setIndex(self, healpixID, x1, color, z, daymax, season, epsilon):
 
-        index_hdf5 = '{}_{}_{}_{}_{}_{}_{}'.format(healpixID,
-                                                   x1,
-                                                   color,
-                                                   z,
-                                                   daymax, season, epsilon)
+        index_hdf5 = '{}_{}_{}_{}_{}'.format(healpixID,z,daymax, season, epsilon)
 
+        if x1 != 'undef':
+            index_hdf5 += '{}_{}'.format(x1,color)
+            
         return index_hdf5
 
     def simuLoop(self, obs, season, gen_params, iproc, j=0, output_q=None):

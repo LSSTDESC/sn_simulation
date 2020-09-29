@@ -14,7 +14,7 @@ setup(
     author='Philippe Gris',
     author_email='philippe.gris@clermont.in2p3.fr',
     license='BSD',
-    packages=['sn_simulator', 'sn_simu_wrapper'],
+    packages=['sn_simulator', 'sn_simu_wrapper','sn_simu_input'],
     python_requires='>=3.5',
     zip_safe=False,
     install_requires=[
