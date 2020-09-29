@@ -311,7 +311,7 @@ class SN(SN_Object):
         lcdf['flux'] = self.SN.bandflux(
             lcdf[band_cosmo], lcdf[self.mjdCol], zpsys='ab', zp=2.5*np.log10(3631))
 
-        print('fluxa',lcdf['flux'])
+        #print('fluxa',lcdf['flux'])
 
         # estimate error model (if necessary)
         if self.error_model:
@@ -405,7 +405,7 @@ class SN(SN_Object):
         lcdf.loc[lcdf.fluxerr_model<0,'snr_m5'] = 0.
         lcdf.loc[lcdf.fluxerr_model<0,'fluxerr_model'] = 10.
 
-        print('fluxb',lcdf[['flux','fluxerr','fluxerr_photo','snr_m5']])
+        #print('fluxb',lcdf[['flux','fluxerr','fluxerr_photo','snr_m5']])
         if len(lcdf) == 0:
             return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1, ebvofMW)]
 
