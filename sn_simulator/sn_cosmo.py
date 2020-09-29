@@ -238,8 +238,6 @@ class SN(SN_Object):
           time: time(days)(float)
           phase: phase(float)
         """
-        display = True
-        time_display = 10
 
         ra = np.mean(obs[self.RACol])
         dec = np.mean(obs[self.DecCol])
