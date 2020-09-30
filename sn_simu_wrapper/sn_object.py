@@ -200,15 +200,21 @@ class SN_Object:
             sncosmo.registry.register(bandpass, force=True)
 
         z = table.meta['z']
-        x1 = table.meta['x1']
-        color = table.meta['color']
+        if 'x1' in table.meta.keys():
+            x1 = table.meta['x1']
+            color = table.meta['color']
+            x0 = table.meta['x0']
+        else:
+            x1 = 0.
+            color = 0.
+            x0 = 0.
         daymax = table.meta['daymax']
 
         model = sncosmo.Model('salt2')
         model.set(z=z,
                   c=color,
                   t0=daymax,
-                  # x0=self.X0,
+                  x0=x0,
                   x1=x1)
         """
         print('tests',isinstance(table, np.ndarray),isinstance(table,Table),isinstance(table,dict))
@@ -233,7 +239,9 @@ class SN_Object:
         print('bbbb',orig_colnames_to_use,_photdata_aliases.keys(),new_data.dtype.names)
         new_data.dtype.names = _photdata_aliases.keys()
         """
-        sncosmo.plot_lc(data=table, model=model)
+        # display only 1 sigma LC points
+        table = table[table['flux']/table['fluxerr']>=1.]
+        sncosmo.plot_lc(data=table)
 
         plt.draw()
         plt.pause(time_display)

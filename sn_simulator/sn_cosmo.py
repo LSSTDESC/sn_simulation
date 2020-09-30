@@ -68,7 +68,7 @@ class SN(SN_Object):
         self.sn_model = model
         self.sn_version = version
         
-        self.sn_type = self.sn_parameters['Type']
+        self.sn_type = self.sn_parameters['type']
 
         if model != 'random':
             self.source(model,version)
@@ -117,7 +117,7 @@ class SN(SN_Object):
           version number
 
         """
-        source = sncosmo.get_source(model, version=version)
+        source = sncosmo.get_source(model, version)
 
         self.SN = sncosmo.Model(source=source,
                                 effects=[self.dustmap, self.dustmap],
@@ -154,7 +154,7 @@ class SN(SN_Object):
         main_type = sn_type.split('_')[0]
         sub_type = sn_type.split('_')[1]
 
-        idx = df['Type'] == main_type
+        idx = df['type'] == main_type
         idx &= df['subtype'] == sub_type
 
         sel = df[idx]
@@ -495,7 +495,7 @@ class SN(SN_Object):
         # set metadata
         table_lc.meta = self.metadata(
             ra, dec, pix, area, season, ptime, self.snr_fluxsec, 1, ebvofMW)
-
+    
         # if the user chooses to display the results...
         if display:
             self.plotLC(table_lc['time', 'band',
@@ -643,6 +643,7 @@ class SN(SN_Object):
                          self.sn_parameters['color'], self.gen_parameters['epsilon_color'],
                           self.gen_parameters['epsilon_daymax']]
 
+        
         return dict(zip(self.names_meta, val_meta))
 
     def fluxSED(self, obs):

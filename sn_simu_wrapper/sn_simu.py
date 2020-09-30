@@ -135,10 +135,10 @@ class SNSimulation(BaseMetric):
                                    airmass=tel_par['airmass'])
 
         # sn parameters
-        self.sn_parameters = config['SN parameters']
+        self.sn_parameters = config['SN']
         self.gen_par = SimuParameters(self.sn_parameters, cosmo_par, mjdCol=self.mjdCol, area=self.area,
                                       dirFiles=self.sn_parameters['x1_color']['dirFile'],
-                                      web_path=config['Web path'])
+                                      web_path=config['WebPath'])
 
         # this is for output
 
@@ -157,9 +157,12 @@ class SNSimulation(BaseMetric):
         # simulator parameter
         self.simu_config = config['Simulator']
 
+        # reference files
+        self.reffiles = config['ReferenceFiles']
+        
         # LC display in "real-time"
-        self.display_lc = config['Display_LC']['display']
-        self.time_display = config['Display_LC']['time']
+        self.display_lc = config['Display']['LC']['display']
+        self.time_display = config['Display']['LC']['time']
 
         # fieldtype, season
         self.field_type = config['Observations']['fieldtype']
@@ -181,14 +184,14 @@ class SNSimulation(BaseMetric):
         self.gamma = None
         self.mag_to_flux = None
         self.dustcorr = None
-        web_path = config['Web path']
+        web_path = config['WebPath']
         self.error_model = self.simu_config['error_model']
         
         if 'sn_fast' in self.simu_config['name']:
-            templateDir = self.simu_config['Template Dir']
-            gammaDir = self.simu_config['Gamma Dir']
-            gammaFile = self.simu_config['Gamma File']
-            dustDir = self.simu_config['DustCorr Dir']
+            templateDir = self.reffiles['Template_Dir']
+            gammaDir = self.reffiles['ReferenceFiles']['Gamma_Dir']
+            gammaFile = self.reffiles['ReferenceFiles']['Gamma_File']
+            dustDir = self.reffiles['ReferenceFiles']['DustCorr_Dir']
 
             # x1 and color are unique for this simulator
             x1 = self.sn_parameters['x1']['min']
@@ -238,8 +241,8 @@ class SNSimulation(BaseMetric):
             print('Files loaded',time.time()-time_ref)
         else:
             gammas = LoadGamma(
-                'grizy',  self.simu_config['Gamma Dir'],
-                self.simu_config['Gamma File'],
+                'grizy',  self.reffiles['Gamma_Dir'],
+                self.reffiles['Gamma_File'],
                 web_path, self.telescope)
 
             self.gamma = gammas.gamma
@@ -526,9 +529,9 @@ class SNSimulation(BaseMetric):
             x1 = 'undef'
             color = 'undef'
         else:
-            x1 = lc.meta['x1'],
-            color = lc.meta['color'],
-            
+            x1 = lc.meta['x1']
+            color = lc.meta['color']
+
         index_hdf5 = self.setIndex(lc.meta['healpixID'],
                                    x1,color,
                                    np.round(lc.meta['z'], 3),
@@ -575,10 +578,11 @@ class SNSimulation(BaseMetric):
 
     def setIndex(self, healpixID, x1, color, z, daymax, season, epsilon):
 
+        
         index_hdf5 = '{}_{}_{}_{}_{}'.format(healpixID,z,daymax, season, epsilon)
 
         if x1 != 'undef':
-            index_hdf5 += '{}_{}'.format(x1,color)
+            index_hdf5 += '_{}_{}'.format(x1,color)
             
         return index_hdf5
 
