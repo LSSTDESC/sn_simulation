@@ -1,0 +1,82 @@
+Cosmology:
+  H0: 72.0
+  Model: w0waCDM
+  Omega_l: 0.7
+  Omega_m: 0.3
+  w0: -1.0
+  wa: 0.0
+Display:
+  LC:
+    display: 0
+    time: 10.0
+Host: 0
+Instrument:
+  aerosol: 0
+  airmass: 1.2
+  atmos: 1
+  atmos_dir: THROUGHPUTS_DIR
+  name: LSST
+  throughput_dir: LSST_THROUGHPUTS_BASELINE
+Multiprocessing:
+  nproc: 1
+Observations:
+  coadd: 1
+  fieldtype: WFD
+  filename: fullDbName
+  season: -1
+Output:
+  directory: Output_Simu
+  save: 1
+Pixelisation:
+  nside: 64
+ProductionID: prodid
+ReferenceFiles:
+  DustCorr_Dir: Template_Dust
+  Gamma_Dir: reference_files
+  Gamma_File: gamma.hdf5
+  Template_Dir: Template_LC
+SN:
+  Id: 100
+  NSN_factor: 1
+  absmag: -19.0906
+  band: bessellB
+  blue_cutoff: 380.0
+  color:
+    max: 1.0
+    min: 0.2
+    step: 0.1
+    type: unique
+  daymax:
+    step: 1.0
+    type: unique
+  differential_flux: 0
+  ebvofMW: -1.0
+  magsys: vega
+  max_rf_phase: 60.0
+  max_rf_phase_qual: 45.0
+  min_rf_phase: -20.0
+  min_rf_phase_qual: -15.0
+  red_cutoff: 800.0
+  salt2Dir: SALT2_Files
+  type: SN_Ia
+  x1:
+    max: 1.0
+    min: -2.0
+    step: 0.1
+    type: unique
+  x1_color:
+    dirFile: reference_files
+    rate: JLA
+  z:
+    max: 1.0
+    min: 0.1
+    rate: Perrett
+    step: 0.1
+    type: uniform
+Simulator:
+  error_model: 1
+  model: salt2-extended
+  name: sn_simulator.sn_cosmo
+  version: 1.0
+WebPath: https://me.lsst.eu/gris/DESC_SN_pipeline
+configName: config1.yaml

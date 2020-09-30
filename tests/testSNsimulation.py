@@ -13,7 +13,6 @@ import yaml
 main_repo = 'https://me.lsst.eu/gris/DESC_SN_pipeline'
 m5_ref = dict(zip('ugrizy', [23.60, 24.83, 24.38, 23.92, 23.35, 22.44]))
 
-
 def getFile(refdir, fname):
     fullname = '{}/{}/{}'.format(main_repo, refdir, fname)
 
@@ -39,7 +38,7 @@ def getconfig(prodid,sn_type,sn_model,sn_model_version,
               colorType, colormin, colormax, colorstep,
               zType, zmin, zmax, zstep,
               daymaxType, daymaxstep, diffflux,
-              fulldbName, fieldType, fcoadd, seasval,ebvofMW=0.0,bluecutoff=380.,redcutoff=800.,error_model=0,
+              fulldbName, fieldType, fcoadd, seasval,ebvofMW=0.0,bluecutoff=380.,redcutoff=800.,error_model=0,display=False,
               simu='sn_cosmo', nside=64, nproc=1, outputDir='Output_Simu',config_orig='param_simulation_gen.yaml'):
 
     prodid = prodid+'_'+simu
@@ -74,7 +73,8 @@ def getconfig(prodid,sn_type,sn_model,sn_model_version,
             filedata = filedata.replace('nnproc', str(nproc))
             filedata = filedata.replace('outputDir', outputDir)
             filedata = filedata.replace('diffflux', str(diffflux))
-
+            filedata = filedata.replace('thedisp', str(display))
+            
     return yaml.load(filedata, Loader=yaml.FullLoader)
 
 def Observations_band(day0=59000, daymin=59000, cadence=3., season_length=140., band='r'):
@@ -160,23 +160,13 @@ def fake_data(day0 = 59000, diff_season = 280.,nseasons = 1):
 
     return data
 
-def getSimu(prodid,sn_type,sn_model,sn_model_version,
-         x1Type, x1min, x1max, x1step,
-         colorType, colormin, colormax, colorstep,
-         zType, zmin, zmax, zstep,
-         daymaxtype, daymaxstep, difflux,
-            fulldbName, fieldType, fcoadd, seasval,error_model):
+def getSimu(config_name):
     
     # get the config file from these
-    conf = getconfig(prodid,sn_type,sn_model,sn_model_version,
-                     x1Type, x1min, x1max, x1step,
-                     colorType, colormin, colormax, colorstep,
-                     zType, zmin, zmax, zstep,
-                     daymaxtype, daymaxstep, difflux,
-                     fulldbName, fieldType, fcoadd, seasval,error_model=error_model)
+    conf =yaml.load(open(config_name), Loader=yaml.FullLoader)
 
-    print('hello conf',conf,error_model)
-    absMag = conf['SN parameters']['absmag']
+    print('hello conf',conf)
+    absMag = conf['SN']['absmag']
     x0normFile = 'reference_files/X0_norm_{}.npy'.format(absMag)
 
     if not os.path.isfile(x0normFile):
@@ -195,20 +185,10 @@ def getSimu(prodid,sn_type,sn_model,sn_model_version,
 
     return simu,conf
         
-def testSimu(data,prodid,sn_type,sn_model,sn_model_version,
-                        x1Type, x1min, x1max, x1step,
-                        colorType, colormin, colormax, colorstep,
-                        zType, zmin, zmax, zstep,
-                        daymaxtype, daymaxstep, difflux,
-                        fulldbName, fieldType, fcoadd, seasval,error_model):
+def testSimu(data,config_name):
     
-    simu,conf = getSimu(prodid,sn_type,sn_model,sn_model_version,
-                        x1Type, x1min, x1max, x1step,
-                        colorType, colormin, colormax, colorstep,
-                        zType, zmin, zmax, zstep,
-                        daymaxtype, daymaxstep, difflux,
-                        fulldbName, fieldType, fcoadd, seasval,error_model)
-
+    simu,conf = getSimu(config_name)
+    name_config = config_name.split('/')[-1].split('.')[0]
     # now simulate LC on this data
 
     simu.run(data)
@@ -232,7 +212,7 @@ def testSimu(data,prodid,sn_type,sn_model,sn_model_version,
 
     # first check on simulation parameters
         
-    ref_simul = 'data_tests/ref_simu_{}_error_model_{}.hdf5'.format(sn_type,error_model)
+    ref_simul = 'data_tests/ref_simu_{}.hdf5'.format(name_config)
 
     if not os.path.exists(ref_simul):
         simul.write(ref_simul,'simu_parameters', append=True, compression=True)
@@ -241,13 +221,14 @@ def testSimu(data,prodid,sn_type,sn_model,sn_model_version,
     tab_simu_ref = Table.read(ref_simul,path='simu_parameters')
     if 'ptime' in tab_simu_ref.columns:
         tab_simu_ref.remove_column('ptime')
-            
+
+   
     for key in tab_simu_ref.columns:
-        if key not in ['index_hdf5', 'fieldname', 'snr_fluxsec_meth']:
+        if key not in ['index_hdf5', 'fieldname', 'snr_fluxsec_meth','sn_type','sn_model','sn_version']:
             assert(np.isclose(tab_simu_ref[key].tolist(), simul[key].tolist()).all())
         else:
             assert((tab_simu_ref[key]== simul[key]).all())
-                
+
     # now grab LC
 
     vars = ['snr_m5', 'flux_e_sec', 'mag',
@@ -258,8 +239,8 @@ def testSimu(data,prodid,sn_type,sn_model,sn_model_version,
         idx = lc['snr_m5'] >= 5.
         lc = lc[idx][:20]
         break
-
-    ref_lc =  'data_tests/ref_lc_{}_error_model_{}.hdf5'.format(sn_type,error_model)
+  
+    ref_lc =  'data_tests/ref_lc_{}.hdf5'.format(name_config)
     if not os.path.exists(ref_lc):
         lc.write(ref_lc,'lc_points', append=True, compression=True)
 
@@ -282,53 +263,14 @@ class TestSNsimulation(unittest.TestCase):
         # fake data
         data = fake_data()
 
-        # test Ia simulation
         
-        # set simulation parameters
-        prodid = 'Fake'
-        # x1colorType = 'unique'
-        x1Type = 'unique'
-        x1min = -2.0
-        x1max = 2.0
-        x1step = 0.1
-        colorType = 'unique'
-        colormin = 0.2
-        colormax = 0.3
-        colorstep = 0.02
-        zType = 'uniform'
-        zmin = 0.1
-        zmax = 0.8
-        zstep = 0.1
-        daymaxtype = 'unique'
-        daymaxstep = 1.
-        difflux = 0
-        fulldbName = 'data_from_fake'
-        fieldType = 'Fake'
-        fcoadd = 1
-        seasval = [1]
-        sn_type='SN_Ia'
-        sn_model = 'salt2-extended'
-        sn_model_version = '1.0'
-
-        """
+        # test Ia simulation
         # test Ia - no error model
-        error_model = 0
-        testSimu(data,prodid,sn_type,sn_model,sn_model_version,
-                       x1Type, x1min, x1max, x1step,
-                       colorType, colormin, colormax, colorstep,
-                       zType, zmin, zmax, zstep,
-                       daymaxtype, daymaxstep, difflux,
-                       fulldbName, fieldType, fcoadd, seasval,error_model)
+        testSimu(data,'input/config2.yaml')
 
         # test Ia - with error model
-        error_model = 1
-        testSimu(data,prodid,sn_type,sn_model,sn_model_version,
-                       x1Type, x1min, x1max, x1step,
-                       colorType, colormin, colormax, colorstep,
-                       zType, zmin, zmax, zstep,
-                       daymaxtype, daymaxstep, difflux,
-                       fulldbName, fieldType, fcoadd, seasval,error_model)
-        """
+        testSimu(data,'input/config1.yaml')
+        
 
         # test non Ia - error_model=0
         error_model = 0
@@ -337,12 +279,7 @@ class TestSNsimulation(unittest.TestCase):
         sn_model_version = '1.2'
 
         # test Ib
-        testSimu(data,prodid,sn_type,sn_model,sn_model_version,
-                       x1Type, x1min, x1max, x1step,
-                       colorType, colormin, colormax, colorstep,
-                       zType, zmin, zmax, zstep,
-                       daymaxtype, daymaxstep, difflux,
-                       fulldbName, fieldType, fcoadd, seasval,error_model)
+        testSimu(data,'input/config3.yaml')
         
 
     def testSimuSNFast():
