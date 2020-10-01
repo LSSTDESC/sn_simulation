@@ -358,22 +358,19 @@ class SN(SN_Object):
         # Select obs depending on min and max phases
         # blue and red cutoffs applied
 
-        if not self.error_model:
-            obs = self.cutoff(obs, self.sn_parameters['daymax'],
-                              self.sn_parameters['z'],
-                              self.sn_parameters['min_rf_phase'],
-                              self.sn_parameters['max_rf_phase'],
-                              self.sn_parameters['blue_cutoff'],
-                              self.sn_parameters['red_cutoff'])
-        """
-        else:
-            obs = self.cutoff(obs, self.sn_parameters['daymax'],
-                            self.sn_parameters['z'],
-                            self.sn_parameters['min_rf_phase'],
-                            self.sn_parameters['max_rf_phase'],
-                            0.,
-                            self.sn_parameters['red_cutoff'])
-        """
+        
+        blue_cutoff = 0.
+        if not self.error_model and 'Ia' in self.sn_type:
+            blue_cutoff = self.sn_parameters['blue_cutoff']
+
+        obs = self.cutoff(obs, self.sn_parameters['daymax'],
+                          self.sn_parameters['z'],
+                          self.sn_parameters['min_rf_phase'],
+                          self.sn_parameters['max_rf_phase'],
+                          blue_cutoff,
+                          self.sn_parameters['red_cutoff'])
+       
+                     
         if len(obs) == 0:
             return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1, ebvofMW)]
 
