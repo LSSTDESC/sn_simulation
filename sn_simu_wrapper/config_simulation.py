@@ -1,6 +1,22 @@
 from sn_tools.sn_io import recursive_merge
 
 class ConfigSimulation:
+    """
+    class to load a set of parameters (txt file)
+    and make a dict out of them
+
+    Parameters
+    --------------
+    type_sn: str
+       SN type
+    model_sn: str
+      model for simulation
+    config_file: str
+      configuration file
+
+    """
+    
+
     def __init__(self,type_sn,model_sn,config_file):
 
         # first: load all possible parameters
@@ -9,6 +25,7 @@ class ConfigSimulation:
         # second: keep keys only valids for (type_sn, model_sn)
 
         self.conf_dict = self.select(cdict,type_sn,model_sn)
+        
     def configDict(self,config_file):
         """
         Method to load a txt configuration file
@@ -25,9 +42,10 @@ class ConfigSimulation:
 
         """
         
-        file = open(config_file, 'r') 
-        line = file.read().splitlines()
-
+        ffile = open(config_file, 'r') 
+        line = ffile.read().splitlines()
+        ffile.close()
+        
         params = {}
         for i,ll in enumerate(line):
             if ll!='' and ll[0]!='#':
