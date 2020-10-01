@@ -136,8 +136,11 @@ class SNSimulation(BaseMetric):
 
         # sn parameters
         self.sn_parameters = config['SN']
+        dirFiles = None
+        if 'x1_color' in self.sn_parameters.keys():
+            dirFiles = self.sn_parameters['x1_color']['dirFile']
         self.gen_par = SimuParameters(self.sn_parameters, cosmo_par, mjdCol=self.mjdCol, area=self.area,
-                                      dirFiles=self.sn_parameters['x1_color']['dirFile'],
+                                      dirFiles=dirFiles,
                                       web_path=config['WebPath'])
 
         # this is for output
@@ -676,7 +679,8 @@ class SNSimulation(BaseMetric):
         sn_par = self.sn_parameters.copy()
 
         for name in ['z', 'x1', 'color', 'daymax']:
-            sn_par[name] = gen_params[name]
+            if name in gen_params.dtype.names:
+                sn_par[name] = gen_params[name]
 
         SNID = sn_par['Id']
         sn_object = SN_Object(self.simu_config['name'],
