@@ -1,0 +1,99 @@
+## production Id
+ProductionID prodid str
+
+## SN parameters
+SN Id 100 str
+SN type SN_Ia str
+# x1_color dist
+SN x1_color rate JLA str
+SN x1_color dirFile reference_files str
+#x1
+SN x1 type unique str
+SN x1 min -2.0 float
+SN x1 max 0.2 float
+SN x1 step 0.1 float
+# color
+SN color type unique str
+SN color min 0.2 float
+SN color max 1.0 float
+SN color step 0.1 float
+# redshift
+SN z type unique str
+SN z min 0.01 float
+SN z max 1.0 float
+SN z step 0.01 float
+SN z rate Perrett str
+# daymax
+SN daymax type unique str
+SN daymax step 1. float
+#rf cuts
+SN min_rf_phase -20. float
+SN max_rf_phase 60. float
+SN min_rf_phase_qual -15. float
+SN max_rf_phase_qual 45. float
+# other parameters
+SN absmag -19.0906 float
+SN band bessellB str
+SN magsys vega str
+SN differential_flux 0 int
+SN salt2Dir SALT2_Files str
+SN blue_cutoff 380. float
+SN red_cutoff 800. float
+SN ebvofMW -1. float
+SN NSN_factor 1 int
+
+## Cosmology parameters
+Cosmology Model w0waCDM str
+Cosmology Omega_m 0.30 float
+Cosmology Omega_l 0.70 float
+Cosmology H0 72.0 float
+Cosmology w0 -1.0 float
+Cosmology wa 0.0 float
+
+## Instrument
+Instrument name LSST str
+Instrument throughput_dir LSST_THROUGHPUTS_BASELINE str
+Instrument atmos_dir THROUGHPUTS_DIR str
+Instrument airmass 1.2 float
+Instrument atmos 1 int
+Instrument aerosol 0 int
+
+##Observations
+Observations filename fullDbName str
+Observations fieldtype WFD str
+Observations coadd 1 int
+Observations season -1 int
+
+## Simulator
+Simulator name sn_simulator.sn_cosmo str
+Simulator model salt2-extended str
+Simulator version 1.0 float
+Simulator error_model 0 int
+
+## Reference_Files
+ReferenceFiles Template_Dir Template_LC str
+ReferenceFiles Gamma_Dir reference_files str
+ReferenceFiles Gamma_File gamma.hdf5 str
+ReferenceFiles DustCorr_Dir Template_Dust str
+
+## Host
+Host 0 int
+
+# Display LC : #display during LC simulations
+Display_LC display 0 int
+Display_LC time 5. float
+
+##Output:
+Output directory Output_Simu str
+Output save 1 int
+
+#Multiprocessing
+Multiprocessing nproc 1 int
+
+# Pixelisation
+Pixelisation nside 64 int
+
+#Web path
+WebPath https://me.lsst.eu/gris/DESC_SN_pipeline str
+
+
