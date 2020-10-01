@@ -174,7 +174,7 @@ def getSimu(config_name):
 
     if not os.path.isfile(x0normFile):
         # if this file does not exist, grab it from a web server
-        check_get_file(conf['Web path'], 'reference_files',
+        check_get_file(conf['WebPath'], 'reference_files',
                        'X0_norm_{}.npy'.format(absMag))
     x0_norm = np.load(x0normFile)
     
