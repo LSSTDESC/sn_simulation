@@ -194,6 +194,7 @@ def dump(fname, thedict):
     ffile = open(fname,'w')
     documents = yaml.dump(thedict, ffile)
     ffile.close()
+    
 def testSimu(data,config_name):
     
     simu,conf = getSimu(config_name)
