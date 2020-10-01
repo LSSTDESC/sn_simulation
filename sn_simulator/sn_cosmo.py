@@ -14,6 +14,7 @@ from sn_tools.sn_calcFast import srand
 import pandas as pd
 import operator
 from astropy import units as u
+import os
 
 class SN(SN_Object):
     def __init__(self, param, simu_param, reference_lc=None, gamma=None, mag_to_flux=None, dustcorr=None, snr_fluxsec='interp',error_model=True):
@@ -152,7 +153,7 @@ class SN(SN_Object):
         location = location.replace('sn_simulator','sn_simu_input')
 
         # load parameters
-        models = pd.read_csv('{}/sncosmo_builtins.txt'.format(location))
+        df = pd.read_csv('{}/sncosmo_builtins.txt'.format(location),delimiter=' ')
 
         main_type = sn_type.split('_')[0]
         sub_type = sn_type.split('_')[1]
@@ -162,8 +163,12 @@ class SN(SN_Object):
 
         sel = df[idx]
 
-        print('here',sel)
-        
+        #print(sel)
+        # take a random
+        io = np.random.randint(0,len(sel),1)[0]
+        self.model = sel.iloc[io]['name']
+        self.version = str(sel.iloc[io]['version'])
+        self.source(self.model,self.version)
         
             
     def SN_SALT2(self,model):
