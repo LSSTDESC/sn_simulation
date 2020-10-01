@@ -9,6 +9,7 @@ from astropy.table import Table, vstack
 from sn_simu_wrapper.sn_simu import SNSimulation
 from sn_tools.sn_io import check_get_file
 import yaml
+from sn_simu_wrapper.config_simulation import ConfigSimulation
 
 main_repo = 'https://me.lsst.eu/gris/DESC_SN_pipeline'
 m5_ref = dict(zip('ugrizy', [23.60, 24.83, 24.38, 23.92, 23.35, 22.44]))
@@ -163,9 +164,11 @@ def fake_data(day0 = 59000, diff_season = 280.,nseasons = 1):
 def getSimu(config_name):
     
     # get the config file from these
-    conf =yaml.load(open(config_name), Loader=yaml.FullLoader)
-
-    print('hello conf',conf)
+    ffi = open(config_name)
+    conf =yaml.load(ffi, Loader=yaml.FullLoader)
+    ffi.close()
+    
+    #print('conf',conf)
     absMag = conf['SN']['absmag']
     x0normFile = 'reference_files/X0_norm_{}.npy'.format(absMag)
 
@@ -184,7 +187,13 @@ def getSimu(config_name):
                         config=conf, x0_norm=x0_norm)
 
     return simu,conf
-        
+
+def dump(fname, thedict):
+
+    #with open(fname, 'w') as ffile:
+    ffile = open(fname,'w')
+    documents = yaml.dump(thedict, ffile)
+    ffile.close()
 def testSimu(data,config_name):
     
     simu,conf = getSimu(config_name)
@@ -266,20 +275,42 @@ class TestSNsimulation(unittest.TestCase):
         
         # test Ia simulation
         # test Ia - no error model
-        testSimu(data,'input/config2.yaml')
+        # get configuration file
+        config = ConfigSimulation('Ia','salt2','../sn_simu_input/config_simulation.txt').conf_dict
+        config['Simulator']['error_model']=0
+        config['SN']['z']['type'] = 'uniform'
+        config['SN']['z']['step'] = 0.1
+        config['SN']['z']['min'] = 0.1
+        config['SN']['z']['max'] = 1.0
+        fname = 'config2.yaml'
+        dump(fname,config)
+        testSimu(data,fname)
 
         # test Ia - with error model
-        testSimu(data,'input/config1.yaml')
+        config['Simulator']['error_model']=1
+        fname = 'config1.yaml'
+        dump(fname,config)
+        testSimu(data,fname)
         
 
+        
         # test non Ia - error_model=0
         error_model = 0
         sn_type='SN_Ib'
         sn_model = 'nugent-sn2p'
         sn_model_version = '1.2'
-
+        config = ConfigSimulation(sn_type,sn_model,'../sn_simu_input/config_simulation.txt').conf_dict
+        config['Simulator']['model'] = sn_model
+        config['Simulator']['version'] = sn_model_version
+        config['SN']['type'] = sn_type
+        config['SN']['z']['type'] = 'uniform'
+        config['SN']['z']['step'] = 0.1
+        config['SN']['z']['min'] = 0.01
+        config['SN']['z']['max'] = 1.0
         # test Ib
-        testSimu(data,'input/config3.yaml')
+        fname = 'config3.yaml'
+        dump(fname,config)
+        testSimu(data,fname)
         
 
     def testSimuSNFast():
