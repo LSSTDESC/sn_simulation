@@ -79,9 +79,9 @@ ReferenceFiles DustCorr_Dir Template_Dust str
 ## Host
 Host 0 int
 
-# Display LC : #display during LC simulations
-Display_LC display 0 int
-Display_LC time 5. float
+# Display LC
+Display LC display 0 int
+Display LC time 5. float
 
 ##Output:
 Output directory Output_Simu str
