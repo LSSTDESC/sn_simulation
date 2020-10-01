@@ -547,11 +547,17 @@ class SNSimulation(BaseMetric):
         lc.meta = {}
         """
         #print('writing',lc,lc.meta)
+         """
         lc.write(self.lc_out[iproc],
                  path='lc_{}'.format(index_hdf5),
                  append=True,
                  compression=True, serialize_meta=True)
-
+        """
+        lc.write(self.lc_out[iproc],
+                 path='lc_{}'.format(index_hdf5),
+                 append=True,
+                 compression=True)
+        
         # build metadata dict
         n_lc_points = len(lc)
         metanames = ['SNID', 'index_hdf5', 'season',
