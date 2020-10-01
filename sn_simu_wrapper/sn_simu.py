@@ -547,7 +547,7 @@ class SNSimulation(BaseMetric):
         lc.meta = {}
         """
         #print('writing',lc,lc.meta)
-         """
+        """
         lc.write(self.lc_out[iproc],
                  path='lc_{}'.format(index_hdf5),
                  append=True,
