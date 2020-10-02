@@ -85,7 +85,7 @@ class ConfigSimulation:
         if 'Ia' not in type_sn:
             del res['SN']['x1']
             del res['SN']['color']
-            del res['SN']['x1_color']
+            del res['SN']['modelPar']
 
         return res
         
