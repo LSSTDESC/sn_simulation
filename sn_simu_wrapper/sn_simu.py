@@ -121,15 +121,15 @@ class SNSimulation(BaseMetric):
         # load cosmology
         cosmo_par = config['Cosmology']
         self.cosmology = w0waCDM(H0=cosmo_par['H0'],
-                                 Om0=cosmo_par['Omega_m'],
-                                 Ode0=cosmo_par['Omega_l'],
+                                 Om0=cosmo_par['Om'],
+                                 Ode0=cosmo_par['Ol'],
                                  w0=cosmo_par['w0'], wa=cosmo_par['wa'])
 
         # load telescope
         tel_par = config['Instrument']
         self.telescope = Telescope(name=tel_par['name'],
-                                   throughput_dir=tel_par['throughput_dir'],
-                                   atmos_dir=tel_par['atmos_dir'],
+                                   throughput_dir=tel_par['throughputDir'],
+                                   atmos_dir=tel_par['atmosDir'],
                                    atmos=tel_par['atmos'],
                                    aerosol=tel_par['aerosol'],
                                    airmass=tel_par['airmass'])

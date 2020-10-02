@@ -45,16 +45,16 @@ SN NSN_factor 1 int #NSN*factor for simulation
 
 ## Cosmology parameters
 Cosmology Model w0waCDM str #cosmology model
-Cosmology Omega_m 0.30 float #cosmology Om
-Cosmology Omega_l 0.70 float #cosmology Ol
+Cosmology Om 0.30 float #cosmology Omegam
+Cosmology Ol 0.70 float #cosmology Omegall
 Cosmology H0 72.0 float #cosmology H0
 Cosmology w0 -1.0 float #cosmology w0
 Cosmology wa 0.0 float #cosmology wa
 
 ## Instrument
 Instrument name LSST str #instrument name
-Instrument throughput_dir LSST_THROUGHPUTS_BASELINE str #instrument throughput dir
-Instrument atmos_dir THROUGHPUTS_DIR str #instrument atmos dir
+Instrument throughputDir LSST_THROUGHPUTS_BASELINE str #instrument throughput dir
+Instrument atmosDir THROUGHPUTS_DIR str #instrument atmos dir
 Instrument airmass 1.2 float #instrument airmass
 Instrument atmos 1 int #instrument atmos
 Instrument aerosol 0 int #instrument aerosol
