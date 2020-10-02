@@ -1,100 +1,100 @@
 ## production Id
-ProductionID prodid str
+ProductionID prodid str #Production Id
 
 ## SN parameters
-SN Id 100 str
-SN type SN_Ia str
+SN Id 100 str #SN Id
+SN type SN_Ia str #SN type
 # parameter dist
-SN modelPar name x1_color str
-SN modelPar rate JLA str
-SN modelPar dirFile reference_files str
+SN modelPar name x1_color str #SN dist model par name
+SN modelPar rate JLA str  #SN dist model rate name
+SN modelPar dirFile reference_files str #SN dist model ref dir
 #x1
-SN x1 type unique str
-SN x1 min -2.0 float
-SN x1 max 0.2 float
-SN x1 step 0.1 float
+SN x1 type unique str #SN x1 type
+SN x1 min -2.0 float #SN x1 min
+SN x1 max 0.2 float #SN x1 max
+SN x1 step 0.1 float #SN x1 step
 # color
-SN color type unique str
-SN color min 0.2 float
-SN color max 1.0 float
-SN color step 0.1 float
+SN color type unique str #SN color type
+SN color min 0.2 float #SN color min
+SN color max 1.0 float #SN color max
+SN color step 0.1 float #SN color step
 # redshift
-SN z type unique str
-SN z min 0.01 float
-SN z max 1.0 float
-SN z step 0.01 float
-SN z rate Perrett str
+SN z type unique str #SN z type
+SN z min 0.01 float #SN z min
+SN z max 1.0 float #SN z max
+SN z step 0.01 float #SN z step
+SN z rate Perrett str #SN z rate
 # daymax
-SN daymax type unique str
-SN daymax step 1. float
+SN daymax type unique str #SN daymax type
+SN daymax step 1. float #SN daymax step
 #rf cuts
-SN min_rf_phase -20. float
-SN max_rf_phase 60. float
-SN min_rf_phase_qual -15. float
-SN max_rf_phase_qual 45. float
+SN min_rf_phase -20. float #SN min rf phase
+SN max_rf_phase 60. float #SN max rf phase
+SN min_rf_phase_qual -15. float #SN min rf phase qual
+SN max_rf_phase_qual 45. float #SN max rf phase qual
 # other parameters
-SN absmag -19.0906 float
-SN band bessellB str
-SN magsys vega str
-SN differential_flux 0 int
-SN salt2Dir SALT2_Files str
-SN blue_cutoff 380. float
-SN red_cutoff 800. float
-SN ebvofMW -1. float
-SN NSN_factor 1 int
+SN absmag -19.0906 float #SN absmag
+SN band bessellB str #SN band
+SN magsys vega str #SN magsys
+SN differential_flux 0 int #SN diff flux
+SN salt2Dir SALT2_Files str #SN SALT2 dir
+SN blue_cutoff 380. float #SN blue cutoff
+SN red_cutoff 800. float #SN red cutoff
+SN ebvofMW -1. float #SN E(B-V)
+SN NSN_factor 1 int #NSN*factor for simulation
 
 ## Cosmology parameters
-Cosmology Model w0waCDM str
-Cosmology Omega_m 0.30 float
-Cosmology Omega_l 0.70 float
-Cosmology H0 72.0 float
-Cosmology w0 -1.0 float
-Cosmology wa 0.0 float
+Cosmology Model w0waCDM str #cosmology model
+Cosmology Omega_m 0.30 float #cosmology Om
+Cosmology Omega_l 0.70 float #cosmology Ol
+Cosmology H0 72.0 float #cosmology H0
+Cosmology w0 -1.0 float #cosmology w0
+Cosmology wa 0.0 float #cosmology wa
 
 ## Instrument
-Instrument name LSST str
-Instrument throughput_dir LSST_THROUGHPUTS_BASELINE str
-Instrument atmos_dir THROUGHPUTS_DIR str
-Instrument airmass 1.2 float
-Instrument atmos 1 int
-Instrument aerosol 0 int
+Instrument name LSST str #instrument name
+Instrument throughput_dir LSST_THROUGHPUTS_BASELINE str #instrument throughput dir
+Instrument atmos_dir THROUGHPUTS_DIR str #instrument atmos dir
+Instrument airmass 1.2 float #instrument airmass
+Instrument atmos 1 int #instrument atmos
+Instrument aerosol 0 int #instrument aerosol
 
 ##Observations
-Observations filename fullDbName str
-Observations fieldtype WFD str
-Observations coadd 1 int
-Observations season -1 int
+Observations filename fullDbName str #observation file name
+Observations fieldtype WFD str #observations field type
+Observations coadd 1 int #observations coaddition per night
+Observations season -1 int #observations seasons
 
 ## Simulator
-Simulator name sn_simulator.sn_cosmo str
-Simulator model salt2-extended str
-Simulator version 1.0 float
-Simulator error_model 0 int
+Simulator name sn_simulator.sn_cosmo str #simulator name
+Simulator model salt2-extended str #simulator model
+Simulator version 1.0 float #simulator version
+Simulator error_model 0 int #simulator error model
 
 ## Reference_Files
-ReferenceFiles Template_Dir Template_LC str
-ReferenceFiles Gamma_Dir reference_files str
-ReferenceFiles Gamma_File gamma.hdf5 str
-ReferenceFiles DustCorr_Dir Template_Dust str
+ReferenceFiles Template_Dir Template_LC str #dir for templates ref files 
+ReferenceFiles Gamma_Dir reference_files str #dir for gamma ref files
+ReferenceFiles Gamma_File gamma.hdf5 str #gamma ref file name
+ReferenceFiles DustCorr_Dir Template_Dust str #dir for template dust files
 
 ## Host
-Host 0 int
+Host 0 int #Host
 
 # Display LC
-Display LC display 0 int
-Display LC time 5. float
+Display LC display 0 int #display LC
+Display LC time 5. float #display LC persistency time
 
 ##Output:
-Output directory Output_Simu str
-Output save 1 int
+Output directory Output_Simu str #Output directory
+Output save 1 int #output save file
 
 #Multiprocessing
-Multiprocessing nproc 1 int
+Multiprocessing nproc 1 int #multiprocessing number of procs
 
 # Pixelisation
-Pixelisation nside 64 int
+Pixelisation nside 64 int #pixelisation nside Healpix
 
 #Web path
-WebPath https://me.lsst.eu/gris/DESC_SN_pipeline str
+WebPath https://me.lsst.eu/gris/DESC_SN_pipeline str #web path for reference files
 
 
