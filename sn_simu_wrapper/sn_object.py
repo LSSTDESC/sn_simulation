@@ -241,7 +241,10 @@ class SN_Object:
         """
         # display only 1 sigma LC points
         table = table[table['flux']/table['fluxerr']>=1.]
-        sncosmo.plot_lc(data=table)
+        if 'x1' in table.meta.keys():
+            sncosmo.plot_lc(data=table,model=model)
+        else:
+            sncosmo.plot_lc(data=table)
 
         plt.draw()
         plt.pause(time_display)

@@ -137,8 +137,8 @@ class SNSimulation(BaseMetric):
         # sn parameters
         self.sn_parameters = config['SN']
         dirFiles = None
-        if 'x1_color' in self.sn_parameters.keys():
-            dirFiles = self.sn_parameters['x1_color']['dirFile']
+        if 'modelPar' in self.sn_parameters.keys():
+            dirFiles = self.sn_parameters['modelPar']['dirFile']
         self.gen_par = SimuParameters(self.sn_parameters, cosmo_par, mjdCol=self.mjdCol, area=self.area,
                                       dirFiles=dirFiles,
                                       web_path=config['WebPath'])

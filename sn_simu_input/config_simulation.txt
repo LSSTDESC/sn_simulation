@@ -4,9 +4,10 @@ ProductionID prodid str
 ## SN parameters
 SN Id 100 str
 SN type SN_Ia str
-# x1_color dist
-SN x1_color rate JLA str
-SN x1_color dirFile reference_files str
+# parameter dist
+SN modelPar name x1_color str
+SN modelPar rate JLA str
+SN modelPar dirFile reference_files str
 #x1
 SN x1 type unique str
 SN x1 min -2.0 float

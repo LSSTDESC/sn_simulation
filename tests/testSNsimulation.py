@@ -283,6 +283,11 @@ class TestSNsimulation(unittest.TestCase):
         config['SN']['z']['step'] = 0.1
         config['SN']['z']['min'] = 0.1
         config['SN']['z']['max'] = 1.0
+        """
+        config['SN']['x1']['type'] = 'random'
+        config['SN']['color']['type'] = 'random'
+        config['Display']['LC']['display'] = 1
+        """
         fname = 'config2.yaml'
         dump(fname,config)
         testSimu(data,fname)
