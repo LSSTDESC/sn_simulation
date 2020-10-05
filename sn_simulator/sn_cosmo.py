@@ -396,7 +396,7 @@ class SN(SN_Object):
         #print('fluxa',lcdf['flux'])
 
         # estimate error model (if necessary)
-        print('error model',self.error_model)
+        #print('error model',self.error_model)
         if self.error_model:
             fluxcov_cosmo = self.SN.bandfluxcov(
                 lcdf[band_cosmo], lcdf[self.mjdCol], zpsys='ab', zp=2.5*np.log10(3631))
