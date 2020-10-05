@@ -28,20 +28,20 @@ SN z rate Perrett str #SN z rate
 SN daymax type unique str #SN daymax type
 SN daymax step 1. float #SN daymax step
 #rf cuts
-SN min_rf_phase -20. float #SN min rf phase
-SN max_rf_phase 60. float #SN max rf phase
-SN min_rf_phase_qual -15. float #SN min rf phase qual
-SN max_rf_phase_qual 45. float #SN max rf phase qual
+SN minRFphase -20. float #SN min rf phase
+SN maxRFphase 60. float #SN max rf phase
+SN minRFphaseQual -15. float #SN min rf phase qual
+SN maxRFphaseQual 45. float #SN max rf phase qual
 # other parameters
 SN absmag -19.0906 float #SN absmag
 SN band bessellB str #SN band
 SN magsys vega str #SN magsys
-SN differential_flux 0 int #SN diff flux
+SN differentialFlux 0 int #SN diff flux
 SN salt2Dir SALT2_Files str #SN SALT2 dir
-SN blue_cutoff 380. float #SN blue cutoff
-SN red_cutoff 800. float #SN red cutoff
+SN blueCutoff 380. float #SN blue cutoff
+SN redCutoff 800. float #SN red cutoff
 SN ebvofMW -1. float #SN E(B-V)
-SN NSN_factor 1 int #NSN*factor for simulation
+SN NSNfactor 1 int #NSN*factor for simulation
 
 ## Cosmology parameters
 Cosmology Model w0waCDM str #cosmology model
@@ -69,13 +69,13 @@ Observations season -1 int #observations seasons
 Simulator name sn_simulator.sn_cosmo str #simulator name
 Simulator model salt2-extended str #simulator model
 Simulator version 1.0 float #simulator version
-Simulator error_model 0 int #simulator error model
+Simulator errorModel 0 int #simulator error model
 
 ## Reference_Files
-ReferenceFiles Template_Dir Template_LC str #dir for templates ref files 
-ReferenceFiles Gamma_Dir reference_files str #dir for gamma ref files
-ReferenceFiles Gamma_File gamma.hdf5 str #gamma ref file name
-ReferenceFiles DustCorr_Dir Template_Dust str #dir for template dust files
+ReferenceFiles TemplateDir Template_LC str #dir for templates ref files 
+ReferenceFiles GammaDir reference_files str #dir for gamma ref files
+ReferenceFiles GammaFile gamma.hdf5 str #gamma ref file name
+ReferenceFiles DustCorrDir Template_Dust str #dir for template dust files
 
 ## Host
 Host 0 int #Host

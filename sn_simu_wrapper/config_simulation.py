@@ -49,7 +49,9 @@ class ConfigSimulation:
         params = {}
         for i,ll in enumerate(line):
             if ll!='' and ll[0]!='#':
-                lspl = ll.split(' ')
+                lla = ll.split('#')
+                lspl = lla[0].split(' ')
+                lspl = ' '.join(lspl).split() #remove empty char here
                 n = len(lspl)
                 mystr = ''
                 myclose = ''

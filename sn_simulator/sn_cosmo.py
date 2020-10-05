@@ -361,14 +361,14 @@ class SN(SN_Object):
         
         blue_cutoff = 0.
         if not self.error_model and 'Ia' in self.sn_type:
-            blue_cutoff = self.sn_parameters['blue_cutoff']
+            blue_cutoff = self.sn_parameters['blueCutoff']
 
         obs = self.cutoff(obs, self.sn_parameters['daymax'],
                           self.sn_parameters['z'],
-                          self.sn_parameters['min_rf_phase'],
-                          self.sn_parameters['max_rf_phase'],
+                          self.sn_parameters['minRFphase'],
+                          self.sn_parameters['maxRFphase'],
                           blue_cutoff,
-                          self.sn_parameters['red_cutoff'])
+                          self.sn_parameters['redCutoff'])
        
                      
         if len(obs) == 0:

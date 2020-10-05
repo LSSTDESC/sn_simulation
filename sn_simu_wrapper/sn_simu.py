@@ -188,19 +188,19 @@ class SNSimulation(BaseMetric):
         self.mag_to_flux = None
         self.dustcorr = None
         web_path = config['WebPath']
-        self.error_model = self.simu_config['error_model']
+        self.error_model = self.simu_config['errorModel']
         
         if 'sn_fast' in self.simu_config['name']:
-            templateDir = self.reffiles['Template_Dir']
-            gammaDir = self.reffiles['ReferenceFiles']['Gamma_Dir']
-            gammaFile = self.reffiles['ReferenceFiles']['Gamma_File']
-            dustDir = self.reffiles['ReferenceFiles']['DustCorr_Dir']
+            templateDir = self.reffiles['TemplateDir']
+            gammaDir = self.reffiles['ReferenceFiles']['GammaDir']
+            gammaFile = self.reffiles['ReferenceFiles']['GammaFile']
+            dustDir = self.reffiles['ReferenceFiles']['DustCorrDir']
 
             # x1 and color are unique for this simulator
             x1 = self.sn_parameters['x1']['min']
             color = self.sn_parameters['color']['min']
-            bluecutoff = self.sn_parameters['blue_cutoff']
-            redcutoff = self.sn_parameters['red_cutoff']
+            bluecutoff = self.sn_parameters['blueCutoff']
+            redcutoff = self.sn_parameters['redCutoff']
             
             # Loading reference file
             cutoff = '{}_{}'.format(bluecutoff, redcutoff)
@@ -244,8 +244,8 @@ class SNSimulation(BaseMetric):
             print('Files loaded',time.time()-time_ref)
         else:
             gammas = LoadGamma(
-                'grizy',  self.reffiles['Gamma_Dir'],
-                self.reffiles['Gamma_File'],
+                'grizy',  self.reffiles['GammaDir'],
+                self.reffiles['GammaFile'],
                 web_path, self.telescope)
 
             self.gamma = gammas.gamma

@@ -278,7 +278,7 @@ class TestSNsimulation(unittest.TestCase):
         # test Ia - no error model
         # get configuration file
         config = ConfigSimulation('Ia','salt2','../sn_simu_input/config_simulation.txt').conf_dict
-        config['Simulator']['error_model']=0
+        config['Simulator']['errorModel']=0
         config['SN']['z']['type'] = 'uniform'
         config['SN']['z']['step'] = 0.1
         config['SN']['z']['min'] = 0.1
@@ -293,7 +293,7 @@ class TestSNsimulation(unittest.TestCase):
         testSimu(data,fname)
 
         # test Ia - with error model
-        config['Simulator']['error_model']=1
+        config['Simulator']['errorModel']=1
         fname = 'config1.yaml'
         dump(fname,config)
         testSimu(data,fname)
