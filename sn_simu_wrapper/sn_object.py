@@ -214,7 +214,7 @@ class SN_Object:
         model.set(z=z,
                   c=color,
                   t0=daymax,
-                  x0=x0,
+                  #x0=x0,
                   x1=x1)
         """
         print('tests',isinstance(table, np.ndarray),isinstance(table,Table),isinstance(table,dict))
@@ -241,10 +241,12 @@ class SN_Object:
         """
         # display only 1 sigma LC points
         table = table[table['flux']/table['fluxerr']>=1.]
+        """
         if 'x1' in table.meta.keys():
             sncosmo.plot_lc(data=table,model=model)
         else:
-            sncosmo.plot_lc(data=table)
+        """
+        sncosmo.plot_lc(data=table)
 
         plt.draw()
         plt.pause(time_display)

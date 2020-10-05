@@ -192,9 +192,9 @@ class SNSimulation(BaseMetric):
         
         if 'sn_fast' in self.simu_config['name']:
             templateDir = self.reffiles['TemplateDir']
-            gammaDir = self.reffiles['ReferenceFiles']['GammaDir']
-            gammaFile = self.reffiles['ReferenceFiles']['GammaFile']
-            dustDir = self.reffiles['ReferenceFiles']['DustCorrDir']
+            gammaDir = self.reffiles['GammaDir']
+            gammaFile = self.reffiles['GammaFile']
+            dustDir = self.reffiles['DustCorrDir']
 
             # x1 and color are unique for this simulator
             x1 = self.sn_parameters['x1']['min']

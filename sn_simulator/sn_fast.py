@@ -51,8 +51,8 @@ class SN(SN_Object):
         # SN parameters for Fisher matrix estimation
         self.param_Fisher = ['x0', 'x1', 'color', 'daymax']
 
-        bluecutoff = self.sn_parameters['blue_cutoff']
-        redcutoff = self.sn_parameters['red_cutoff']
+        bluecutoff = self.sn_parameters['blueCutoff']
+        redcutoff = self.sn_parameters['redCutoff']
         self.lcFast = LCfast(reference_lc, dustcorr, x1, color, param.telescope,
                              param.mjdCol, param.RACol, param.DecCol,
                              param.filterCol, param.exptimeCol,

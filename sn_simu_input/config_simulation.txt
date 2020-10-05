@@ -2,7 +2,7 @@
 ProductionID prodid str #Production Id
 
 ## SN parameters
-SN Id 100 str #SN Id
+SN Id 100 int #SN Id
 SN type SN_Ia str #SN type
 # parameter dist
 SN modelPar name x1_color str #SN dist model par name
