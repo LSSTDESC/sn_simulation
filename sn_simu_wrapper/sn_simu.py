@@ -17,6 +17,7 @@ from sn_tools.sn_utils import GetReference, LoadGamma, LoadDust
 from scipy.interpolate import interp1d
 from sn_tools.sn_io import check_get_dir
 import multiprocessing
+#import tracemalloc
 
 class SNSimulation(BaseMetric):
     """LC simulation wrapper class
@@ -329,6 +330,10 @@ class SNSimulation(BaseMetric):
             seasons = self.season
 
         time_ref = time.time()
+        """
+        tracemalloc.start()
+        start = tracemalloc.take_snapshot()
+        """
         for seas in seasons:
             self.index_hdf5 += 10000*(seas-1)
 
@@ -341,13 +346,28 @@ class SNSimulation(BaseMetric):
             if len(obs_season[idx]) >= 5:
                 self.simuSeason(obs_season[idx], seas, iproc)
 
+            """
+            current = tracemalloc.take_snapshot()
+            stats = current.compare_to(start, 'filename')
+            for i, stat in enumerate(stats[:5], 1):
+                print("since_start", i, str(stat))
+            """
         # save metadata
         self.save_metadata(np.unique(obs['healpixID']).item())
         # reset metadata dict
         self.sn_meta[iproc] = {}
 
-        #print('End of simulation', time.time()-time_ref)
+  
 
+        """
+        top_stats = snapshot.statistics('lineno')
+
+        print("[ Top 10 ]")
+        for stat in top_stats[:10]:
+            print(stat)
+        """
+        #print('End of simulation', time.time()-time_ref)
+        return None
     def prepareSave(self, outdir, prodid, iproc):
         """ Prepare output directories for data
 
@@ -425,8 +445,9 @@ class SNSimulation(BaseMetric):
 
         """
 
+       
         gen_params = self.gen_par.Params(obs)
-
+        
         if gen_params is None:
             return
 
@@ -535,11 +556,12 @@ class SNSimulation(BaseMetric):
             x1 = lc.meta['x1']
             color = lc.meta['color']
 
+        
         index_hdf5 = self.setIndex(lc.meta['healpixID'],
                                    x1,color,
-                                   np.round(lc.meta['z'], 3),
-                                   np.round(lc.meta['daymax'], 3),
-                                   season, epsilon)
+                                   np.round(lc.meta['z'], 4),
+                                   np.round(lc.meta['daymax'], 4),
+                                   season, epsilon,SNID)
 
         """
         idx = lc['snr_m5'] > 0.
@@ -584,11 +606,11 @@ class SNSimulation(BaseMetric):
         else:
             for key in metadict.keys():
                 meta_lc[key].extend([metadict[key]])
-
-    def setIndex(self, healpixID, x1, color, z, daymax, season, epsilon):
+    
+    def setIndex(self, healpixID, x1, color, z, daymax, season, epsilon,SNID):
 
         
-        index_hdf5 = '{}_{}_{}_{}_{}'.format(healpixID,z,daymax, season, epsilon)
+        index_hdf5 = '{}_{}_{}_{}_{}_{}'.format(healpixID,z,daymax, season, epsilon,SNID)
 
         if x1 != 'undef':
             index_hdf5 += '_{}_{}'.format(x1,color)
@@ -709,14 +731,17 @@ class SNSimulation(BaseMetric):
         # simulation - this is supposed to be a list of astropytables
         lc_table = simu(obs, self.display_lc, self.time_display)
 
+        del simu
+        del module
         return lc_table
 
     def save_metadata(self, isav=-1):
         """ Copy metadata to disk
 
         """
-        for key, vals in self.sn_meta.items():
-            if vals:
-                #print('metadata',vals)
-                Table(vals).write(
-                    self.simu_out[key], 'summary_{}'.format(isav), append=True, compression=True)
+        if self.sn_meta:
+            for key, vals in self.sn_meta.items():
+                if vals:
+                    #print('metadata',vals)
+                    Table(vals).write(
+                        self.simu_out[key], 'summary_{}'.format(isav), append=True, compression=True)
