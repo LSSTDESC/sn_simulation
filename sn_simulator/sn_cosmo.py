@@ -103,12 +103,17 @@ class SN(SN_Object):
         self.mag_inf = 100.  # mag values to replace infs
 
         # band registery in sncosmo
+        
         for band in 'grizy':
+            name = 'LSST::'+band
             throughput = self.telescope.atmosphere[band]
-            bandcosmo = sncosmo.Bandpass(
-                throughput.wavelen, throughput.sb, name='LSST::'+band, wave_unit=u.nm)
-            sncosmo.registry.register(bandcosmo, force=True)
-
+            try:
+                band = sncosmo.get_bandpass(name)
+            except Exception as err: 
+                bandcosmo = sncosmo.Bandpass(
+                    throughput.wavelen, throughput.sb, name=name, wave_unit=u.nm)
+                sncosmo.registry.register(bandcosmo)
+        
     def source(self, model, version):
         """
         method to instantiate a source from sncosmo
