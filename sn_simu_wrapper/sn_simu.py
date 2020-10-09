@@ -615,6 +615,7 @@ class SNSimulation(BaseMetric):
         if x1 != 'undef':
             index_hdf5 += '_{}_{}'.format(x1,color)
 
+        # epsilon should be last!!
         index_hdf5 += '_{}'.format(epsilon)
             
         return index_hdf5
