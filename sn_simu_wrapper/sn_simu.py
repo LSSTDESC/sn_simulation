@@ -610,10 +610,12 @@ class SNSimulation(BaseMetric):
     def setIndex(self, healpixID, x1, color, z, daymax, season, epsilon,SNID):
 
         
-        index_hdf5 = '{}_{}_{}_{}_{}_{}'.format(healpixID,z,daymax, season, epsilon,SNID)
+        index_hdf5 = '{}_{}_{}_{}_{}'.format(healpixID,z,daymax, season, SNID)
 
         if x1 != 'undef':
             index_hdf5 += '_{}_{}'.format(x1,color)
+
+        index_hdf5 += '_{}'.format(epsilon)
             
         return index_hdf5
 
