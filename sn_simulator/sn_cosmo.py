@@ -398,8 +398,7 @@ class SN(SN_Object):
         lcdf['flux'] = self.SN.bandflux(
             lcdf[band_cosmo], lcdf[self.mjdCol], zpsys='ab', zp=2.5*np.log10(3631))
 
-        #print('fluxa',lcdf['flux'])
-
+        
         # estimate error model (if necessary)
         #print('error model',self.error_model)
         if self.error_model:
@@ -473,10 +472,7 @@ class SN(SN_Object):
         lcdf['zpsys'] = 'ab'  # zpsys
         lcdf['phase'] = (lcdf[self.mjdCol]-self.sn_parameters['daymax']
                          )/(1.+self.sn_parameters['z'])  # phase
-
         
-        
-
         # rename some of the columns
         lcdf = lcdf.rename(
             columns={self.mjdCol: 'time', self.filterCol: 'band', self.m5Col: 'm5', self.exptimeCol: 'exptime'})
