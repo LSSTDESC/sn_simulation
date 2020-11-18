@@ -16,8 +16,9 @@ import operator
 from astropy import units as u
 import os
 
+
 class SN(SN_Object):
-    def __init__(self, param, simu_param, reference_lc=None, gamma=None, mag_to_flux=None, dustcorr=None, snr_fluxsec='interp',error_model=True):
+    def __init__(self, param, simu_param, reference_lc=None, gamma=None, mag_to_flux=None, dustcorr=None, snr_fluxsec='interp', error_model=True):
         super().__init__(param.name, param.sn_parameters, param.gen_parameters,
                          param.cosmology, param.telescope, param.SNID, param.area, param.x0_grid,
                          mjdCol=param.mjdCol, RACol=param.RACol, DecCol=param.DecCol,
@@ -62,58 +63,55 @@ class SN(SN_Object):
         self.dustmap = sncosmo.OD94Dust()
         self.lsstmwebv = EBV.EBVbase()
 
-        
         model = simu_param['model']
         version = str(simu_param['version'])
 
         self.sn_model = model
         self.sn_version = version
-        
+
         self.sn_type = self.sn_parameters['type']
 
-        if model != 'random':
-            self.source(model,version)
+        if self.sn_type == 'SN_Ia':
+            self.source(model, version)
         else:
             self.random_source(self.sn_type)
-        
 
         self.SN.set(z=self.sn_parameters['z'])
-        if 'Ia' in self.sn_type:
+        if self.sn_type == 'SN_Ia':
             self.SN.set(t0=self.sn_parameters['daymax'] +
                         self.gen_parameters['epsilon_daymax'])
-        else:
-             self.SN.set(t0=self.sn_parameters['daymax'])
-            
-        if 'Ia' in self.sn_type:
             if 'salt2' in model:
                 self.SN_SALT2(model)
-                
+        else:
+            self.SN.set(t0=self.sn_parameters['daymax'])
+
         self.defname = dict(zip(['healpixID', 'pixRA', 'pixDec'], [
                             'observationId', param.RACol, param.DecCol]))
 
         # names for metadata
-        self.names_meta = ['RA', 'Dec','sn_type','sn_model','sn_version', 'daymax',
+        self.names_meta = ['RA', 'Dec', 'sn_type', 'sn_model', 'sn_version', 'daymax',
                            'z', 'survey_area',
                            'healpixID', 'pixRA', 'pixDec',
                            'season', 'dL', 'ptime', 'snr_fluxsec_meth', 'status', 'ebvofMW']
 
-        if 'Ia' in self.sn_type:
-            self.names_meta += ['x0', 'epsilon_x0','x1', 'epsilon_x1','color', 'epsilon_color','epsilon_daymax']
+        if self.sn_type == 'SN_Ia':
+            self.names_meta += ['x0', 'epsilon_x0', 'x1',
+                                'epsilon_x1', 'color', 'epsilon_color', 'epsilon_daymax']
 
         self.mag_inf = 100.  # mag values to replace infs
 
         # band registery in sncosmo
-        
+
         for band in 'grizy':
             name = 'LSST::'+band
             throughput = self.telescope.atmosphere[band]
             try:
                 band = sncosmo.get_bandpass(name)
-            except Exception as err: 
+            except Exception as err:
                 bandcosmo = sncosmo.Bandpass(
                     throughput.wavelen, throughput.sb, name=name, wave_unit=u.nm)
                 sncosmo.registry.register(bandcosmo)
-        
+
     def source(self, model, version):
         """
         method to instantiate a source from sncosmo
@@ -136,7 +134,7 @@ class SN(SN_Object):
         self.version = version
         self.dL = self.cosmology.luminosity_distance(
             self.sn_parameters['z']).value*1.e3
-        
+
     def random_source(self, sn_type):
         """
         Method to choose a random source depending on the type
@@ -147,19 +145,31 @@ class SN(SN_Object):
         ---------------
         sn_type: str
            supernovae type
-        
+
         """
 
         # load the possible models for this type of supernova
         # get the location of the file
-        location= os.path.realpath(
+        location = os.path.realpath(
             os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
-        location = location.replace('sn_simulator','sn_simu_input')
+        location = location.replace('sn_simulator', 'sn_simu_input')
 
         # load parameters
-        df = pd.read_csv('{}/sncosmo_builtins.txt'.format(location),delimiter=' ')
+        df = pd.read_csv(
+            '{}/sncosmo_builtins.txt'.format(location), delimiter=' ')
 
+        if sn_type == 'Non_Ia':
+            idx = df['type'] == 'SN'
+            idx &= df['subtype'] != 'Ia'
+            sel = df[idx]
+            sela = sel.groupby(['type', 'subtype']).size().to_frame(
+                'size').reset_index()
+            io = np.random.choice(
+                len(sela), 1, p=sela['size'].values/sela['size'].sum())[0]
+            sn_type = '{}_{}'.format(
+                sela.iloc[io]['type'], sela.iloc[io]['subtype'])
+            self.sn_type = sn_type
         main_type = sn_type.split('_')[0]
         sub_type = sn_type.split('_')[1]
 
@@ -168,15 +178,14 @@ class SN(SN_Object):
 
         sel = df[idx]
 
-        #print(sel)
+        # print(sel)
         # take a random
-        io = np.random.randint(0,len(sel),1)[0]
-        self.model = sel.iloc[io]['name']
-        self.version = str(sel.iloc[io]['version'])
-        self.source(self.model,self.version)
-        
-            
-    def SN_SALT2(self,model):
+        io = np.random.randint(0, len(sel), 1)[0]
+        self.sn_model = sel.iloc[io]['name']
+        self.sn_version = str(sel.iloc[io]['version'])
+        self.source(self.sn_model, self.sn_version)
+
+    def SN_SALT2(self, model):
         """
         Method to set SALT2 parameters for SN
 
@@ -206,7 +215,8 @@ class SN(SN_Object):
             source = sncosmo.get_source(model, version=version)
         else:
             SALT2Dir = 'SALT2.Guy10_UV2IR'
-            self.SALT2Templates(SALT2Dir=SALT2Dir, blue_cutoff=10.*self.sn_parameters['blue_cutoff'])
+            self.SALT2Templates(
+                SALT2Dir=SALT2Dir, blue_cutoff=10.*self.sn_parameters['blue_cutoff'])
             source = sncosmo.SALT2Source(modeldir=SALT2Dir)
         """
         # set x1 and c parameters
@@ -214,11 +224,11 @@ class SN(SN_Object):
                     self.gen_parameters['epsilon_color'])
         self.SN.set(x1=self.sn_parameters['x1'] +
                     self.gen_parameters['epsilon_x1'])
-        
+
         # need to correct X0 for alpha and beta
         self.X0 = self.x0(self.dL)
-        #self.dL = lumidist
-        #set X0
+        # self.dL = lumidist
+        # set X0
         self.SN.set(x0=self.X0)
         """
         self.SN.set_source_peakabsmag(self.sn_parameters['absmag'],
@@ -226,7 +236,7 @@ class SN(SN_Object):
 
         self.X0 = self.SN.get('x0')
         """
-        
+
     def x0(self, lumidist):
         """"
         Method to estimate x0 from a griddata
@@ -247,13 +257,13 @@ class SN(SN_Object):
                                  self.sn_parameters['x1'] - beta *
                                  self.sn_parameters['color']))
         X0 += self.gen_parameters['epsilon_x0']
-        
-        return X0        
-    
-    def SALT2Templates(self,SALT2Dir='SALT2.Guy10_UV2IR', blue_cutoff=3800.):
+
+        return X0
+
+    def SALT2Templates(self, SALT2Dir='SALT2.Guy10_UV2IR', blue_cutoff=3800.):
         """
         Method to load SALT2 templates and apply cutoff on SED.
-        
+
         Parameters
         --------------
         SALT2Dir: str, opt
@@ -266,14 +276,14 @@ class SN(SN_Object):
         for vv in ['salt2_template_0', 'salt2_template_1']:
             fName = '{}/{}_orig.dat'.format(SALT2Dir, vv)
             data = np.loadtxt(fName, dtype={'names': ('phase', 'wavelength', 'flux'),
-                                        'formats': ('f8', 'i4', 'f8')})
-            #print(data)
+                                            'formats': ('f8', 'i4', 'f8')})
+            # print(data)
             data['flux'][data['wavelength'] <= blue_cutoff] = 0.0
 
-            #print(data)
+            # print(data)
             np.savetxt('{}/{}.dat'.format(SALT2Dir, vv),
                        data, fmt=['%1.2f', '%4d', '%.7e', ])
-    
+
     def __call__(self, obs, display=False, time_display=0.):
         """ Simulation of the light curve
 
@@ -363,9 +373,8 @@ class SN(SN_Object):
         # Select obs depending on min and max phases
         # blue and red cutoffs applied
 
-        
         blue_cutoff = 0.
-        if not self.error_model and 'Ia' in self.sn_type:
+        if not self.error_model and self.sn_type == 'SN_Ia':
             blue_cutoff = self.sn_parameters['blueCutoff']
 
         obs = self.cutoff(obs, self.sn_parameters['daymax'],
@@ -374,7 +383,6 @@ class SN(SN_Object):
                           self.sn_parameters['maxRFphase'],
                           blue_cutoff,
                           self.sn_parameters['redCutoff'])
-
 
         if len(obs) == 0:
             return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1, ebvofMW)]
@@ -398,27 +406,24 @@ class SN(SN_Object):
         lcdf['flux'] = self.SN.bandflux(
             lcdf[band_cosmo], lcdf[self.mjdCol], zpsys='ab', zp=2.5*np.log10(3631))
 
-        
         # estimate error model (if necessary)
-        #print('error model',self.error_model)
+        # print('error model',self.error_model)
         if self.error_model:
             fluxcov_cosmo = self.SN.bandfluxcov(
                 lcdf[band_cosmo], lcdf[self.mjdCol], zpsys='ab', zp=2.5*np.log10(3631))
             lcdf['fluxerr_model'] = np.sqrt(np.diag(fluxcov_cosmo[1]))
         else:
             lcdf['fluxerr_model'] = 0.
-        
+
         idx = lcdf['flux'] > 0.
-        #lcdf = lcdf[idx]
-        lcdf.loc[lcdf.flux<=0.,'fluxerr_photo'] = -1.
-        lcdf.loc[lcdf.flux<=0.,'fluxerr_model'] = -1.
-        lcdf.loc[lcdf.flux<=0.,'flux'] = 9999.
+        # lcdf = lcdf[idx]
+        lcdf.loc[lcdf.flux <= 0., 'fluxerr_photo'] = -1.
+        lcdf.loc[lcdf.flux <= 0., 'fluxerr_model'] = -1.
+        lcdf.loc[lcdf.flux <= 0., 'flux'] = 9999.
 
-        
+        # deltaT.loc[deltaT['data'] < 0, 'data'] = 0
 
-        #deltaT.loc[deltaT['data'] < 0, 'data'] = 0
-
-        #print('simulating',season,len(lcdf))
+        # print('simulating',season,len(lcdf))
         if len(lcdf) == 0:
             return []
         # ti(time.time(), 'fluxes_b')
@@ -446,33 +451,30 @@ class SN(SN_Object):
                 fluxName += '_interp'
                 snrName += '_interp'
 
-            
             lcdf = lcdf.groupby([self.filterCol]).apply(
                 lambda x: self.interp_gamma_flux(x, gammaName, fluxName)).reset_index()
 
-            
             lcdf[snrName] = 1./srand(
                 lcdf[gammaName].values, lcdf['mag'], lcdf[self.m5Col])
 
         # ti(time.time(), 'estimate 1')
 
-            
         # complete the LC
         lcdf['magerr_phot'] = (2.5/np.log(10.))/lcdf['snr_m5']  # mag error
-        #lcdf['fluxerr'] = lcdf['flux']/lcdf['snr_m5']  # flux error - photometry
-        lcdf['fluxerr_photo'] = lcdf['flux']/lcdf['snr_m5']  # flux error - photometry
-        
-        
-        lcdf['fluxerr'] = np.sqrt(lcdf['fluxerr_model']**2+lcdf['fluxerr_photo']**2) #flux error
-        lcdf['snr'] = lcdf['flux']/lcdf['fluxerr'] # snr
+        # lcdf['fluxerr'] = lcdf['flux']/lcdf['snr_m5']  # flux error - photometry
+        lcdf['fluxerr_photo'] = lcdf['flux'] / \
+            lcdf['snr_m5']  # flux error - photometry
+
+        lcdf['fluxerr'] = np.sqrt(
+            lcdf['fluxerr_model']**2+lcdf['fluxerr_photo']**2)  # flux error
+        lcdf['snr'] = lcdf['flux']/lcdf['fluxerr']  # snr
         lcdf['magerr'] = (2.5/np.log(10.))/lcdf['snr']  # mag error
-        
-        
+
         lcdf['zp'] = 2.5*np.log10(3631)  # zp
         lcdf['zpsys'] = 'ab'  # zpsys
         lcdf['phase'] = (lcdf[self.mjdCol]-self.sn_parameters['daymax']
                          )/(1.+self.sn_parameters['z'])  # phase
-        
+
         # rename some of the columns
         lcdf = lcdf.rename(
             columns={self.mjdCol: 'time', self.filterCol: 'band', self.m5Col: 'm5', self.exptimeCol: 'exptime'})
@@ -483,13 +485,13 @@ class SN(SN_Object):
         idf = lcdf['mag'] < self.mag_inf
         lcdf = lcdf[idf]
 
-        lcdf.loc[lcdf.fluxerr_model<0,'flux'] = 0.
-        lcdf.loc[lcdf.fluxerr_model<0,'fluxerr_photo'] = 10.
-        lcdf.loc[lcdf.fluxerr_model<0,'fluxerr'] = 10.
-        lcdf.loc[lcdf.fluxerr_model<0,'snr_m5'] = 0.
-        lcdf.loc[lcdf.fluxerr_model<0,'fluxerr_model'] = 10.
+        lcdf.loc[lcdf.fluxerr_model < 0, 'flux'] = 0.
+        lcdf.loc[lcdf.fluxerr_model < 0, 'fluxerr_photo'] = 10.
+        lcdf.loc[lcdf.fluxerr_model < 0, 'fluxerr'] = 10.
+        lcdf.loc[lcdf.fluxerr_model < 0, 'snr_m5'] = 0.
+        lcdf.loc[lcdf.fluxerr_model < 0, 'fluxerr_model'] = 10.
 
-        #print('fluxb',lcdf[['flux','fluxerr','fluxerr_photo','snr_m5']])
+        # print('fluxb',lcdf[['flux','fluxerr','fluxerr_photo','snr_m5']])
         if len(lcdf) == 0:
             return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1, ebvofMW)]
 
@@ -501,7 +503,7 @@ class SN(SN_Object):
         # set metadata
         table_lc.meta = self.metadata(
             ra, dec, pix, area, season, ptime, self.snr_fluxsec, 1, ebvofMW)
-    
+
         # if the user chooses to display the results...
         if display:
             self.plotLC(table_lc['time', 'band',
@@ -637,19 +639,18 @@ class SN(SN_Object):
 
         """
 
-        val_meta = [ra, dec,self.sn_type,self.sn_model,self.sn_version,
+        val_meta = [ra, dec, self.sn_type, self.sn_model, self.sn_version,
                     self.sn_parameters['daymax'],
                     self.sn_parameters['z'], area,
                     pix['healpixID'], pix['pixRA'], pix['pixDec'],
                     season, self.dL, ptime, snr_fluxsec, status, ebvofMW]
 
-        if 'Ia' in self.sn_type:
+        if self.sn_type == 'SN_Ia':
             val_meta += [self.X0, self.gen_parameters['epsilon_x0'],
                          self.sn_parameters['x1'], self.gen_parameters['epsilon_x1'],
                          self.sn_parameters['color'], self.gen_parameters['epsilon_color'],
-                          self.gen_parameters['epsilon_daymax']]
+                         self.gen_parameters['epsilon_daymax']]
 
-        
         return dict(zip(self.names_meta, val_meta))
 
     def fluxSED(self, obs):
