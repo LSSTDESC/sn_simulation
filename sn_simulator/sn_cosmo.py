@@ -170,11 +170,13 @@ class SN(SN_Object):
             sn_type = '{}_{}'.format(
                 sela.iloc[io]['type'], sela.iloc[io]['subtype'])
             self.sn_type = sn_type
+            
         main_type = sn_type.split('_')[0]
         sub_type = sn_type.split('_')[1]
 
         idx = df['type'] == main_type
         idx &= df['subtype'] == sub_type
+        idx &= df['name'] != 'snana-04d4jv' # this crashes
 
         sel = df[idx]
 
@@ -184,6 +186,8 @@ class SN(SN_Object):
         self.sn_model = sel.iloc[io]['name']
         self.sn_version = str(sel.iloc[io]['version'])
         self.source(self.sn_model, self.sn_version)
+
+        #print('allo',self.sn_model, self.sn_version,self.sn_type)
 
     def SN_SALT2(self, model):
         """
@@ -373,16 +377,17 @@ class SN(SN_Object):
         # Select obs depending on min and max phases
         # blue and red cutoffs applied
 
-        blue_cutoff = 0.
-        if not self.error_model and self.sn_type == 'SN_Ia':
-            blue_cutoff = self.sn_parameters['blueCutoff']
+        if self.sn_type == 'SN_Ia':
+            blue_cutoff = 0.
+            if not self.error_model:
+                blue_cutoff = self.sn_parameters['blueCutoff']
 
-        obs = self.cutoff(obs, self.sn_parameters['daymax'],
-                          self.sn_parameters['z'],
-                          self.sn_parameters['minRFphase'],
-                          self.sn_parameters['maxRFphase'],
-                          blue_cutoff,
-                          self.sn_parameters['redCutoff'])
+                obs = self.cutoff(obs, self.sn_parameters['daymax'],
+                                  self.sn_parameters['z'],
+                                  self.sn_parameters['minRFphase'],
+                                  self.sn_parameters['maxRFphase'],
+                                  blue_cutoff,
+                                  self.sn_parameters['redCutoff'])
 
         if len(obs) == 0:
             return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1, ebvofMW)]
