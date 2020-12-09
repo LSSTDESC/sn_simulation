@@ -95,7 +95,7 @@ class SN(SN_Object):
         pixDec = np.mean(obs['pixDec'])
         pixID = np.unique(obs['healpixID']).item()
         dL = -1
-
+        season_length = np.max(obs[self.mjdCol])-np.min(obs[self.mjdCol])
         # get ebvofMW from dust maps
         ebvofMW = self.sn_parameters['ebvofMW']
         if ebvofMW < 0.:
@@ -119,7 +119,7 @@ class SN(SN_Object):
                               np.array([b for b in 'grizy']))
 
         if len(obs[goodFilters]) == 0:
-            return [self.nosim(ra, dec, pixRA, pixDec, pixID, season, ti, -1)]
+            return [self.nosim(ra, dec, pixRA, pixDec, pixID, season,season_length, ti, -1)]
 
         tab_tot = self.lcFast(obs, ebvofMW, self.gen_parameters)
 
@@ -176,7 +176,7 @@ class SN(SN_Object):
 
         return tab_tot
 
-    def nosim(self, RA, Dec, pixRA, pixDec, healpixID, season, ti, status):
+    def nosim(self, RA, Dec, pixRA, pixDec, healpixID, season,season_length, ti, status):
         """
         Method to construct an empty table when no simulation was not possible
 
@@ -194,6 +194,8 @@ class SN(SN_Object):
           healpixID
         season: int
           season of interest
+        season_length: float
+          season length
         ptime: float
            processing time
         status: int
@@ -204,5 +206,5 @@ class SN(SN_Object):
         table_lc = Table()
         # set metadata
         table_lc.meta = self.metadata(
-            ra, dec, pix, area, season, ptime, snr_fluxsec, status)
+            ra, dec, pix, area, season, season_length, ptime, snr_fluxsec, status)
         return table_lc

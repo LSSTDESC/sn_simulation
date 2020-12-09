@@ -92,7 +92,7 @@ class SN(SN_Object):
         self.names_meta = ['RA', 'Dec', 'sn_type', 'sn_model', 'sn_version', 'daymax',
                            'z', 'survey_area',
                            'healpixID', 'pixRA', 'pixDec',
-                           'season', 'dL', 'ptime', 'snr_fluxsec_meth', 'status', 'ebvofMW']
+                           'season', 'season_length','dL', 'ptime', 'snr_fluxsec_meth', 'status', 'ebvofMW']
 
         if self.sn_type == 'SN_Ia':
             self.names_meta += ['x0', 'epsilon_x0', 'x1',
@@ -347,6 +347,8 @@ class SN(SN_Object):
         dec = np.mean(obs[self.DecCol])
         area = self.area
         season = np.unique(obs['season'])[0]
+        season_length = np.max(obs[self.mjdCol])-np.min(obs[self.mjdCol])
+
         pix = {}
         for vv in ['healpixID', 'pixRA', 'pixDec']:
             if vv in obs.dtype.names:
@@ -372,7 +374,7 @@ class SN(SN_Object):
                               np.array([b for b in 'grizy']))
 
         if len(obs[goodFilters]) == 0:
-            return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1, ebvofMW)]
+            return [self.nosim(ra, dec, pix, area, season, season_length,ti, self.snr_fluxsec, -1, ebvofMW)]
 
         # Select obs depending on min and max phases
         # blue and red cutoffs applied
@@ -390,7 +392,7 @@ class SN(SN_Object):
                                   self.sn_parameters['redCutoff'])
 
         if len(obs) == 0:
-            return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1, ebvofMW)]
+            return [self.nosim(ra, dec, pix, area, season, season_length,ti, self.snr_fluxsec, -1, ebvofMW)]
 
         # Sort data according to mjd
         obs.sort(order=self.mjdCol)
@@ -498,7 +500,7 @@ class SN(SN_Object):
 
         # print('fluxb',lcdf[['flux','fluxerr','fluxerr_photo','snr_m5']])
         if len(lcdf) == 0:
-            return [self.nosim(ra, dec, pix, area, season, ti, self.snr_fluxsec, -1, ebvofMW)]
+            return [self.nosim(ra, dec, pix, area, season, season_length,ti, self.snr_fluxsec, -1, ebvofMW)]
 
         # get the processing time
         ptime = ti.finish(time.time())['ptime'].item()
@@ -507,7 +509,7 @@ class SN(SN_Object):
         table_lc = Table.from_pandas(lcdf)
         # set metadata
         table_lc.meta = self.metadata(
-            ra, dec, pix, area, season, ptime, self.snr_fluxsec, 1, ebvofMW)
+            ra, dec, pix, area, season, season_length, ptime, self.snr_fluxsec, 1, ebvofMW)
 
         # if the user chooses to display the results...
         if display:
@@ -583,7 +585,7 @@ class SN(SN_Object):
 
         return grp
 
-    def nosim(self, ra, dec, pix, area, season, ti, snr_fluxsec, status, ebvofMW):
+    def nosim(self, ra, dec, pix, area, season, season_length, ti, snr_fluxsec, status, ebvofMW):
         """
         Method to construct an empty table when no simulation was not possible
 
@@ -599,6 +601,8 @@ class SN(SN_Object):
            survey area
         season: int
           season of interest
+        season_length: float
+          season length
         ptime: float
            processing time
         snr_fluxsec: str
@@ -612,10 +616,10 @@ class SN(SN_Object):
         table_lc = Table()
         # set metadata
         table_lc.meta = self.metadata(
-            ra, dec, pix, area, season, ptime, snr_fluxsec, status, ebvofMW)
+            ra, dec, pix, area, season, season_length,ptime, snr_fluxsec, status, ebvofMW)
         return table_lc
 
-    def metadata(self, ra, dec, pix, area, season, ptime, snr_fluxsec, status, ebvofMW):
+    def metadata(self, ra, dec, pix, area, season,season_length, ptime, snr_fluxsec, status, ebvofMW):
         """
         Method to fill metadata
 
@@ -631,6 +635,8 @@ class SN(SN_Object):
            area of the survey
         season: float
            season number
+        season_length: float
+          season length
         ptime: float
            processing time
         snr_fluxsec: str
@@ -648,7 +654,7 @@ class SN(SN_Object):
                     self.sn_parameters['daymax'],
                     self.sn_parameters['z'], area,
                     pix['healpixID'], pix['pixRA'], pix['pixDec'],
-                    season, self.dL, ptime, snr_fluxsec, status, ebvofMW]
+                    season, season_length, self.dL, ptime, snr_fluxsec, status, ebvofMW]
 
         if self.sn_type == 'SN_Ia':
             val_meta += [self.X0, self.gen_parameters['epsilon_x0'],
