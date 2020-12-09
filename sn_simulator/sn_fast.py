@@ -23,7 +23,7 @@ class SN(SN_Object):
 
     """
 
-    def __init__(self, param, simu_param, reference_lc=None, gamma=None, mag_to_flux=None, dustcorr=None, snr_fluxsec='',error_model=False):
+    def __init__(self, param, simu_param, reference_lc=None, gamma=None, mag_to_flux=None, dustcorr=None, snr_fluxsec='', error_model=False):
         super().__init__(param.name, param.sn_parameters, param.gen_parameters,
                          param.cosmology, param.telescope, param.SNID, param.area, param.x0_grid,
                          param.salt2Dir,
@@ -119,7 +119,7 @@ class SN(SN_Object):
                               np.array([b for b in 'grizy']))
 
         if len(obs[goodFilters]) == 0:
-            return [self.nosim(ra, dec, pixRA, pixDec, pixID, season,season_length, ti, -1)]
+            return [self.nosim(ra, dec, pixRA, pixDec, pixID, season, season_length, ti, -1)]
 
         tab_tot = self.lcFast(obs, ebvofMW, self.gen_parameters)
 
@@ -147,7 +147,6 @@ class SN(SN_Object):
                 self.plotLC(table_lc['time', 'band',
                                      'flux', 'fluxerr', 'zp', 'zpsys'], time_display)
 
-        
         return list_tables
 
     def transform(self, tab):
@@ -165,18 +164,19 @@ class SN(SN_Object):
 
         """
 
-        groups = tab.groupby(['z', 'daymax'])
+        groups = tab.groupby(['z', 'daymax', 'season'])
 
         tab_tot = []
         for name, grp in groups:
             newtab = Table.from_pandas(grp)
-            newtab.meta = dict(zip(['z', 'daymax'], name))
+            newtab.meta = dict(
+                zip(['z', 'daymax', 'season'], name))
             newtab.meta.update(self.premeta)
             tab_tot.append(newtab)
 
         return tab_tot
 
-    def nosim(self, RA, Dec, pixRA, pixDec, healpixID, season,season_length, ti, status):
+    def nosim(self, RA, Dec, pixRA, pixDec, healpixID, season, season_length, ti, status):
         """
         Method to construct an empty table when no simulation was not possible
 
