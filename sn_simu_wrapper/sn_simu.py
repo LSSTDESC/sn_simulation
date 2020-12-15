@@ -556,12 +556,16 @@ class SNSimulation(BaseMetric):
             x1 = lc.meta['x1']
             color = lc.meta['color']
 
-        
+        SNID_tot = '{}_{}_{}_{}'.format(lc.meta['sn_type'],lc.meta['healpixID'],iproc,SNID)
+        """
         index_hdf5 = self.setIndex(lc.meta['healpixID'],
                                    x1,color,
                                    np.round(lc.meta['z'], 4),
                                    np.round(lc.meta['daymax'], 4),
                                    season, epsilon,SNID)
+        """
+        index_hdf5 = SNID_tot
+        lc.meta['SNID'] = SNID_tot
 
         """
         idx = lc['snr_m5'] > 0.
@@ -582,9 +586,16 @@ class SNSimulation(BaseMetric):
         
         # build metadata dict
         n_lc_points = len(lc)
+        """
         metanames = ['SNID', 'index_hdf5', 'season',
                      'fieldname', 'fieldid', 'n_lc_points', 'area']
         metavals = [SNID, index_hdf5, season,
+                    self.fieldname, self.fieldid,
+                    n_lc_points, self.area]
+        """
+        metanames = ['index_hdf5', 'season',
+                     'fieldname', 'fieldid', 'n_lc_points', 'area']
+        metavals = [index_hdf5, season,
                     self.fieldname, self.fieldid,
                     n_lc_points, self.area]
         metadict = dict(zip(metanames, metavals))
