@@ -61,6 +61,7 @@ class SN(SN_Object):
 
         # dust map
         self.dustmap = sncosmo.OD94Dust()
+        #self.dustmap = sncosmo.CCM89Dust()
         self.lsstmwebv = EBV.EBVbase()
 
         model = simu_param['model']
@@ -362,7 +363,7 @@ class SN(SN_Object):
         if ebvofMW < 0.:
             ebvofMW = self.lsstmwebv.calculateEbv(
                 equatorialCoordinates=np.array(
-                    [[ra], [dec]]))[0]
+                    [[np.deg2rad(pix['pixRA'])], [np.deg2rad(pix['pixDec'])]]))[0]
 
         self.SN.set(mwebv=ebvofMW)
 
