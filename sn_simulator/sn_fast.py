@@ -34,7 +34,7 @@ class SN(SN_Object):
         # x1 and color are unique for this simulator
         x1 = np.unique(self.sn_parameters['x1']).item()
         color = np.unique(self.sn_parameters['color']).item()
-
+        sn_type = self.sn_parameters['type']
         """
         # Loading reference file
         fname = '{}/LC_{}_{}_vstack.hdf5'.format(
@@ -61,7 +61,7 @@ class SN(SN_Object):
                              bluecutoff=bluecutoff,
                              redcutoff=redcutoff)
 
-        self.premeta = dict(zip(['x1', 'color', 'x0', ], [x1, color, -1.]))
+        self.premeta = dict(zip(['x1', 'color', 'x0', 'sn_type'], [x1, color, -1.,sn_type]))
         for vv in self.param_Fisher:
             vvv = 'epsilon_{}'.format(vv)
             dd = dict(zip([vvv], [np.unique(self.gen_parameters[vvv]).item()]))
