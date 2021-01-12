@@ -517,6 +517,9 @@ class SN(SN_Object):
             self.plotLC(table_lc['time', 'band',
                                  'flux', 'fluxerr', 'zp', 'zpsys'], time_display)
 
+        toremove = ['m5','exptime','numExposures','filter_cosmo','airmass','moonPhase','seeingFwhmEff','seeingFwhmGeom','gamma','mag','magerr','flux_e_sec','magerr_phot']
+
+        table_lc.remove_columns(toremove)
         return [table_lc]
 
     def calcSNR_Flux(self, df, transm):
