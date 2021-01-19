@@ -190,8 +190,10 @@ class SNSimulation(BaseMetric):
         self.dustcorr = None
         web_path = config['WebPath']
         self.error_model = self.simu_config['errorModel']
+      
         
         if 'sn_fast' in self.simu_config['name']:
+            n_to_load = 1
             templateDir = self.reffiles['TemplateDir']
             gammaDir = self.reffiles['GammaDir']
             gammaFile = self.reffiles['GammaFile']
@@ -202,7 +204,7 @@ class SNSimulation(BaseMetric):
             color = self.sn_parameters['color']['min']
             bluecutoff = self.sn_parameters['blueCutoff']
             redcutoff = self.sn_parameters['redCutoff']
-            
+            ebvofMW = self.sn_parameters['ebvofMW']
             # Loading reference file
             cutoff = '{}_{}'.format(bluecutoff, redcutoff)
             if self.error_model:
@@ -225,21 +227,21 @@ class SNSimulation(BaseMetric):
             self.reference_lc = GetReference(templateDir,
                                              lcname, gammaDir, gammaFile, web_path, self.telescope)
             """
-            
-            pb = multiprocessing.Process(name='Subprocess-1', target=self.loadDust, args=(dustDir, dustFile, web_path,1, result_queue))
-            pb.start()
+            if np.abs(ebvofMW) > 1.e-5:
+                n_to_load = 2
+                pb = multiprocessing.Process(name='Subprocess-1', target=self.loadDust, args=(dustDir, dustFile, web_path,1, result_queue))
+                pb.start()
 
             resultdict = {}
-            for j in range(2):
+            for j in range(n_to_load):
                 resultdict.update(result_queue.get())
 
             for p in multiprocessing.active_children():
                 p.join()
 
-            
-
             self.reference_lc = resultdict[0]
-            self.dustcorr = resultdict[1]
+            if n_to_load > 1:
+                self.dustcorr = resultdict[1]
             
             #self.dustcorr = LoadDust(dustDir, dustFile, web_path).dustcorr
             print('Files loaded',time.time()-time_ref)
