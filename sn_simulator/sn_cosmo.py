@@ -71,11 +71,10 @@ class SN(SN_Object):
         self.sn_version = version
 
         self.sn_type = self.sn_parameters['type']
-
         if self.sn_type == 'SN_Ia':
             self.source(model, version)
         else:
-            self.random_source(self.sn_type)
+            self.random_source(self.sn_type,model)
 
         self.SN.set(z=self.sn_parameters['z'])
         if self.sn_type == 'SN_Ia':
@@ -136,7 +135,7 @@ class SN(SN_Object):
         self.dL = self.cosmology.luminosity_distance(
             self.sn_parameters['z']).value*1.e3
 
-    def random_source(self, sn_type):
+    def random_source(self, sn_type,sn_model='random'):
         """
         Method to choose a random source depending on the type
          This will occur for non-Ia models
@@ -146,6 +145,8 @@ class SN(SN_Object):
         ---------------
         sn_type: str
            supernovae type
+        sn_model: str, opt
+          specific model to run on (default: random)
 
         """
 
@@ -160,18 +161,62 @@ class SN(SN_Object):
         df = pd.read_csv(
             '{}/sncosmo_builtins.txt'.format(location), delimiter=' ')
 
+        # sn_model!='random': choose this model
+        if sn_model != 'random':
+            idx = df['name'] == sn_model
+            selm = df[idx]
+            sn_type = '{}_{}'.format(selm['type'].values.item(),selm['subtype'].values.item())
+            sn_version = str(selm['version'].values.item())
+        else:
+            sn_type,sn_model,sn_version = self.get_sn_fromlist(sn_type,df)
+
+        if sn_type == 'SN_Ia':
+            sn_type += 'T'
+        self.sn_type = sn_type    
+        self.sn_model = sn_model
+        self.sn_version = sn_version
+        
+        self.source(self.sn_model, self.sn_version)
+
+      
+    def get_sn_fromlist(self,sn_type,df):
+        """
+        Method to get a sn model, type, version from a list
+
+        Parameters
+        --------------
+        sn_type: str
+          type of sn
+        df: pandas df
+          list of sn
+
+        Returns
+        ----------
+        sn_type, sn_model, sn_version
+        """
+        
+        tt = sn_type.split('_')[0]
+        st = sn_type.split('_')[1]
+    
         if sn_type == 'Non_Ia':
             idx = df['type'] == 'SN'
             idx &= df['subtype'] != 'Ia'
-            sel = df[idx]
-            sela = sel.groupby(['type', 'subtype']).size().to_frame(
+        else:
+            if sn_type =='SN_IaT':
+                  idx = df['type'] == tt
+                  idx &= df['subtype'] == 'Ia'
+            else:
+                idx = df['type'] == tt
+                idx &= df['subtype'] == st
+
+        sel = df[idx]
+        sela = sel.groupby(['type', 'subtype']).size().to_frame(
                 'size').reset_index()
-            io = np.random.choice(
-                len(sela), 1, p=sela['size'].values/sela['size'].sum())[0]
-            sn_type = '{}_{}'.format(
-                sela.iloc[io]['type'], sela.iloc[io]['subtype'])
-            self.sn_type = sn_type
-            
+        io = np.random.choice(
+            len(sela), 1, p=sela['size'].values/sela['size'].sum())[0]
+        sn_type = '{}_{}'.format(
+            sela.iloc[io]['type'], sela.iloc[io]['subtype'])
+
         main_type = sn_type.split('_')[0]
         sub_type = sn_type.split('_')[1]
 
@@ -184,12 +229,9 @@ class SN(SN_Object):
         # print(sel)
         # take a random
         io = np.random.randint(0, len(sel), 1)[0]
-        self.sn_model = sel.iloc[io]['name']
-        self.sn_version = str(sel.iloc[io]['version'])
-        self.source(self.sn_model, self.sn_version)
-
-        #print('allo',self.sn_model, self.sn_version,self.sn_type)
-
+        
+        return sn_type,sel.iloc[io]['name'],str(sel.iloc[io]['version'])
+        
     def SN_SALT2(self, model):
         """
         Method to set SALT2 parameters for SN
@@ -380,17 +422,19 @@ class SN(SN_Object):
         # Select obs depending on min and max phases
         # blue and red cutoffs applied
 
+        blue_cutoff = 0.
+        red_cutoff = 1.e8
         if self.sn_type == 'SN_Ia':
-            blue_cutoff = 0.
             if not self.error_model:
                 blue_cutoff = self.sn_parameters['blueCutoff']
-                
-            obs = self.cutoff(obs, self.sn_parameters['daymax'],
-                              self.sn_parameters['z'],
-                              self.sn_parameters['minRFphase'],
-                              self.sn_parameters['maxRFphase'],
-                              blue_cutoff,
-                              self.sn_parameters['redCutoff'])
+                red_cutoff = self.sn_parameters['redCutoff']
+
+        obs = self.cutoff(obs, self.sn_parameters['daymax'],
+                          self.sn_parameters['z'],
+                          self.sn_parameters['minRFphase'],
+                          self.sn_parameters['maxRFphase'],
+                          blue_cutoff,
+                          red_cutoff)
 
         if len(obs) == 0:
             return [self.nosim(ra, dec, pix, area, season, season_length,ti, self.snr_fluxsec, -1, ebvofMW)]
@@ -416,7 +460,7 @@ class SN(SN_Object):
 
         # estimate error model (if necessary)
         # print('error model',self.error_model)
-        if self.error_model:
+        if self.error_model and self.sn_type == 'SN_Ia':
             fluxcov_cosmo = self.SN.bandfluxcov(
                 lcdf[band_cosmo], lcdf[self.mjdCol], zpsys='ab', zp=2.5*np.log10(3631))
             lcdf['fluxerr_model'] = np.sqrt(np.diag(fluxcov_cosmo[1]))
