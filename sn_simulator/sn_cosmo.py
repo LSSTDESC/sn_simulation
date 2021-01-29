@@ -70,21 +70,28 @@ class SN(SN_Object):
         self.sn_model = model
         self.sn_version = version
 
+        self.dL = self.cosmology.luminosity_distance(
+            self.sn_parameters['z']).value*1.e3
+        
         self.sn_type = self.sn_parameters['type']
         if self.sn_type == 'SN_Ia':
             self.source(model, version)
         else:
-            self.random_source(self.sn_type,model)
+            self.random_source(self.sn_type,model,version)
 
-        self.SN.set(z=self.sn_parameters['z'])
+        
+        
         if self.sn_type == 'SN_Ia':
             self.SN.set(t0=self.sn_parameters['daymax'] +
                         self.gen_parameters['epsilon_daymax'])
             if 'salt2' in model:
                 self.SN_SALT2(model)
         else:
-            self.SN.set(t0=self.sn_parameters['daymax'])
-
+            #self.SN.set(t0=self.sn_parameters['daymax'])
+            #self.SN.set(t0=-36.1+self.sn_parameters['daymax'])
+            self.SN.set(t0=-37.)
+            #self.SN.set(t0=-36.06+2.964+self.sn_parameters['daymax'])
+       
         self.defname = dict(zip(['healpixID', 'pixRA', 'pixDec'], [
                             'observationId', param.RACol, param.DecCol]))
 
@@ -132,10 +139,15 @@ class SN(SN_Object):
                                 effect_frames=['rest', 'obs'])
         self.model = model
         self.version = version
+        self.X0 = self.x0(self.dL)
+        self.SN.set(x0=self.X0)
+        self.SN.set(z=self.sn_parameters['z'])
+        print(self.SN)
+        """
         self.dL = self.cosmology.luminosity_distance(
             self.sn_parameters['z']).value*1.e3
-
-    def random_source(self, sn_type,sn_model='random'):
+        """
+    def random_source(self, sn_type,sn_model='random',sn_version=''):
         """
         Method to choose a random source depending on the type
          This will occur for non-Ia models
@@ -147,6 +159,8 @@ class SN(SN_Object):
            supernovae type
         sn_model: str, opt
           specific model to run on (default: random)
+        sn_version: str, opt
+          specific version to run on (default : )
 
         """
 
@@ -162,8 +176,11 @@ class SN(SN_Object):
             '{}/sncosmo_builtins.txt'.format(location), delimiter=' ')
 
         # sn_model!='random': choose this model
+        df['version'] = df['version'].astype(str)
+        print(df.dtypes)
         if sn_model != 'random':
             idx = df['name'] == sn_model
+            idx &= df['version']==str(sn_version)
             selm = df[idx]
             sn_type = '{}_{}'.format(selm['type'].values.item(),selm['subtype'].values.item())
             sn_version = str(selm['version'].values.item())
@@ -176,9 +193,18 @@ class SN(SN_Object):
         self.sn_model = sn_model
         self.sn_version = sn_version
         
-        self.source(self.sn_model, self.sn_version)
-
-      
+        #self.source(self.sn_model, self.sn_version)
+        source = sncosmo.get_source(sn_model, sn_version)
+        self.SN = sncosmo.Model(source=source,
+                                effects=[self.dustmap, self.dustmap],
+                                effect_names=['host', 'mw'],
+                                effect_frames=['rest', 'obs'])
+        self.SN.set(z=self.sn_parameters['z'])
+        
+        self.SN.set_source_peakabsmag(self.sn_parameters['absmag'],
+                                      self.sn_parameters['band'], self.sn_parameters['magsys'])
+        print(self.SN)
+        #self.SN.set(amplitude=2.e-8)
     def get_sn_fromlist(self,sn_type,df):
         """
         Method to get a sn model, type, version from a list
@@ -272,17 +298,18 @@ class SN(SN_Object):
         self.SN.set(x1=self.sn_parameters['x1'] +
                     self.gen_parameters['epsilon_x1'])
 
+        
         # need to correct X0 for alpha and beta
         self.X0 = self.x0(self.dL)
-        # self.dL = lumidist
         # set X0
         self.SN.set(x0=self.X0)
-        """
+        
         self.SN.set_source_peakabsmag(self.sn_parameters['absmag'],
         self.sn_parameters['band'], self.sn_parameters['magsys'])
+        """
 
         self.X0 = self.SN.get('x0')
-        """
+        
 
     def x0(self, lumidist):
         """"
@@ -303,6 +330,7 @@ class SN(SN_Object):
         X0 *= np.power(10., 0.4*(alpha *
                                  self.sn_parameters['x1'] - beta *
                                  self.sn_parameters['color']))
+       
         X0 += self.gen_parameters['epsilon_x0']
 
         return X0
