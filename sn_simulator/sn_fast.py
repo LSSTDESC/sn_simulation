@@ -61,7 +61,8 @@ class SN(SN_Object):
                              bluecutoff=bluecutoff,
                              redcutoff=redcutoff)
 
-        self.premeta = dict(zip(['x1', 'color', 'x0', 'sn_type'], [x1, color, -1.,sn_type]))
+        self.premeta = dict(
+            zip(['x1', 'color', 'x0', 'sn_type'], [x1, color, -1., sn_type]))
         for vv in self.param_Fisher:
             vvv = 'epsilon_{}'.format(vv)
             dd = dict(zip([vvv], [np.unique(self.gen_parameters[vvv]).item()]))
@@ -119,7 +120,7 @@ class SN(SN_Object):
                               np.array([b for b in 'grizy']))
 
         if len(obs[goodFilters]) == 0:
-            return [self.nosim(ra, dec, pixRA, pixDec, pixID, season, season_length, ti, -1)]
+            return [self.nosim(ra, dec, pixRA, pixDec, pixID, season, season_length, ti, -1, ebvofMW)]
 
         tab_tot = self.lcFast(obs, ebvofMW, self.gen_parameters)
 
@@ -128,8 +129,8 @@ class SN(SN_Object):
         tab_tot = self.dust_corrections(tab_tot, pixRA, pixDec)
         """
         ptime = ti.finish(time.time())['ptime'].item()
-        self.premeta.update(dict(zip(['RA', 'Dec', 'pixRA', 'pixDec', 'healpixID', 'dL', 'ptime', 'status'],
-                                     [RA, Dec, pixRA, pixDec, pixID, dL, ptime, 1])))
+        self.premeta.update(dict(zip(['RA', 'Dec', 'pixRA', 'pixDec', 'healpixID', 'dL', 'ptime', 'status', 'ebvofMW'],
+                                     [RA, Dec, pixRA, pixDec, pixID, dL, ptime, 1, ebvofMW])))
 
         """
         ii = tab_tot['band'] == 'LSST::z'
@@ -176,7 +177,7 @@ class SN(SN_Object):
 
         return tab_tot
 
-    def nosim(self, RA, Dec, pixRA, pixDec, healpixID, season, season_length, ti, status):
+    def nosim(self, RA, Dec, pixRA, pixDec, healpixID, season, season_length, ti, status, ebvofMW):
         """
         Method to construct an empty table when no simulation was not possible
 
@@ -200,11 +201,12 @@ class SN(SN_Object):
            processing time
         status: int
           status of the processing(1=ok, -1=no simu)
-
+        ebvofMW: float
+          E(B-V)
         """
         ptime = ti.finish(time.time())['ptime'].item()
         table_lc = Table()
         # set metadata
         table_lc.meta = self.metadata(
-            ra, dec, pix, area, season, season_length, ptime, snr_fluxsec, status)
+            ra, dec, pix, area, season, season_length, ptime, snr_fluxsec, status, ebvofMW)
         return table_lc
