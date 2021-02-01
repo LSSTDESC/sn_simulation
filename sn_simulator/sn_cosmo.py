@@ -176,7 +176,7 @@ class SN(SN_Object):
 
         # sn_model!='random': choose this model
         df['version'] = df['version'].astype(str)
-        print(df.dtypes)
+        # print(df.dtypes)
         if sn_model != 'random':
             idx = df['name'] == sn_model
             idx &= df['version'] == str(sn_version)
@@ -203,7 +203,7 @@ class SN(SN_Object):
 
         self.SN.set_source_peakabsmag(self.sn_parameters['absmag'],
                                       self.sn_parameters['band'], self.sn_parameters['magsys'])
-        print(self.SN)
+        # print(self.SN)
         # self.SN.set(amplitude=2.e-8)
 
     def get_sn_fromlist(self, sn_type, df):
@@ -591,6 +591,9 @@ class SN(SN_Object):
 
         toremove = ['m5', 'exptime', 'numExposures', 'filter_cosmo', 'airmass', 'moonPhase',
                     'seeingFwhmEff', 'seeingFwhmGeom', 'gamma', 'mag', 'magerr', 'flux_e_sec', 'magerr_phot']
+
+        toremove = ['m5', 'exptime', 'numExposures', 'filter_cosmo', 'airmass', 'moonPhase',
+                    'seeingFwhmEff', 'seeingFwhmGeom', 'gamma', 'mag', 'magerr', 'magerr_phot']
 
         table_lc.remove_columns(toremove)
         return [table_lc]
