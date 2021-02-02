@@ -71,6 +71,7 @@ Simulator name sn_simulator.sn_cosmo str #simulator name
 Simulator model salt2-extended str #simulator model
 Simulator version 1.0 float #simulator version
 Simulator errorModel 0 int #simulator error model
+Simulator errorModelCut -1. float #simulator error model max value
 
 ## Reference_Files
 ReferenceFiles TemplateDir Template_LC str #dir for templates ref files 

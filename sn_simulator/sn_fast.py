@@ -23,8 +23,9 @@ class SN(SN_Object):
 
     """
 
-    def __init__(self, param, simu_param, reference_lc=None, gamma=None, mag_to_flux=None, dustcorr=None, snr_fluxsec='', error_model=False):
-        super().__init__(param.name, param.sn_parameters, param.gen_parameters,
+    def __init__(self, param, simu_param, reference_lc=None, gamma=None, mag_to_flux=None, dustcorr=None, snr_fluxsec=''):
+        super().__init__(param.name, param.sn_parameters, param.simulator_parameters,
+                         param.gen_parameters,
                          param.cosmology, param.telescope, param.SNID, param.area, param.x0_grid,
                          param.salt2Dir,
                          mjdCol=param.mjdCol, RACol=param.RACol, DecCol=param.DecCol,
@@ -35,6 +36,8 @@ class SN(SN_Object):
         x1 = np.unique(self.sn_parameters['x1']).item()
         color = np.unique(self.sn_parameters['color']).item()
         sn_type = self.sn_parameters['type']
+        self.error_model = self.simulator_parameters['errorModel']
+        self.error_model_cut = self.simulator_parameters['errorModelCut']
         """
         # Loading reference file
         fname = '{}/LC_{}_{}_vstack.hdf5'.format(
@@ -124,6 +127,11 @@ class SN(SN_Object):
 
         tab_tot = self.lcFast(obs, ebvofMW, self.gen_parameters)
 
+        # remove LC points with too high error model value
+        if self.error_model:
+            if self.error_model_cut >0:
+                idx = tab_tot['fluxerr_model']/tab_tot['flux']<= self.error_model_cut
+                tab_tot = tab_tot[idx]
         """
         # apply dust correction here
         tab_tot = self.dust_corrections(tab_tot, pixRA, pixDec)

@@ -5,7 +5,7 @@ from collections import OrderedDict as odict
 
 
 class SN_Object:
-    def __init__(self, name, sn_parameters, gen_parameters, cosmology,
+    def __init__(self, name, sn_parameters, simulator_parameters,gen_parameters, cosmology,
                  telescope, snid, area, x0_grid, salt2Dir='SALT2_Files',
                  mjdCol='mjd', RACol='pixRa', DecCol='pixDec',
                  filterCol='band', exptimeCol='exptime', nexpCol='numExposures',
@@ -66,6 +66,7 @@ class SN_Object:
     """
         self._name = name
         self._sn_parameters = sn_parameters
+        self._simulator_parameters = simulator_parameters
         self._gen_parameters = gen_parameters
         self._cosmology = cosmology
         self._telescope = telescope
@@ -99,6 +100,11 @@ class SN_Object:
         """
         return self._sn_parameters
 
+    @property
+    def simulator_parameters(self):
+        """SN parameters
+        """
+        return self._simulator_parameters
     @property
     def gen_parameters(self):
         """ Simulation parameters

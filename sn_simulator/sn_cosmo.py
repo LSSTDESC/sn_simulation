@@ -18,8 +18,9 @@ import os
 
 
 class SN(SN_Object):
-    def __init__(self, param, simu_param, reference_lc=None, gamma=None, mag_to_flux=None, dustcorr=None, snr_fluxsec='interp', error_model=True):
-        super().__init__(param.name, param.sn_parameters, param.gen_parameters,
+    def __init__(self, param, simu_param, reference_lc=None, gamma=None, mag_to_flux=None, dustcorr=None, snr_fluxsec='interp'):
+        super().__init__(param.name, param.sn_parameters, param.simulator_parameters,
+                         param.gen_parameters,
                          param.cosmology, param.telescope, param.SNID, param.area, param.x0_grid,
                          mjdCol=param.mjdCol, RACol=param.RACol, DecCol=param.DecCol,
                          filterCol=param.filterCol, exptimeCol=param.exptimeCol,
@@ -57,7 +58,8 @@ class SN(SN_Object):
         self.gamma = gamma
         self.mag_to_flux = mag_to_flux
         self.snr_fluxsec = snr_fluxsec
-        self.error_model = error_model
+        self.error_model = self.simulator_parameters['errorModel']
+        self.error_model_cut = self.simulator_parameters['errorModelCut']
 
         # dust map
         self.dustmap = sncosmo.OD94Dust()
@@ -589,12 +591,21 @@ class SN(SN_Object):
             self.plotLC(table_lc['time', 'band',
                                  'flux', 'fluxerr', 'zp', 'zpsys'], time_display)
 
+        # remove LC points with too high error model value
+        if self.error_model:
+            if self.error_model_cut >0:
+                idx = table_lc['fluxerr_model']/table_lc['flux']<= self.error_model_cut
+                table_lc = table_lc[idx]
+            
         toremove = ['m5', 'exptime', 'numExposures', 'filter_cosmo', 'airmass', 'moonPhase',
                     'seeingFwhmEff', 'seeingFwhmGeom', 'gamma', 'mag', 'magerr', 'flux_e_sec', 'magerr_phot']
 
         toremove = ['m5', 'exptime', 'numExposures', 'filter_cosmo', 'airmass', 'moonPhase',
                     'seeingFwhmEff', 'seeingFwhmGeom', 'gamma', 'mag', 'magerr', 'magerr_phot']
 
+        
+
+        
         table_lc.remove_columns(toremove)
         return [table_lc]
 

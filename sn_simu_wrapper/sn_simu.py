@@ -144,6 +144,9 @@ class SNSimulation(BaseMetric):
                                       dirFiles=dirFiles,
                                       web_path=config['WebPath'])
 
+        # simulator parameters
+        self.simulator_parameters = config['Simulator']
+        
         # this is for output
 
         save_status = config['Output']['save']
@@ -721,7 +724,8 @@ class SNSimulation(BaseMetric):
           metadata of the simulation
         """
         sn_par = self.sn_parameters.copy()
-
+        simulator_par = self.simulator_parameters.copy()
+        
         for name in ['z', 'x1', 'color', 'daymax']:
             if name in gen_params.dtype.names:
                 sn_par[name] = gen_params[name]
@@ -729,6 +733,7 @@ class SNSimulation(BaseMetric):
         SNID = sn_par['Id']
         sn_object = SN_Object(self.simu_config['name'],
                               sn_par,
+                              simulator_par,
                               gen_params,
                               self.cosmology,
                               self.telescope, SNID, self.area,
@@ -743,7 +748,7 @@ class SNSimulation(BaseMetric):
 
         module = import_module(self.simu_config['name'])
         simu = module.SN(sn_object, self.simu_config,
-                         self.reference_lc, self.gamma, self.mag_to_flux, self.dustcorr,error_model=self.error_model)
+                         self.reference_lc, self.gamma, self.mag_to_flux, self.dustcorr)
         # simulation - this is supposed to be a list of astropytables
         lc_table = simu(obs, self.display_lc, self.time_display)
 
