@@ -37,7 +37,7 @@ class SN(SN_Object):
         color = np.unique(self.sn_parameters['color']).item()
         sn_type = self.sn_parameters['type']
         self.error_model = self.simulator_parameters['errorModel']
-        self.error_model_cut = self.simulator_parameters['errorModelCut']
+        #self.error_model_cut = self.simulator_parameters['errorModelCut']
         """
         # Loading reference file
         fname = '{}/LC_{}_{}_vstack.hdf5'.format(
@@ -128,14 +128,16 @@ class SN(SN_Object):
         tab_tot = self.lcFast(obs, ebvofMW, self.gen_parameters)
 
         # remove LC points with too high error model value
+        """
         if self.error_model:
             if self.error_model_cut >0:
                 idx = tab_tot['fluxerr_model']/tab_tot['flux']<= self.error_model_cut
                 tab_tot = tab_tot[idx]
         """
+        
         # apply dust correction here
         tab_tot = self.dust_corrections(tab_tot, pixRA, pixDec)
-        """
+        
         ptime = ti.finish(time.time())['ptime'].item()
         self.premeta.update(dict(zip(['RA', 'Dec', 'pixRA', 'pixDec', 'healpixID', 'dL', 'ptime', 'status', 'ebvofMW'],
                                      [RA, Dec, pixRA, pixDec, pixID, dL, ptime, 1, ebvofMW])))

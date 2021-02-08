@@ -59,7 +59,7 @@ class SN(SN_Object):
         self.mag_to_flux = mag_to_flux
         self.snr_fluxsec = snr_fluxsec
         self.error_model = self.simulator_parameters['errorModel']
-        self.error_model_cut = self.simulator_parameters['errorModelCut']
+        #self.error_model_cut = self.simulator_parameters['errorModelCut']
 
         # dust map
         self.dustmap = sncosmo.OD94Dust()
@@ -592,11 +592,12 @@ class SN(SN_Object):
                                  'flux', 'fluxerr', 'zp', 'zpsys'], time_display)
 
         # remove LC points with too high error model value
+        """
         if self.error_model:
             if self.error_model_cut >0:
                 idx = table_lc['fluxerr_model']/table_lc['flux']<= self.error_model_cut
                 table_lc = table_lc[idx]
-            
+        """
         toremove = ['m5', 'exptime', 'numExposures', 'filter_cosmo', 'airmass', 'moonPhase',
                     'seeingFwhmEff', 'seeingFwhmGeom', 'gamma', 'mag', 'magerr', 'flux_e_sec', 'magerr_phot']
 
