@@ -136,7 +136,7 @@ class SN(SN_Object):
         """
         
         # apply dust correction here
-        tab_tot = self.dust_corrections(tab_tot, pixRA, pixDec)
+        #tab_tot = self.dust_corrections(tab_tot, pixRA, pixDec)
         
         ptime = ti.finish(time.time())['ptime'].item()
         self.premeta.update(dict(zip(['RA', 'Dec', 'pixRA', 'pixDec', 'healpixID', 'dL', 'ptime', 'status', 'ebvofMW'],
