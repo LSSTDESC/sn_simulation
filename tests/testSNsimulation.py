@@ -174,7 +174,7 @@ def getSimu(config_name):
 
     if not os.path.isfile(x0normFile):
         # if this file does not exist, grab it from a web server
-        check_get_file(conf['WebPath'], 'reference_files',
+        check_get_file(conf['WebPathSimu'], 'reference_files',
                        'X0_norm_{}.npy'.format(absMag))
     x0_norm = np.load(x0normFile)
     
@@ -210,9 +210,9 @@ def testSimu(data,config_name):
     # check what we have inside the data
 
     simu_name = '{}/Simu_{}_1.hdf5'.format(
-        conf['Output']['directory'], conf['ProductionID'])
+        conf['OutputSimu']['directory'], conf['ProductionIDSimu'])
     lc_name = '{}/LC_{}_1.hdf5'.format(
-        conf['Output']['directory'], conf['ProductionID'])
+        conf['OutputSimu']['directory'], conf['ProductionIDSimu'])
 
     f = h5py.File(simu_name, 'r')
     # reading the simu file
@@ -278,7 +278,7 @@ class TestSNsimulation(unittest.TestCase):
         # test Ia - no error model
         # get configuration file
         config = ConfigSimulation('Ia','salt2','../sn_simu_input/config_simulation.txt').conf_dict
-        config['ProductionID'] = 'prod_Ia_sncosmo_errormodel_0'
+        config['ProductionIDSimu'] = 'prod_Ia_sncosmo_errormodel_0'
         config['Simulator']['errorModel']=0
         config['SN']['z']['type'] = 'uniform'
         config['SN']['z']['step'] = 0.1
@@ -295,7 +295,7 @@ class TestSNsimulation(unittest.TestCase):
 
         # test Ia - with error model
         config['Simulator']['errorModel']=1
-        config['ProductionID'] = 'prod_Ia_sncosmo_errormodel_1'
+        config['ProductionIDSimu'] = 'prod_Ia_sncosmo_errormodel_1'
         fname = 'config1.yaml'
         dump(fname,config)
         testSimu(data,fname)
@@ -303,7 +303,7 @@ class TestSNsimulation(unittest.TestCase):
 
         
         # test non Ia - error_model=0
-        config['ProductionID'] = 'prod_Ib_sncosmo_errormodel_0'
+        config['ProductionIDSimu'] = 'prod_Ib_sncosmo_errormodel_0'
         error_model = 0
         sn_type='SN_Ib'
         sn_model = 'nugent-sn2p'
@@ -328,7 +328,7 @@ class TestSNsimulation(unittest.TestCase):
         data = fake_data()
 
         config = ConfigSimulation('Ia','salt2','../sn_simu_input/config_simulation.txt').conf_dict
-        config['ProductionID'] = 'prod_Ia_snfast_errormodel_0'
+        config['ProductionIDSimu'] = 'prod_Ia_snfast_errormodel_0'
         config['Simulator']['errorModel']=0
         config['SN']['z']['type'] = 'uniform'
         config['SN']['z']['step'] = 0.1

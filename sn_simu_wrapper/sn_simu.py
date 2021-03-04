@@ -117,7 +117,7 @@ class SNSimulation(BaseMetric):
         self.area = hp.nside2pixarea(self.nside, degrees=True)
 
         # prodid
-        self.prodid = config['ProductionID']
+        self.prodid = config['ProductionIDSimu']
 
         # load cosmology
         cosmo_par = config['Cosmology']
@@ -127,7 +127,7 @@ class SNSimulation(BaseMetric):
                                  w0=cosmo_par['w0'], wa=cosmo_par['wa'])
 
         # load telescope
-        tel_par = config['Instrument']
+        tel_par = config['InstrumentSimu']
         self.telescope = Telescope(name=tel_par['name'],
                                    throughput_dir=tel_par['throughputDir'],
                                    atmos_dir=tel_par['atmosDir'],
@@ -142,19 +142,19 @@ class SNSimulation(BaseMetric):
             dirFiles = self.sn_parameters['modelPar']['dirFile']
         self.gen_par = SimuParameters(self.sn_parameters, cosmo_par, mjdCol=self.mjdCol, area=self.area,
                                       dirFiles=dirFiles,
-                                      web_path=config['WebPath'])
+                                      web_path=config['WebPathSimu'])
 
         # simulator parameters
         self.simulator_parameters = config['Simulator']
         
         # this is for output
 
-        save_status = config['Output']['save']
+        save_status = config['OutputSimu']['save']
         self.save_status = save_status
-        self.outdir = config['Output']['directory']
+        self.outdir = config['OutputSimu']['directory']
 
         # number of procs to run simu here
-        self.nprocs = config['Multiprocessing']['nproc']
+        self.nprocs = config['MultiprocessingSimu']['nproc']
 
         # if saving activated, prepare output dirs
         """
@@ -191,7 +191,7 @@ class SNSimulation(BaseMetric):
         self.gamma = None
         self.mag_to_flux = None
         self.dustcorr = None
-        web_path = config['WebPath']
+        web_path = config['WebPathSimu']
         self.error_model = self.simu_config['errorModel']
       
         
@@ -339,6 +339,7 @@ class SNSimulation(BaseMetric):
         tracemalloc.start()
         start = tracemalloc.take_snapshot()
         """
+        list_lc = []
         for seas in seasons:
             self.index_hdf5 += 10000*(seas-1)
 
@@ -349,8 +350,10 @@ class SNSimulation(BaseMetric):
                 obs_season[self.filterCol]) if val[-1] != 'u']
 
             if len(obs_season[idx]) >= 5:
-                self.simuSeason(obs_season[idx], seas, iproc)
-
+                simres = self.simuSeason(obs_season[idx], seas, iproc)
+                if simres is not None:
+                    list_lc += simres
+                
             """
             current = tracemalloc.take_snapshot()
             stats = current.compare_to(start, 'filename')
@@ -358,11 +361,10 @@ class SNSimulation(BaseMetric):
                 print("since_start", i, str(stat))
             """
         # save metadata
-        self.save_metadata(np.unique(obs['healpixID']).item())
+        if self.save_status:
+            self.save_metadata(np.unique(obs['healpixID']).item())
         # reset metadata dict
         self.sn_meta[iproc] = {}
-
-  
 
         """
         top_stats = snapshot.statistics('lineno')
@@ -372,7 +374,11 @@ class SNSimulation(BaseMetric):
             print(stat)
         """
         #print('End of simulation', time.time()-time_ref)
+        if list_lc:
+            return list_lc
+        
         return None
+    
     def prepareSave(self, outdir, prodid, iproc):
         """ Prepare output directories for data
 
@@ -462,20 +468,26 @@ class SNSimulation(BaseMetric):
         if 'sn_fast' in self.simu_config['name']:
             npp = 1
 
-
+        list_lc = []
         if npp == 1:
-            metadict = self.simuLoop(obs, season, gen_params, iproc)
-            if not self.sn_meta[iproc]:
-                self.sn_meta[iproc] = metadict
-            else:
-                #self.sn_meta[iproc]= self.sn_meta[iproc].update(metadict)
-                for key in metadict.keys():
-                    self.sn_meta[iproc][key] += metadict[key]
+            print('simulation here')
+            metadict, list_lc = self.simuLoop(obs, season, gen_params, iproc)
+            if self.save_status:
+                if not self.sn_meta[iproc]:
+                    self.sn_meta[iproc] = metadict
+                else:
+                    #self.sn_meta[iproc]= self.sn_meta[iproc].update(metadict)
+                    for key in metadict.keys():
+                        self.sn_meta[iproc][key] += metadict[key]
             
         else:
             self.multiSeason(obs,season,gen_params,iproc,npp)
 
+        if len(list_lc):
+            return list_lc
 
+        return None
+            
     def multiSeason(self,obs,season,gen_params,iproc,npp):
 
         
@@ -490,7 +502,6 @@ class SNSimulation(BaseMetric):
 
             ida = batch[i]
             idb = batch[i+1]
-
             p = multiprocessing.Process(name='Subprocess', target=self.simuLoop, args=(
                 obs, season, gen_params[ida:idb], iproc, i, result_queue))
             p.start()
@@ -503,7 +514,7 @@ class SNSimulation(BaseMetric):
             p.join()
 
         for j in range(npp):
-            metadict = resultdict[j]
+            metadict = resultdict[j][0]
             if not self.sn_meta[iproc]:
                 self.sn_meta[iproc] = metadict
             else:
@@ -666,20 +677,22 @@ class SNSimulation(BaseMetric):
                 if lc:
                     list_lc += lc
                 # every 20 SN: dump to file
-                if len(list_lc) >= 20:
-                    self.dump(list_lc, season, iproc, meta_lc)
-                    list_lc = []
+                if self.save_status:
+                    if len(list_lc) >= 20:
+                        self.dump(list_lc, season, iproc, meta_lc)
+                        list_lc = []
 
         else:
             list_lc = self.simuLCs(obs, season, gen_params)
 
-        if len(list_lc) > 0:
+        if len(list_lc) > 0 and self.save_status:
             self.dump(list_lc, season, iproc, meta_lc)
+            list_lc = []
 
         if output_q is not None:
-            output_q.put({j: meta_lc})
+            output_q.put({j: (meta_lc,list_lc)})
         else:
-            return meta_lc
+            return (meta_lc,list_lc)
 
     def dump(self, list_lc, season, j, meta_lc):
         """

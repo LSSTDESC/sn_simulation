@@ -1,5 +1,5 @@
 ## production Id
-ProductionID prodid str #Production Id
+ProductionIDSimu prodid str #Production Id
 
 ## SN parameters
 SN Id 100 int #SN Id
@@ -52,12 +52,12 @@ Cosmology w0 -1.0 float #cosmology w0
 Cosmology wa 0.0 float #cosmology wa
 
 ## Instrument
-Instrument name LSST str #instrument name
-Instrument throughputDir LSST_THROUGHPUTS_BASELINE str #instrument throughput dir
-Instrument atmosDir THROUGHPUTS_DIR str #instrument atmos dir
-Instrument airmass 1.2 float #instrument airmass
-Instrument atmos 1 int #instrument atmos
-Instrument aerosol 0 int #instrument aerosol
+InstrumentSimu name LSST str #instrument name
+InstrumentSimu throughputDir LSST_THROUGHPUTS_BASELINE str #instrument throughput dir
+InstrumentSimu atmosDir THROUGHPUTS_DIR str #instrument atmos dir
+InstrumentSimu airmass 1.2 float #instrument airmass
+InstrumentSimu atmos 1 int #instrument atmos
+InstrumentSimu aerosol 0 int #instrument aerosol
 
 ##Observations
 Observations filename fullDbName str #observation file name
@@ -86,16 +86,16 @@ Display LC display 0 int #display LC
 Display LC time 5. float #display LC persistency time
 
 ##Output:
-Output directory Output_Simu str #Output directory
-Output save 1 int #output save file
+OutputSimu directory Output_Simu str #Output directory
+OutputSimu save 1 int #output save file
 
 #Multiprocessing
-Multiprocessing nproc 1 int #multiprocessing number of procs
+MultiprocessingSimu nproc 1 int #multiprocessing number of procs
 
 # Pixelisation
 Pixelisation nside 64 int #pixelisation nside Healpix
 
 #Web path
-WebPath https://me.lsst.eu/gris/DESC_SN_pipeline str #web path for reference files
+WebPathSimu https://me.lsst.eu/gris/DESC_SN_pipeline str #web path for reference files
 
 
