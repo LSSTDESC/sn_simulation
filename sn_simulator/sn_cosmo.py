@@ -479,7 +479,7 @@ class SN(SN_Object):
             if bb in obs.dtype.names:
                 outvals.append(bb)
 
-        lcdf = pd.DataFrame(obs[outvals])
+        lcdf = pd.DataFrame(np.copy(obs[outvals]))
 
         # print(self.fluxSED(lcdf))
 
@@ -604,9 +604,6 @@ class SN(SN_Object):
         toremove = ['m5', 'exptime', 'numExposures', 'filter_cosmo', 'airmass', 'moonPhase',
                     'seeingFwhmEff', 'seeingFwhmGeom', 'gamma', 'mag', 'magerr', 'magerr_phot']
 
-        
-
-        
         table_lc.remove_columns(toremove)
         return [table_lc]
 
