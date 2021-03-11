@@ -153,7 +153,7 @@ class SNSimulation(BaseMetric):
         save_status = config['OutputSimu']['save']
         self.save_status = save_status
         self.outdir = config['OutputSimu']['directory']
-
+        self.throwaway_empty = config['OutputSimu']['throwempty']
         # number of procs to run simu here
         self.nprocs = config['MultiprocessingSimu']['nproc']
 
@@ -579,7 +579,6 @@ class SNSimulation(BaseMetric):
         """
         index_hdf5 = SNID_tot
         lc.meta['SNID'] = SNID_tot
-
         """
         idx = lc['snr_m5'] > 0.
         lc = lc[idx]
@@ -706,8 +705,12 @@ class SNSimulation(BaseMetric):
 
         """
         for lc in list_lc:
-            self.SNID[j] += 1
-            self.writeLC(self.SNID[j], lc, season, j, meta_lc)
+            ido = True
+            if self.throwaway_empty and len(lc)==0:
+                ido = False
+            if ido:
+                self.SNID[j] += 1
+                self.writeLC(self.SNID[j], lc, season, j, meta_lc)
 
     def simuLCs(self, obs, season, gen_params):
         """ Generate LC for one season and a set of simu parameters
