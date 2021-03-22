@@ -672,6 +672,13 @@ class SN(SN_Object):
         grp.loc[:, fluxName] = self.mag_to_flux[grp.name](
             (grp['mag'], single_exptime, grp[self.nexpCol]))
 
+        """
+        # SNR_photo_bd
+        grp.loc[:, 'f5'] = self.mag_to_flux[grp.name](
+            (grp['fiveSigmaDepth'], single_exptime, grp[self.nexpCol]))
+
+        grp.loc[:, 'SNR_photo_bd'] = grp[fluxName]/(grp['f5']/5.)
+        """
         return grp
 
     def nosim(self, ra, dec, pix, area, season, season_length, ti, snr_fluxsec, status, ebvofMW):
