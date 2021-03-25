@@ -217,7 +217,7 @@ class SimuWrapper:
         x0normFile = 'reference_files/X0_norm_{}.npy'.format(absMag)
         if not os.path.isfile(x0normFile):
             # if this file does not exist, grab it from a web server
-            check_get_file(config['WebPath'], 'reference_files',
+            check_get_file(config['WebPathSimu'], 'reference_files',
                            'X0_norm_{}.npy'.format(absMag))
 
         if not os.path.isfile(x0normFile):
