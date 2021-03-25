@@ -23,8 +23,9 @@ class SN(SN_Object):
 
     """
 
-    def __init__(self, param, simu_param, reference_lc=None, gamma=None, mag_to_flux=None, dustcorr=None, snr_fluxsec='',error_model=False):
-        super().__init__(param.name, param.sn_parameters, param.gen_parameters,
+    def __init__(self, param, simu_param, reference_lc=None, gamma=None, mag_to_flux=None, dustcorr=None, snr_fluxsec=''):
+        super().__init__(param.name, param.sn_parameters, param.simulator_parameters,
+                         param.gen_parameters,
                          param.cosmology, param.telescope, param.SNID, param.area, param.x0_grid,
                          param.salt2Dir,
                          mjdCol=param.mjdCol, RACol=param.RACol, DecCol=param.DecCol,
@@ -34,7 +35,9 @@ class SN(SN_Object):
         # x1 and color are unique for this simulator
         x1 = np.unique(self.sn_parameters['x1']).item()
         color = np.unique(self.sn_parameters['color']).item()
-
+        sn_type = self.sn_parameters['type']
+        self.error_model = self.simulator_parameters['errorModel']
+        #self.error_model_cut = self.simulator_parameters['errorModelCut']
         """
         # Loading reference file
         fname = '{}/LC_{}_{}_vstack.hdf5'.format(
@@ -51,8 +54,8 @@ class SN(SN_Object):
         # SN parameters for Fisher matrix estimation
         self.param_Fisher = ['x0', 'x1', 'color', 'daymax']
 
-        bluecutoff = self.sn_parameters['blue_cutoff']
-        redcutoff = self.sn_parameters['red_cutoff']
+        bluecutoff = self.sn_parameters['blueCutoff']
+        redcutoff = self.sn_parameters['redCutoff']
         self.lcFast = LCfast(reference_lc, dustcorr, x1, color, param.telescope,
                              param.mjdCol, param.RACol, param.DecCol,
                              param.filterCol, param.exptimeCol,
@@ -61,7 +64,8 @@ class SN(SN_Object):
                              bluecutoff=bluecutoff,
                              redcutoff=redcutoff)
 
-        self.premeta = dict(zip(['x1', 'color', 'x0', ], [x1, color, -1.]))
+        self.premeta = dict(
+            zip(['x1', 'color', 'x0', 'sn_type'], [x1, color, -1., sn_type]))
         for vv in self.param_Fisher:
             vvv = 'epsilon_{}'.format(vv)
             dd = dict(zip([vvv], [np.unique(self.gen_parameters[vvv]).item()]))
@@ -95,7 +99,7 @@ class SN(SN_Object):
         pixDec = np.mean(obs['pixDec'])
         pixID = np.unique(obs['healpixID']).item()
         dL = -1
-
+        season_length = np.max(obs[self.mjdCol])-np.min(obs[self.mjdCol])
         # get ebvofMW from dust maps
         ebvofMW = self.sn_parameters['ebvofMW']
         if ebvofMW < 0.:
@@ -119,17 +123,24 @@ class SN(SN_Object):
                               np.array([b for b in 'grizy']))
 
         if len(obs[goodFilters]) == 0:
-            return [self.nosim(ra, dec, pixRA, pixDec, pixID, season, ti, -1)]
+            return [self.nosim(ra, dec, pixRA, pixDec, pixID, season, season_length, ti, -1, ebvofMW)]
 
         tab_tot = self.lcFast(obs, ebvofMW, self.gen_parameters)
 
+        # remove LC points with too high error model value
         """
+        if self.error_model:
+            if self.error_model_cut >0:
+                idx = tab_tot['fluxerr_model']/tab_tot['flux']<= self.error_model_cut
+                tab_tot = tab_tot[idx]
+        """
+        
         # apply dust correction here
-        tab_tot = self.dust_corrections(tab_tot, pixRA, pixDec)
-        """
+        #tab_tot = self.dust_corrections(tab_tot, pixRA, pixDec)
+        
         ptime = ti.finish(time.time())['ptime'].item()
-        self.premeta.update(dict(zip(['RA', 'Dec', 'pixRA', 'pixDec', 'healpixID', 'dL', 'ptime', 'status'],
-                                     [RA, Dec, pixRA, pixDec, pixID, dL, ptime, 1])))
+        self.premeta.update(dict(zip(['RA', 'Dec', 'pixRA', 'pixDec', 'healpixID', 'dL', 'ptime', 'status', 'ebvofMW'],
+                                     [RA, Dec, pixRA, pixDec, pixID, dL, ptime, 1, ebvofMW])))
 
         """
         ii = tab_tot['band'] == 'LSST::z'
@@ -147,7 +158,6 @@ class SN(SN_Object):
                 self.plotLC(table_lc['time', 'band',
                                      'flux', 'fluxerr', 'zp', 'zpsys'], time_display)
 
-        
         return list_tables
 
     def transform(self, tab):
@@ -165,18 +175,19 @@ class SN(SN_Object):
 
         """
 
-        groups = tab.groupby(['z', 'daymax'])
+        groups = tab.groupby(['z', 'daymax', 'season'])
 
         tab_tot = []
         for name, grp in groups:
             newtab = Table.from_pandas(grp)
-            newtab.meta = dict(zip(['z', 'daymax'], name))
+            newtab.meta = dict(
+                zip(['z', 'daymax', 'season'], name))
             newtab.meta.update(self.premeta)
             tab_tot.append(newtab)
 
         return tab_tot
 
-    def nosim(self, RA, Dec, pixRA, pixDec, healpixID, season, ti, status):
+    def nosim(self, RA, Dec, pixRA, pixDec, healpixID, season, season_length, ti, status, ebvofMW):
         """
         Method to construct an empty table when no simulation was not possible
 
@@ -194,15 +205,18 @@ class SN(SN_Object):
           healpixID
         season: int
           season of interest
+        season_length: float
+          season length
         ptime: float
            processing time
         status: int
           status of the processing(1=ok, -1=no simu)
-
+        ebvofMW: float
+          E(B-V)
         """
         ptime = ti.finish(time.time())['ptime'].item()
         table_lc = Table()
         # set metadata
         table_lc.meta = self.metadata(
-            ra, dec, pix, area, season, ptime, snr_fluxsec, status)
+            ra, dec, pix, area, season, season_length, ptime, snr_fluxsec, status, ebvofMW)
         return table_lc
