@@ -17,7 +17,7 @@ from sn_tools.sn_utils import GetReference, LoadGamma, LoadDust
 from scipy.interpolate import interp1d
 from sn_tools.sn_io import check_get_dir
 import multiprocessing
-#import tracemalloc
+# import tracemalloc
 
 
 class SNSimulation(BaseMetric):
@@ -174,7 +174,14 @@ class SNSimulation(BaseMetric):
 
         # fieldtype, season
         self.field_type = config['Observations']['fieldtype']
-        self.season = config['Observations']['season']
+        seasons = config['Observations']['season']
+        if '-' not in seasons or seasons[0] == '-':
+            self.season = list(map(int, seasons.split(',')))
+        else:
+            seasl = seasons.split('-')
+            seasmin = int(seasl[0])
+            seasmax = int(seasl[1])
+            self.season = list(range(seasmin, seasmax+1))
 
         self.type = 'simulation'
 
@@ -246,7 +253,7 @@ class SNSimulation(BaseMetric):
             if n_to_load > 1:
                 self.dustcorr = resultdict[1]
 
-            #self.dustcorr = LoadDust(dustDir, dustFile, web_path).dustcorr
+            # self.dustcorr = LoadDust(dustDir, dustFile, web_path).dustcorr
             print('Files loaded', time.time()-time_ref)
         else:
             gammas = LoadGamma(
@@ -323,10 +330,12 @@ class SNSimulation(BaseMetric):
 
         # estimate seasons
         obs = seasoncalc(obs)
+
         # stack if necessary
         if self.stacker is not None:
             obs = self.stacker._run(obs)
         # obs = Observations(data=tab, names=self.names)
+
         self.fieldname = 'unknown'
         self.fieldid = 0
         if self.season == -1:
@@ -373,7 +382,7 @@ class SNSimulation(BaseMetric):
         for stat in top_stats[:10]:
             print(stat)
         """
-        #print('End of simulation', time.time()-time_ref)
+        # print('End of simulation', time.time()-time_ref)
         if list_lc:
             return list_lc
 
@@ -461,7 +470,7 @@ class SNSimulation(BaseMetric):
         if gen_params is None:
             return
 
-        #self.simuLoop(obs, season, gen_params, iproc)
+        # self.simuLoop(obs, season, gen_params, iproc)
 
         npp = self.nprocs
         if 'sn_fast' in self.simu_config['name']:
@@ -474,7 +483,7 @@ class SNSimulation(BaseMetric):
                 if not self.sn_meta[iproc]:
                     self.sn_meta[iproc] = metadict
                 else:
-                    #self.sn_meta[iproc]= self.sn_meta[iproc].update(metadict)
+                    # self.sn_meta[iproc]= self.sn_meta[iproc].update(metadict)
                     for key in metadict.keys():
                         self.sn_meta[iproc][key] += metadict[key]
 
@@ -514,7 +523,7 @@ class SNSimulation(BaseMetric):
             if not self.sn_meta[iproc]:
                 self.sn_meta[iproc] = metadict
             else:
-                #self.sn_meta[iproc]= self.sn_meta[iproc].update(metadict)
+                # self.sn_meta[iproc]= self.sn_meta[iproc].update(metadict)
                 for key in metadict.keys():
                     self.sn_meta[iproc][key] += metadict[key]
 
@@ -706,7 +715,7 @@ class SNSimulation(BaseMetric):
         """
         for lc in list_lc:
             ido = True
-            if self.throwaway_empty and len(lc)==0:
+            if self.throwaway_empty and len(lc) == 0:
                 ido = False
             if ido:
                 self.SNID[j] += 1

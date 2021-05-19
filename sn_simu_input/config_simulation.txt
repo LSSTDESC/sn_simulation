@@ -64,7 +64,7 @@ Observations filename fullDbName str #observation file name
 Observations fieldtype WFD str #observations field type
 Observations fieldname all  str #observations field name (DD only)
 Observations coadd 1 int #observations coaddition per night
-Observations season -1 int #observations seasons
+Observations season -1 str #observations seasons
 
 ## Simulator
 Simulator name sn_simulator.sn_cosmo str #simulator name
