@@ -338,7 +338,7 @@ class SNSimulation(BaseMetric):
 
         self.fieldname = 'unknown'
         self.fieldid = 0
-        if self.season == -1:
+        if self.season == [-1]:
             seasons = np.unique(obs[self.seasonCol])
         else:
             seasons = self.season
@@ -349,6 +349,7 @@ class SNSimulation(BaseMetric):
         start = tracemalloc.take_snapshot()
         """
         list_lc = []
+
         for seas in seasons:
             self.index_hdf5 += 10000*(seas-1)
 
