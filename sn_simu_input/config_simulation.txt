@@ -42,6 +42,7 @@ SN blueCutoff 380. float #SN blue cutoff
 SN redCutoff 800. float #SN red cutoff
 SN ebvofMW -1. float #SN E(B-V)
 SN NSNfactor 1 int #NSN*factor for simulation
+SN NSNabsolute -1 int #absolute number of SN to produce
 
 ## Cosmology parameters
 Cosmology Model w0waCDM str #cosmology model
