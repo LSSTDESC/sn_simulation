@@ -139,8 +139,8 @@ class SN(SN_Object):
                                 effect_frames=['rest', 'obs'])
         self.model = model
         self.version = version
-        self.X0 = self.x0(self.dL)
-        self.SN.set(x0=self.X0)
+        #self.X0 = self.x0(self.dL)
+        #self.SN.set(x0=self.X0)
         self.SN.set(z=self.sn_parameters['z'])
         # print(self.SN)
         """
@@ -301,17 +301,29 @@ class SN(SN_Object):
         self.SN.set(x1=self.sn_parameters['x1'] +
                     self.gen_parameters['epsilon_x1'])
 
-        # need to correct X0 for alpha and beta
-        self.X0 = self.x0(self.dL)
-        # set X0
-        self.SN.set(x0=self.X0)
-
-        """
+        
+        #self.X0 = self.x0(self.dL)
+        
+        
         self.SN.set_source_peakabsmag(self.sn_parameters['absmag'],
                                       self.sn_parameters['band'], self.sn_parameters['magsys'])
+        
+        #get X0 fro source_abspeak norm
 
         self.X0 = self.SN.get('x0')
-        """
+        #print('before',self.X0,self.SN.get('x1'),self.SN.get('c'))
+        # need to correct X0 for alpha and beta
+        alpha = 0.13
+        beta = 3.1
+        self.X0 *= np.power(10., 0.4*(alpha *
+                                 self.sn_parameters['x1'] - beta *
+                                 self.sn_parameters['color']))
+
+        self.X0 += self.gen_parameters['epsilon_x0']
+
+        # set X0
+        self.SN.set(x0=self.X0)
+        #print('after',self.SN.get('x0'),self.SN.get('x1'),self.SN.get('c'))
 
     def x0(self, lumidist):
         """"
@@ -329,9 +341,9 @@ class SN(SN_Object):
         X0 = X0_grid / lumidist ** 2
         alpha = 0.13
         beta = 3.
-        X0 *= np.power(10., 0.4*(alpha *
-                                 self.sn_parameters['x1'] - beta *
-                                 self.sn_parameters['color']))
+        #X0 *= np.power(10., 0.4*(alpha *
+        #                         self.sn_parameters['x1'] - beta *
+        #                         self.sn_parameters['color']))
 
         X0 += self.gen_parameters['epsilon_x0']
 
