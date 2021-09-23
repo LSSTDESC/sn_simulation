@@ -142,7 +142,6 @@ class SNSimulation(BaseMetric):
         if 'modelPar' in self.sn_parameters.keys():
             dirFiles = self.sn_parameters['modelPar']['dirFile']
         self.gen_par = SimuParameters(self.sn_parameters, cosmo_par, mjdCol=self.mjdCol, area=self.area,
-                                      dirFiles=dirFiles,
                                       web_path=config['WebPathSimu'])
 
         # simulator parameters
