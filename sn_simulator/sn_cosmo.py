@@ -15,7 +15,7 @@ import pandas as pd
 import operator
 from astropy import units as u
 import os
-
+from astropy.cosmology import w0waCDM
 
 class SN(SN_Object):
     def __init__(self, param, simu_param, reference_lc=None, gamma=None, mag_to_flux=None, dustcorr=None, snr_fluxsec='interp'):
@@ -73,7 +73,7 @@ class SN(SN_Object):
         self.sn_version = version
 
         self.dL = self.cosmology.luminosity_distance(
-            self.sn_parameters['z']).value*1.e3
+            self.sn_parameters['z']).value*1.e3 #in kpc
 
         self.sn_type = self.sn_parameters['type']
         if self.sn_type == 'SN_Ia':
@@ -138,6 +138,8 @@ class SN(SN_Object):
                                 effect_names=['host', 'mw'],
                                 effect_frames=['rest', 'obs'])
         self.model = model
+        # set cosmology here
+        self.SN.cosmo = self.cosmology
         self.version = version
         #self.X0 = self.x0(self.dL)
         #self.SN.set(x0=self.X0)
@@ -302,16 +304,14 @@ class SN(SN_Object):
                     self.gen_parameters['epsilon_x1'])
 
         
-        #self.X0 = self.x0(self.dL)
-        
-        
+        self.X0 = self.x0(self.dL)
+        """
         self.SN.set_source_peakabsmag(self.sn_parameters['absmag'],
                                       self.sn_parameters['band'], self.sn_parameters['magsys'])
         
         #get X0 fro source_abspeak norm
 
         self.X0 = self.SN.get('x0')
-        #print('before',self.X0,self.SN.get('x1'),self.SN.get('c'))
         # need to correct X0 for alpha and beta
         alpha = 0.13
         beta = 3.1
@@ -319,8 +319,9 @@ class SN(SN_Object):
                                  self.sn_parameters['x1'] - beta *
                                  self.sn_parameters['color']))
 
-        self.X0 += self.gen_parameters['epsilon_x0']
+        """
 
+        self.X0 += self.gen_parameters['epsilon_x0']
         # set X0
         self.SN.set(x0=self.X0)
         #print('after',self.SN.get('x0'),self.SN.get('x1'),self.SN.get('c'))
@@ -340,10 +341,10 @@ class SN(SN_Object):
             self.sn_parameters['x1'], self.sn_parameters['color']),  method='nearest')
         X0 = X0_grid / lumidist ** 2
         alpha = 0.13
-        beta = 3.
-        #X0 *= np.power(10., 0.4*(alpha *
-        #                         self.sn_parameters['x1'] - beta *
-        #                         self.sn_parameters['color']))
+        beta = 3.1
+        X0 *= np.power(10., 0.4*(alpha *
+                                 self.sn_parameters['x1'] - beta *
+                                 self.sn_parameters['color']))
 
         X0 += self.gen_parameters['epsilon_x0']
 
@@ -444,6 +445,7 @@ class SN(SN_Object):
         ebvofMW = self.sn_parameters['ebvofMW']
         # apply dust here since Ra, Dec is known
 
+        print('ebvofmw',ebvofMW)
         if ebvofMW < 0.:
             ebvofMW = self.lsstmwebv.calculateEbv(
                 equatorialCoordinates=np.array(
