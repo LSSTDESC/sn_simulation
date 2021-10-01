@@ -47,7 +47,7 @@ SN NSNabsolute -1 int #absolute number of SN to produce
 Cosmology Model w0waCDM str #cosmology model
 Cosmology Om 0.30 float #cosmology Omegam
 Cosmology Ol 0.70 float #cosmology Omegall
-Cosmology H0 72.0 float #cosmology H0
+Cosmology H0 70.0 float #cosmology H0
 Cosmology w0 -1.0 float #cosmology w0
 Cosmology wa 0.0 float #cosmology wa
 
