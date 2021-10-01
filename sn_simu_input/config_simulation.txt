@@ -42,7 +42,7 @@ SN redCutoff 800. float #SN red cutoff
 SN ebvofMW -1. float #SN E(B-V)
 SN NSNfactor 1 int #NSN*factor for simulation
 SN NSNabsolute -1 int #absolute number of SN to produce
-
+SN sigmaInt 0.12 float # SN intrinsic dispersion
 ## Cosmology parameters
 Cosmology Model w0waCDM str #cosmology model
 Cosmology Om 0.30 float #cosmology Omegam

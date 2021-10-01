@@ -65,7 +65,7 @@ class SN(SN_Object):
         self.dustmap = sncosmo.OD94Dust()
         # self.dustmap = sncosmo.CCM89Dust()
         self.lsstmwebv = EBV.EBVbase()
-
+ 
         model = simu_param['model']
         version = str(simu_param['version'])
 
@@ -107,6 +107,7 @@ class SN(SN_Object):
 
         self.mag_inf = 100.  # mag values to replace infs
 
+       
         # band registery in sncosmo
 
         for band in 'grizy':
@@ -318,10 +319,23 @@ class SN(SN_Object):
         self.X0 *= np.power(10., 0.4*(alpha *
                                  self.sn_parameters['x1'] - beta *
                                  self.sn_parameters['color']))
+        #estimate mb
+        mb = -2.5*np.log10(self.X0)+10.635
+
+        #smear if
+        from random import gauss
+
+        print('before iii',mb,self.X0,self.sn_parameters['sigmaInt'])
+        mb = gauss(mb,self.sn_parameters['sigmaInt'])
+       
+
+        # and recalculate X0
+        self.X0 = 10**(-0.4*(mb-10.635))
+        print('after',mb,self.X0)
+        
+        self.X0 += self.gen_parameters['epsilon_x0']
 
         """
-
-        self.X0 += self.gen_parameters['epsilon_x0']
         # set X0
         self.SN.set(x0=self.X0)
         #print('after',self.SN.get('x0'),self.SN.get('x1'),self.SN.get('c'))
@@ -345,6 +359,17 @@ class SN(SN_Object):
         X0 *= np.power(10., 0.4*(alpha *
                                  self.sn_parameters['x1'] - beta *
                                  self.sn_parameters['color']))
+
+        #estimate mb
+        mb = -2.5*np.log10(X0)+10.635
+
+        #smear if
+        from random import gauss
+
+        mb = gauss(mb,self.sn_parameters['sigmaInt'])
+       
+        # and recalculate X0
+        X0 = 10**(-0.4*(mb-10.635))
 
         X0 += self.gen_parameters['epsilon_x0']
 
@@ -445,7 +470,6 @@ class SN(SN_Object):
         ebvofMW = self.sn_parameters['ebvofMW']
         # apply dust here since Ra, Dec is known
 
-        print('ebvofmw',ebvofMW)
         if ebvofMW < 0.:
             ebvofMW = self.lsstmwebv.calculateEbv(
                 equatorialCoordinates=np.array(
