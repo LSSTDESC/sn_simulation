@@ -359,17 +359,19 @@ class SN(SN_Object):
         X0 *= np.power(10., 0.4*(alpha *
                                  self.sn_parameters['x1'] - beta *
                                  self.sn_parameters['color']))
+    
+        if self.sn_parameters['sigmaInt']>0.:
 
-        #estimate mb
-        mb = -2.5*np.log10(X0)+10.635
+            #estimate mb
+            mb = -2.5*np.log10(X0)+10.635
 
-        #smear if
-        from random import gauss
+            #smear if
+            from random import gauss
 
-        mb = gauss(mb,self.sn_parameters['sigmaInt'])
+            mb = gauss(mb,self.sn_parameters['sigmaInt'])
        
-        # and recalculate X0
-        X0 = 10**(-0.4*(mb-10.635))
+            # and recalculate X0
+            X0 = 10**(-0.4*(mb-10.635))
 
         X0 += self.gen_parameters['epsilon_x0']
 
