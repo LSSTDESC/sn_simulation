@@ -600,7 +600,9 @@ class SN(SN_Object):
         # rename some of the columns
         lcdf = lcdf.rename(
             columns={self.mjdCol: 'time', self.filterCol: 'band', self.m5Col: 'm5', self.exptimeCol: 'exptime'})
+        lcdf['filter'] = lcdf['band']
         lcdf['band'] = 'LSST::'+lcdf['band']
+        
 
         # remove rows with mag_inf values
 
@@ -612,6 +614,12 @@ class SN(SN_Object):
         lcdf.loc[lcdf.fluxerr_model < 0, 'fluxerr'] = 10.
         lcdf.loc[lcdf.fluxerr_model < 0, 'snr_m5'] = 0.
         lcdf.loc[lcdf.fluxerr_model < 0, 'fluxerr_model'] = 10.
+
+        filters = np.array(lcdf['filter'])
+        filters = filters.reshape((len(filters),1))
+
+        lcdf['lambdabar'] = np.apply_along_axis(self.lambdabar,1,filters)
+
 
         # print('fluxb',lcdf[['flux','fluxerr','fluxerr_photo','snr_m5']])
         if len(lcdf) == 0:
@@ -645,6 +653,7 @@ class SN(SN_Object):
                     'seeingFwhmEff', 'seeingFwhmGeom', 'gamma', 'mag', 'magerr', 'magerr_phot']
 
         table_lc.remove_columns(toremove)
+
         return [table_lc]
 
     def calcSNR_Flux(self, df, transm):
@@ -842,3 +851,7 @@ class SN(SN_Object):
         int_fluxes[int_fluxes < 0.] = 1.e-10
 
         return int_fluxes
+
+    def lambdabar(self, band):
+
+        return self.telescope.mean_wavelength[band[0]]
