@@ -131,7 +131,8 @@ class SN_Object:
 
     def cutoff(self, obs, T0, z,
                min_rf_phase, max_rf_phase,
-               blue_cutoff=350., red_cutoff=800.):
+               blue_cutoffs=dict(zip('ugrizy',[380.,380.,380.,360.,380.,380.])),
+               red_cutoffs=dict(zip('ugrizy',[700.,700.,700.,700.,700.,700.]))):
         """ select observations depending on phases
 
         Parameters
@@ -152,16 +153,64 @@ class SN_Object:
         array of obs passing the selection
         """
 
+        self.blue_cutoffs = blue_cutoffs
+        self.red_cutoffs = red_cutoffs
+
         mean_restframe_wavelength = np.asarray(
             [self.telescope.mean_wavelength[obser[self.filterCol][-1]] /
              (1. + z) for obser in obs])
 
+        filters = np.array(obs[self.filterCol])
+        filters = filters.reshape((len(filters),1))
+
+        blue_values= np.apply_along_axis(self.blues,1,filters)
+        red_values= np.apply_along_axis(self.reds,1,filters)
+
         p = (obs[self.mjdCol]-T0)/(1.+z)
 
         idx = (p >= 1.000000001*min_rf_phase) & (p <= 1.00001*max_rf_phase)
+        """
         idx &= (mean_restframe_wavelength > blue_cutoff)
         idx &= (mean_restframe_wavelength < red_cutoff)
+        """
+        idx &= (mean_restframe_wavelength - blue_values >= 0.)
+        idx &= (mean_restframe_wavelength - red_values <= 0.)
         return obs[idx]
+
+
+    def blues(self, band):
+        """
+        Method to return blue_cutoff value
+
+        Parameters
+        ----------
+        band: str
+          the band to process
+
+        Returns
+        -------
+        the blue cutoff value
+
+        """
+        return self.blue_cutoffs[band[0]]
+ 
+    def reds(self, band):
+        """
+        Method to return the red_cutoff value
+
+        Parameters
+        ----------
+        band: str
+          the band to process
+
+        Returns
+        -------
+        the red cutoff value
+
+        """
+
+        return self.red_cutoffs[band[0]]
+    
 
     def plotLC(self, table, time_display):
         """ Light curve plot using sncosmo methods

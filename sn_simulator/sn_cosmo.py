@@ -494,17 +494,19 @@ class SN(SN_Object):
 
         blue_cutoff = 0.
         red_cutoff = 1.e8
+        blue_cutoffs = dict(zip('urgizy',[blue_cutoff]*6))
+        red_cutoffs = dict(zip('urgizy',[red_cutoff]*6))
         if self.sn_type == 'SN_Ia':
             if not self.error_model:
-                blue_cutoff = self.sn_parameters['blueCutoff']
-                red_cutoff = self.sn_parameters['redCutoff']
+                for b in 'ugrizy':
+                    blue_cutoffs[b] = self.sn_parameters['blueCutoff{}'.format(b)]
+                    red_cutoffs[b] = self.sn_parameters['redCutoff{}'.format(b)]
 
         obs = self.cutoff(obs, self.sn_parameters['daymax'],
                           self.sn_parameters['z'],
                           self.sn_parameters['minRFphase'],
                           self.sn_parameters['maxRFphase'],
-                          blue_cutoff,
-                          red_cutoff)
+                          blue_cutoffs,red_cutoffs)
 
         if len(obs) == 0:
             return [self.nosim(ra, dec, pix, area, season, season_length, ti, self.snr_fluxsec, -1, ebvofMW)]
