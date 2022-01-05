@@ -360,16 +360,18 @@ class SN(SN_Object):
                                  self.sn_parameters['x1'] - beta *
                                  self.sn_parameters['color']))
     
-        if self.sn_parameters['sigmaInt']>0.:
-
+        if np.abs(self.sn_parameters['sigmaInt'])> 1.e-5:
+            
             #estimate mb
             mb = -2.5*np.log10(X0)+10.635
 
-            #smear if
-            from random import gauss
+            #smear it
+            #from random import gauss
 
-            mb = gauss(mb,self.sn_parameters['sigmaInt'])
+            #mb = gauss(mb,self.sn_parameters['sigmaInt'])
        
+            mb += self.sn_parameters['sigmaInt']
+
             # and recalculate X0
             X0 = 10**(-0.4*(mb-10.635))
 
