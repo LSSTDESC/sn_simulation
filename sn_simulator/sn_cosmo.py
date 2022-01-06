@@ -17,6 +17,7 @@ from astropy import units as u
 import os
 from astropy.cosmology import w0waCDM
 
+
 class SN(SN_Object):
     def __init__(self, param, simu_param, reference_lc=None, gamma=None, mag_to_flux=None, dustcorr=None, snr_fluxsec='interp'):
         super().__init__(param.name, param.sn_parameters, param.simulator_parameters,
@@ -59,13 +60,13 @@ class SN(SN_Object):
         self.mag_to_flux = mag_to_flux
         self.snr_fluxsec = snr_fluxsec
         self.error_model = self.simulator_parameters['errorModel']
-        #self.error_model_cut = self.simulator_parameters['errorModelCut']
+        # self.error_model_cut = self.simulator_parameters['errorModelCut']
 
         # dust map
         self.dustmap = sncosmo.OD94Dust()
         # self.dustmap = sncosmo.CCM89Dust()
         self.lsstmwebv = EBV.EBVbase()
- 
+
         model = simu_param['model']
         version = str(simu_param['version'])
 
@@ -73,7 +74,7 @@ class SN(SN_Object):
         self.sn_version = version
 
         self.dL = self.cosmology.luminosity_distance(
-            self.sn_parameters['z']).value*1.e3 #in kpc
+            self.sn_parameters['z']).value*1.e3  # in kpc
 
         self.sn_type = self.sn_parameters['type']
         if self.sn_type == 'SN_Ia':
@@ -107,7 +108,6 @@ class SN(SN_Object):
 
         self.mag_inf = 100.  # mag values to replace infs
 
-       
         # band registery in sncosmo
 
         for band in 'grizy':
@@ -119,6 +119,13 @@ class SN(SN_Object):
                 bandcosmo = sncosmo.Bandpass(
                     throughput.wavelen, throughput.sb, name=name, wave_unit=u.nm)
                 sncosmo.registry.register(bandcosmo)
+
+        # load info for sigma_mb shift
+        self.mbsigma =
+        if np.abs(self.mbsigma) > 0:
+            df = pd.read_hdf()
+            self.sigma_mb_z = interp1d(
+                df['z'], df['sigma_mb'], bounds_error=False, fill_value=0.)
 
     def source(self, model, version):
         """
@@ -142,8 +149,8 @@ class SN(SN_Object):
         # set cosmology here
         self.SN.cosmo = self.cosmology
         self.version = version
-        #self.X0 = self.x0(self.dL)
-        #self.SN.set(x0=self.X0)
+        # self.X0 = self.x0(self.dL)
+        # self.SN.set(x0=self.X0)
         self.SN.set(z=self.sn_parameters['z'])
         # print(self.SN)
         """
@@ -304,13 +311,12 @@ class SN(SN_Object):
         self.SN.set(x1=self.sn_parameters['x1'] +
                     self.gen_parameters['epsilon_x1'])
 
-        
         self.X0 = self.x0(self.dL)
         """
         self.SN.set_source_peakabsmag(self.sn_parameters['absmag'],
                                       self.sn_parameters['band'], self.sn_parameters['magsys'])
-        
-        #get X0 fro source_abspeak norm
+
+        # get X0 fro source_abspeak norm
 
         self.X0 = self.SN.get('x0')
         # need to correct X0 for alpha and beta
@@ -319,26 +325,26 @@ class SN(SN_Object):
         self.X0 *= np.power(10., 0.4*(alpha *
                                  self.sn_parameters['x1'] - beta *
                                  self.sn_parameters['color']))
-        #estimate mb
+        # estimate mb
         mb = -2.5*np.log10(self.X0)+10.635
 
-        #smear if
+        # smear if
         from random import gauss
 
         print('before iii',mb,self.X0,self.sn_parameters['sigmaInt'])
         mb = gauss(mb,self.sn_parameters['sigmaInt'])
-       
+
 
         # and recalculate X0
         self.X0 = 10**(-0.4*(mb-10.635))
         print('after',mb,self.X0)
-        
+
         self.X0 += self.gen_parameters['epsilon_x0']
 
         """
         # set X0
         self.SN.set(x0=self.X0)
-        #print('after',self.SN.get('x0'),self.SN.get('x1'),self.SN.get('c'))
+        # print('after',self.SN.get('x0'),self.SN.get('x1'),self.SN.get('c'))
 
     def x0(self, lumidist):
         """"
@@ -359,18 +365,18 @@ class SN(SN_Object):
         X0 *= np.power(10., 0.4*(alpha *
                                  self.sn_parameters['x1'] - beta *
                                  self.sn_parameters['color']))
-    
-        if np.abs(self.sn_parameters['sigmaInt'])> 1.e-5:
-            
-            #estimate mb
+
+        if self.sn_parameters['sigmaInt'] > 0:
+
+            # estimate mb
             mb = -2.5*np.log10(X0)+10.635
 
-            #smear it
-            #from random import gauss
+            # smear it
+            from random import gauss
 
-            #mb = gauss(mb,self.sn_parameters['sigmaInt'])
-       
-            mb += self.sn_parameters['sigmaInt']
+            mb = gauss(mb, self.sn_parameters['sigmaInt'])
+
+            # mb += self.sn_parameters['sigmaInt']
 
             # and recalculate X0
             X0 = 10**(-0.4*(mb-10.635))
@@ -496,19 +502,21 @@ class SN(SN_Object):
 
         blue_cutoff = 0.
         red_cutoff = 1.e8
-        blue_cutoffs = dict(zip('urgizy',[blue_cutoff]*6))
-        red_cutoffs = dict(zip('urgizy',[red_cutoff]*6))
+        blue_cutoffs = dict(zip('urgizy', [blue_cutoff]*6))
+        red_cutoffs = dict(zip('urgizy', [red_cutoff]*6))
         if self.sn_type == 'SN_Ia':
             if not self.error_model:
                 for b in 'ugrizy':
-                    blue_cutoffs[b] = self.sn_parameters['blueCutoff{}'.format(b)]
-                    red_cutoffs[b] = self.sn_parameters['redCutoff{}'.format(b)]
+                    blue_cutoffs[b] = self.sn_parameters['blueCutoff{}'.format(
+                        b)]
+                    red_cutoffs[b] = self.sn_parameters['redCutoff{}'.format(
+                        b)]
 
         obs = self.cutoff(obs, self.sn_parameters['daymax'],
                           self.sn_parameters['z'],
                           self.sn_parameters['minRFphase'],
                           self.sn_parameters['maxRFphase'],
-                          blue_cutoffs,red_cutoffs)
+                          blue_cutoffs, red_cutoffs)
 
         if len(obs) == 0:
             return [self.nosim(ra, dec, pix, area, season, season_length, ti, self.snr_fluxsec, -1, ebvofMW)]
@@ -606,7 +614,6 @@ class SN(SN_Object):
             columns={self.mjdCol: 'time', self.filterCol: 'band', self.m5Col: 'm5', self.exptimeCol: 'exptime'})
         lcdf['filter'] = lcdf['band']
         lcdf['band'] = 'LSST::'+lcdf['band']
-        
 
         # remove rows with mag_inf values
 
@@ -620,10 +627,9 @@ class SN(SN_Object):
         lcdf.loc[lcdf.fluxerr_model < 0, 'fluxerr_model'] = 10.
 
         filters = np.array(lcdf['filter'])
-        filters = filters.reshape((len(filters),1))
+        filters = filters.reshape((len(filters), 1))
 
-        lcdf['lambdabar'] = np.apply_along_axis(self.lambdabar,1,filters)
-
+        lcdf['lambdabar'] = np.apply_along_axis(self.lambdabar, 1, filters)
 
         # print('fluxb',lcdf[['flux','fluxerr','fluxerr_photo','snr_m5']])
         if len(lcdf) == 0:
@@ -647,7 +653,8 @@ class SN(SN_Object):
         """
         if self.error_model:
             if self.error_model_cut >0:
-                idx = table_lc['fluxerr_model']/table_lc['flux']<= self.error_model_cut
+                idx = table_lc['fluxerr_model']/ \
+                    table_lc['flux']<= self.error_model_cut
                 table_lc = table_lc[idx]
         """
         toremove = ['m5', 'exptime', 'numExposures', 'filter_cosmo', 'airmass', 'moonPhase',

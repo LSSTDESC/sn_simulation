@@ -8,7 +8,9 @@ SN type SN_Ia str #SN type
 SN modelPar nameFile x1_color_G10.csv str #SN dist filename
 SN modelPar dirFile reference_files str #SN dist model ref dir
 SN modelPar x1sigma 0 int #shift for x1 distrib parameter
-SN modelPar colorsigma 0 int #shift for x1 distrib parameter
+SN modelPar colorsigma 0 int #shift for color distrib parameter
+SN modelPar mbsigma 0 int #shift for mb SN parameter
+SN modelPar mbsigmafile sigma_mb_from_simu_Ny_40.hdf5 str #file for mbsigma application
 #x1
 SN x1 type unique str #SN x1 type
 SN x1 min -2.0 float #SN x1 min
