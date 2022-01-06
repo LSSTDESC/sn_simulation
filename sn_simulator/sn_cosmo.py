@@ -5,7 +5,7 @@ from lsst.sims.photUtils import SignalToNoise
 from lsst.sims.photUtils import PhotometricParameters
 from astropy.table import Table, Column
 from lsst.sims.catUtils.dust import EBV
-from scipy.interpolate import griddata
+from scipy.interpolate import griddata,interp1d
 import h5py
 from sn_simu_wrapper.sn_object import SN_Object
 import time
@@ -55,6 +55,7 @@ class SN(SN_Object):
           all : estimated from the two above-mentioned methods
 
         """
+
         # this is common to all models
         self.gamma = gamma
         self.mag_to_flux = mag_to_flux
@@ -66,6 +67,15 @@ class SN(SN_Object):
         self.dustmap = sncosmo.OD94Dust()
         # self.dustmap = sncosmo.CCM89Dust()
         self.lsstmwebv = EBV.EBVbase()
+
+        # load info for sigma_mb shift
+        self.nsigmamb = self.sn_parameters['modelPar']['mbsigma']
+
+        if np.abs(self.nsigmamb) > 1.e-5:
+            df = pd.read_hdf(self.sn_parameters['modelPar']['mbsigmafile'])
+            self.sigma_mb_z = interp1d(
+                df['z'], df['sigma_mb'], bounds_error=False, fill_value=0.)
+
 
         model = simu_param['model']
         version = str(simu_param['version'])
@@ -120,12 +130,7 @@ class SN(SN_Object):
                     throughput.wavelen, throughput.sb, name=name, wave_unit=u.nm)
                 sncosmo.registry.register(bandcosmo)
 
-        # load info for sigma_mb shift
-        self.mbsigma =
-        if np.abs(self.mbsigma) > 0:
-            df = pd.read_hdf()
-            self.sigma_mb_z = interp1d(
-                df['z'], df['sigma_mb'], bounds_error=False, fill_value=0.)
+        
 
     def source(self, model, version):
         """
@@ -366,17 +371,22 @@ class SN(SN_Object):
                                  self.sn_parameters['x1'] - beta *
                                  self.sn_parameters['color']))
 
-        if self.sn_parameters['sigmaInt'] > 0:
-
+        if self.sn_parameters['sigmaInt'] > 0 or np.abs(self.nsigmamb) > 1.e-5:
+            
+            
             # estimate mb
             mb = -2.5*np.log10(X0)+10.635
 
-            # smear it
-            from random import gauss
+            if self.sn_parameters['sigmaInt'] > 0:
+                # smear it
+                from random import gauss
 
-            mb = gauss(mb, self.sn_parameters['sigmaInt'])
+                mb = gauss(mb, self.sn_parameters['sigmaInt'])
 
-            # mb += self.sn_parameters['sigmaInt']
+            if np.abs(self.nsigmamb) > 1.e-5:
+                # get sigma from z
+                sigmamb = self.sigma_mb_z(self.sn_parameters['z'])
+                mb += self.nsigmamb*sigmamb
 
             # and recalculate X0
             X0 = 10**(-0.4*(mb-10.635))
