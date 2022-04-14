@@ -5,7 +5,7 @@ from lsst.sims.photUtils import SignalToNoise
 from lsst.sims.photUtils import PhotometricParameters
 from astropy.table import Table, Column
 from lsst.sims.catUtils.dust import EBV
-from scipy.interpolate import griddata,interp1d
+from scipy.interpolate import griddata, interp1d
 import h5py
 from sn_simu_wrapper.sn_object import SN_Object
 import time
@@ -76,7 +76,6 @@ class SN(SN_Object):
             self.sigma_mb_z = interp1d(
                 df['z'], df['sigma_mb'], bounds_error=False, fill_value=0.)
 
-
         model = simu_param['model']
         version = str(simu_param['version'])
 
@@ -129,8 +128,6 @@ class SN(SN_Object):
                 bandcosmo = sncosmo.Bandpass(
                     throughput.wavelen, throughput.sb, name=name, wave_unit=u.nm)
                 sncosmo.registry.register(bandcosmo)
-
-        
 
     def source(self, model, version):
         """
@@ -372,8 +369,7 @@ class SN(SN_Object):
                                  self.sn_parameters['color']))
 
         if self.sn_parameters['sigmaInt'] > 0 or np.abs(self.nsigmamb) > 1.e-5:
-            
-            
+
             # estimate mb
             mb = -2.5*np.log10(X0)+10.635
 
@@ -672,6 +668,9 @@ class SN(SN_Object):
 
         toremove = ['m5', 'exptime', 'numExposures', 'filter_cosmo', 'airmass', 'moonPhase',
                     'seeingFwhmEff', 'seeingFwhmGeom', 'gamma', 'mag', 'magerr', 'magerr_phot']
+
+        toremove = ['filter_cosmo', 'airmass', 'moonPhase',
+                    'gamma', 'mag', 'magerr', 'magerr_phot']
 
         table_lc.remove_columns(toremove)
 
