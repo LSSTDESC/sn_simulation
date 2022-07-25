@@ -174,6 +174,7 @@ class SNSimulation(BaseMetric):
         # fieldtype, season
         self.field_type = config['Observations']['fieldtype']
         seasons = config['Observations']['season']
+
         if '-' not in seasons or seasons[0] == '-':
             self.season = list(map(int, seasons.split(',')))
         else:
@@ -211,8 +212,8 @@ class SNSimulation(BaseMetric):
             # x1 and color are unique for this simulator
             x1 = self.sn_parameters['x1']['min']
             color = self.sn_parameters['color']['min']
-            bluecutoff = self.sn_parameters['blueCutoff']
-            redcutoff = self.sn_parameters['redCutoff']
+            bluecutoff = self.sn_parameters['blueCutoffg']
+            redcutoff = self.sn_parameters['redCutoffg']
             ebvofMW = self.sn_parameters['ebvofMW']
             # Loading reference file
             cutoff = '{}_{}'.format(bluecutoff, redcutoff)
@@ -223,7 +224,7 @@ class SNSimulation(BaseMetric):
             dustFile = 'Dust_{}_{}_{}.hdf5'.format(
                 x1, color, cutoff)
 
-            print('loading reference and dust files')
+            print('loading reference files')
             time_ref = time.time()
 
             result_queue = multiprocessing.Queue()
@@ -237,6 +238,7 @@ class SNSimulation(BaseMetric):
             """
             if np.abs(ebvofMW) > 1.e-5:
                 n_to_load = 2
+                print('loading dust files')
                 pb = multiprocessing.Process(
                     name='Subprocess-1', target=self.loadDust, args=(dustDir, dustFile, web_path, 1, result_queue))
                 pb.start()
@@ -337,6 +339,11 @@ class SNSimulation(BaseMetric):
 
         self.fieldname = 'unknown'
         self.fieldid = 0
+        try:
+            iter(self.season)
+        except TypeError:
+            self.season = [self.season]
+
         if self.season == [-1]:
             seasons = np.unique(obs[self.seasonCol])
         else:
@@ -354,6 +361,7 @@ class SNSimulation(BaseMetric):
 
             idxa = obs[self.seasonCol] == seas
             obs_season = obs[idxa]
+
             # remove the u band
             idx = [i for i, val in enumerate(
                 obs_season[self.filterCol]) if val[-1] != 'u']

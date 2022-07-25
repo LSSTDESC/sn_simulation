@@ -54,8 +54,8 @@ class SN(SN_Object):
         # SN parameters for Fisher matrix estimation
         self.param_Fisher = ['x0', 'x1', 'color', 'daymax']
 
-        bluecutoff = self.sn_parameters['blueCutoff']
-        redcutoff = self.sn_parameters['redCutoff']
+        bluecutoff = self.sn_parameters['blueCutoffg']
+        redcutoff = self.sn_parameters['redCutoffg']
         self.lcFast = LCfast(reference_lc, dustcorr, x1, color, param.telescope,
                              param.mjdCol, param.RACol, param.DecCol,
                              param.filterCol, param.exptimeCol,
@@ -134,10 +134,10 @@ class SN(SN_Object):
                 idx = tab_tot['fluxerr_model']/tab_tot['flux']<= self.error_model_cut
                 tab_tot = tab_tot[idx]
         """
-        
+
         # apply dust correction here
         #tab_tot = self.dust_corrections(tab_tot, pixRA, pixDec)
-        
+
         ptime = ti.finish(time.time())['ptime'].item()
         self.premeta.update(dict(zip(['RA', 'Dec', 'pixRA', 'pixDec', 'healpixID', 'dL', 'ptime', 'status', 'ebvofMW'],
                                      [RA, Dec, pixRA, pixDec, pixID, dL, ptime, 1, ebvofMW])))

@@ -42,17 +42,17 @@ SN magsys vega str #SN magsys
 SN differentialFlux 0 int #SN diff flux
 SN salt2Dir SALT2_Files str #SN SALT2 dir
 SN blueCutoffu 380. float #SN blue cutoff u-band
-SN redCutoffu 700. float #SN red cutoff u-band
+SN redCutoffu 800. float #SN red cutoff u-band
 SN blueCutoffg 380. float #SN blue cutoff g-band
-SN redCutoffg 700. float #SN red cutoff g-band
+SN redCutoffg 800. float #SN red cutoff g-band
 SN blueCutoffr 380. float #SN blue cutoff r-band
-SN redCutoffr 700. float #SN red cutoff	 r-band
+SN redCutoffr 800. float #SN red cutoff	 r-band
 SN blueCutoffi 360. float #SN blue cutoff i-band
-SN redCutoffi 700. float #SN red cutoff	 i-band
+SN redCutoffi 800. float #SN red cutoff	 i-band
 SN blueCutoffz 380. float #SN blue cutoff z-band
-SN redCutoffz 700. float #SN red cutoff z-band
+SN redCutoffz 800. float #SN red cutoff z-band
 SN blueCutoffy 380. float #SN blue cutoff y-band
-SN redCutoffy 700. float #SN red cutoff y-band
+SN redCutoffy 800. float #SN red cutoff y-band
 SN ebvofMW -1. float #SN E(B-V)
 SN NSNfactor 1 int #NSN*factor for simulation
 SN NSNabsolute -1 int #absolute number of SN to produce
