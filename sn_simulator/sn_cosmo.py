@@ -1,10 +1,10 @@
 import sncosmo
 import numpy as np
-from lsst.sims.photUtils import Bandpass, Sed
-from lsst.sims.photUtils import SignalToNoise
-from lsst.sims.photUtils import PhotometricParameters
+from rubin_sim.photUtils import Bandpass, Sed
+from rubin_sim.photUtils import SignalToNoise
+from rubin_sim.photUtils import PhotometricParameters
 from astropy.table import Table, Column
-from lsst.sims.catUtils.dust import EBV
+from rubin_sim.catUtils.dust import EBV
 from scipy.interpolate import griddata, interp1d
 import h5py
 from sn_simu_wrapper.sn_object import SN_Object
@@ -50,7 +50,7 @@ class SN(SN_Object):
            reference mag->flux values (default: None)
         snr_fluxsec: str, opt
           type of method to estimate snr and flux in pe.s-1:
-          lsstsim: estimated from lsstsims tools
+          lsstsim: estimated from rubin_sim tools
           interp: estimated from interpolation (default)
           all : estimated from the two above-mentioned methods
 
