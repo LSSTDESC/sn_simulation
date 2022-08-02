@@ -1,20 +1,17 @@
 import sncosmo
 import numpy as np
-from rubin_sim.photUtils import Bandpass, Sed
+from rubin_sim.photUtils import Sed
 from rubin_sim.photUtils import SignalToNoise
 from rubin_sim.photUtils import PhotometricParameters
-from astropy.table import Table, Column
+from astropy.table import Table
 from scipy.interpolate import griddata, interp1d
-import h5py
 from sn_simu_wrapper.sn_object import SN_Object
 import time
 from sn_tools.sn_utils import SNTimer
 from sn_tools.sn_calcFast import srand
 import pandas as pd
-import operator
 from astropy import units as u
 import os
-from astropy.cosmology import w0waCDM
 
 
 class SN(SN_Object):
@@ -91,7 +88,7 @@ class SN(SN_Object):
         if self.sn_type == 'SN_Ia':
             self.SN.set(t0=self.sn_parameters['daymax'] +
                         self.gen_parameters['epsilon_daymax'])
-            if 'salt2' in model:
+            if 'salt2' in model or 'salt3' in model:
                 self.SN_SALT2(model)
         else:
             # self.SN.set(t0=self.sn_parameters['daymax'])
@@ -281,7 +278,7 @@ class SN(SN_Object):
 
         """
 
-        if model == 'salt2-extended':
+        if model == 'salt2-extended' or model == 'salt3':
             model_min = 300.
             model_max = 180000.
             wave_min = 3000.
@@ -550,7 +547,6 @@ class SN(SN_Object):
         else:
             lcdf['fluxerr_model'] = 0.
 
-        idx = lcdf['flux'] > 0.
         # lcdf = lcdf[idx]
         lcdf.loc[lcdf.flux <= 0., 'fluxerr_photo'] = -1.
         lcdf.loc[lcdf.flux <= 0., 'fluxerr_model'] = -1.
@@ -888,6 +884,8 @@ class SN(SN_Object):
 
         """
         # in that case ebvofMW value is taken from a map
+        from astropy.coordinates import SkyCoord
+        from dustmaps.sfd import SFDQuery
         coords = SkyCoord(RA, Dec, unit='deg')
         try:
             sfd = SFDQuery()
