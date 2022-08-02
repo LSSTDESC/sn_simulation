@@ -4,7 +4,6 @@ from rubin_sim.photUtils import Bandpass, Sed
 from rubin_sim.photUtils import SignalToNoise
 from rubin_sim.photUtils import PhotometricParameters
 from astropy.table import Table, Column
-from rubin_sim.catUtils.dust import EBV
 from scipy.interpolate import griddata, interp1d
 import h5py
 from sn_simu_wrapper.sn_object import SN_Object
@@ -30,7 +29,6 @@ class SN(SN_Object):
                          seeingEffCol=param.seeingEffCol, seeingGeomCol=param.seeingGeomCol,
                          airmassCol=param.airmassCol, skyCol=param.skyCol, moonCol=param.moonCol,
                          salt2Dir=param.salt2Dir)
-
         """ SN class - inherits from SN_Object
 
         Parameters
@@ -66,7 +64,6 @@ class SN(SN_Object):
         # dust map
         self.dustmap = sncosmo.OD94Dust()
         # self.dustmap = sncosmo.CCM89Dust()
-        self.lsstmwebv = EBV.EBVbase()
 
         # load info for sigma_mb shift
         self.nsigmamb = self.sn_parameters['modelPar']['mbsigma']
@@ -487,9 +484,7 @@ class SN(SN_Object):
         # apply dust here since Ra, Dec is known
 
         if ebvofMW < 0.:
-            ebvofMW = self.lsstmwebv.calculateEbv(
-                equatorialCoordinates=np.array(
-                    [[np.deg2rad(pix['pixRA'])], [np.deg2rad(pix['pixDec'])]]))[0]
+            ebvofMW = self.ebvofMW_calc(pix['pixRA'], pix['pixDec'])
 
         self.SN.set(mwebv=ebvofMW)
 
@@ -875,3 +870,34 @@ class SN(SN_Object):
     def lambdabar(self, band):
 
         return self.telescope.mean_wavelength[band[0]]
+
+    def ebvofMW_calc(self, RA, Dec):
+        """
+        Method to estimate E(B-V)
+
+        Parameters
+        --------------
+        RA: float
+          RA coord.
+        Dec: float
+          Dec coord
+
+        Returns
+        ----------
+        E(B-V)
+
+        """
+        # in that case ebvofMW value is taken from a map
+        coords = SkyCoord(RA, Dec, unit='deg')
+        try:
+            sfd = SFDQuery()
+        except Exception:
+            from dustmaps.config import config
+            config['data_dir'] = 'dustmaps'
+            import dustmaps.sfd
+            dustmaps.sfd.fetch()
+            # dustmaps('dustmaps')
+        sfd = SFDQuery()
+        ebvofMW = sfd(coords)
+
+        return ebvofMW
