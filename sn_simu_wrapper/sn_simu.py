@@ -16,7 +16,7 @@ from sn_tools.sn_obs import season as seasoncalc
 from sn_tools.sn_utils import GetReference, LoadGamma, LoadDust
 from scipy.interpolate import interp1d
 from sn_tools.sn_io import check_get_dir
-import multiprocessing
+
 # import tracemalloc
 
 
@@ -627,10 +627,10 @@ class SNSimulation(BaseMetric):
                     n_lc_points, self.area]
         """
         metanames = ['index_hdf5', 'season',
-                     'fieldname', 'fieldid', 'n_lc_points', 'area']
+                     'fieldname', 'fieldid', 'n_lc_points', 'area', 'lcName']
         metavals = [index_hdf5, season,
                     self.fieldname, self.fieldid,
-                    n_lc_points, self.area]
+                    n_lc_points, self.area, self.lc_out[iproc]]
         metadict = dict(zip(metanames, metavals))
         metadict.update(lc.meta)
 
@@ -687,31 +687,35 @@ class SNSimulation(BaseMetric):
 
         time_ref = time.time()
         list_lc = []
+        list_lc_keep = []
         meta_lc = {}
         if 'sn_fast' not in self.simu_config['name']:
             for genpar in gen_params:
                 lc = self.simuLCs(obs, season, genpar)
                 if lc:
                     list_lc += lc
+                    if not self.throwafterdump:
+                        list_lc_keep += lc
                 # every 20 SN: dump to file
                 if self.save_status:
                     if len(list_lc) >= 20:
                         self.dump(list_lc, season, iproc, meta_lc)
-                        if self.throwafterdump:
-                            list_lc = []
+                        list_lc = []
 
         else:
             list_lc = self.simuLCs(obs, season, gen_params)
+            if not self.throwafterdump:
+                import copy
+                list_lc_keep = copy.deepcopy(list_lc)
 
         if len(list_lc) > 0 and self.save_status:
             self.dump(list_lc, season, iproc, meta_lc)
-            if self.throwafterdump:
-                list_lc = []
+            list_lc = []
 
         if output_q is not None:
-            output_q.put({j: (meta_lc, list_lc)})
+            output_q.put({j: (meta_lc, list_lc_keep)})
         else:
-            return (meta_lc, list_lc)
+            return (meta_lc, list_lc_keep)
 
     def dump(self, list_lc, season, j, meta_lc):
         """
