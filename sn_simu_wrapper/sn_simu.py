@@ -108,7 +108,7 @@ class SNSimulation(BaseMetric):
             col=cols, metricName=metricName, **kwargs)
 
         # bands considered
-        self.filterNames = 'ugrizy'
+        self.filterNames = 'grizy'
 
         # grab config file
         self.config = config
@@ -153,6 +153,7 @@ class SNSimulation(BaseMetric):
         self.save_status = save_status
         self.outdir = config['OutputSimu']['directory']
         self.throwaway_empty = config['OutputSimu']['throwempty']
+        self.throwafterdump = config['OutputSimu']['throwafterdump']
         # number of procs to run simu here
         self.nprocs = config['MultiprocessingSimu']['nproc']
 
@@ -265,6 +266,7 @@ class SNSimulation(BaseMetric):
             self.gamma = gammas.gamma
             self.mag_to_flux = gammas.mag_to_flux
 
+        self.filterNames = ['g', 'r', 'i', 'z', 'y']
         # this is deprecated
         """
         if self.error_model:
@@ -362,12 +364,13 @@ class SNSimulation(BaseMetric):
             idxa = obs[self.seasonCol] == seas
             obs_season = obs[idxa]
 
-            # remove the u band
-            idx = [i for i, val in enumerate(
-                obs_season[self.filterCol]) if val[-1] != 'u']
+            # select filters
+            goodFilters = np.in1d(obs_season[self.filterCol], self.filterNames)
+            sel_obs = obs_season[goodFilters]
 
-            if len(obs_season[idx]) >= 5:
-                simres = self.simuSeason(obs_season[idx], seas, iproc)
+            if len(sel_obs) >= 5:
+                simres = self.simuSeason(sel_obs, seas, iproc)
+                print('simres', simres)
                 if simres is not None:
                     list_lc += simres
 
@@ -391,6 +394,7 @@ class SNSimulation(BaseMetric):
             print(stat)
         """
         # print('End of simulation', time.time()-time_ref)
+        print('kkk', len(list_lc))
         if list_lc:
             return list_lc
 
@@ -693,14 +697,16 @@ class SNSimulation(BaseMetric):
                 if self.save_status:
                     if len(list_lc) >= 20:
                         self.dump(list_lc, season, iproc, meta_lc)
-                        list_lc = []
+                        if self.throwafterdump:
+                            list_lc = []
 
         else:
             list_lc = self.simuLCs(obs, season, gen_params)
 
         if len(list_lc) > 0 and self.save_status:
             self.dump(list_lc, season, iproc, meta_lc)
-            list_lc = []
+            if self.throwafterdump:
+                list_lc = []
 
         if output_q is not None:
             output_q.put({j: (meta_lc, list_lc)})
@@ -721,6 +727,7 @@ class SNSimulation(BaseMetric):
          tag for multiprocessing
 
         """
+
         for lc in list_lc:
             ido = True
             if self.throwaway_empty and len(lc) == 0:

@@ -103,6 +103,7 @@ Display LC time 5. float #display LC persistency time
 OutputSimu directory Output_Simu str #Output directory
 OutputSimu save 1 int #output save file
 OutputSimu throwempty 1 int #do not save empty LC
+OutputSimu throwafterdump 1 int #remove LC after dumping on file
 
 #Multiprocessing
 MultiprocessingSimu nproc 1 int #multiprocessing number of procs
