@@ -99,11 +99,21 @@ class SNSimulation(BaseMetric):
 
         if coadd:
             # cols += ['sn_coadd']
+            """
             self.stacker = CoaddStacker(mjdCol=self.mjdCol,
                                         RACol=self.RACol, DecCol=self.DecCol,
                                         m5Col=self.m5Col, nightCol=self.nightCol,
                                         filterCol=self.filterCol, numExposuresCol=self.nexpCol,
                                         visitTimeCol=self.vistimeCol, visitExposureTimeCol='visitExposureTime')
+            """
+            self.stacker = CoaddStacker(col_sum=[self.nexpCol, self.vistimeCol, 'visitExposureTime'],
+                                        col_mean=[self.mjdCol, self.RACol, self.DecCol,
+                                                  self.m5Col, 'pixRA', 'pixDec', 'healpixID', 'season'],
+                                        col_median=['airmass',
+                                                    'sky', 'moonPhase'],
+                                        col_group=[
+                                            self.filterCol, self.nightCol],
+                                        col_coadd=[self.m5Col, 'visitExposureTime'])
         super(SNSimulation, self).__init__(
             col=cols, metricName=metricName, **kwargs)
 
@@ -216,12 +226,14 @@ class SNSimulation(BaseMetric):
             bluecutoff = self.sn_parameters['blueCutoffg']
             redcutoff = self.sn_parameters['redCutoffg']
             ebvofMW = self.sn_parameters['ebvofMW']
+            sn_model = self.simulator_parameters['model']
+            sn_version = self.simulator_parameters['version']
             # Loading reference file
             cutoff = '{}_{}'.format(bluecutoff, redcutoff)
             if self.error_model:
                 cutoff = 'error_model'
-            lcname = 'LC_{}_{}_{}_ebvofMW_0.0_vstack.hdf5'.format(
-                x1, color, cutoff)
+            lcname = 'LC_{}_{}_{}_{}_{}_ebvofMW_0.0_vstack.hdf5'.format(
+                x1, color, cutoff, sn_model, sn_version)
             dustFile = 'Dust_{}_{}_{}.hdf5'.format(
                 x1, color, cutoff)
 
@@ -299,7 +311,7 @@ class SNSimulation(BaseMetric):
         else:
             return None
 
-    def run(self, obs, slicePoint=None):
+    def run(self, obs, slicePoint=None, imulti=0):
         """ LC simulations
 
         Parameters
@@ -369,8 +381,8 @@ class SNSimulation(BaseMetric):
             sel_obs = obs_season[goodFilters]
 
             if len(sel_obs) >= 5:
+                print(len(sel_obs), seas, iproc)
                 simres = self.simuSeason(sel_obs, seas, iproc)
-                #print('simres', simres)
                 if simres is not None:
                     list_lc += simres
 
