@@ -370,7 +370,7 @@ class SNSimulation(BaseMetric):
 
             if len(sel_obs) >= 5:
                 simres = self.simuSeason(sel_obs, seas, iproc)
-                print('simres', simres)
+                #print('simres', simres)
                 if simres is not None:
                     list_lc += simres
 
@@ -394,7 +394,7 @@ class SNSimulation(BaseMetric):
             print(stat)
         """
         # print('End of simulation', time.time()-time_ref)
-        print('kkk', len(list_lc))
+
         if list_lc:
             return list_lc
 
