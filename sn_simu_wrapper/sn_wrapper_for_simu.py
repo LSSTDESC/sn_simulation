@@ -234,7 +234,7 @@ class SimuWrapper:
 
         return np.load(x0normFile)
 
-    def run(self, obs):
+    def run(self, obs, imulti=0):
         """
         Method to run the metric
 
@@ -244,7 +244,7 @@ class SimuWrapper:
           data to process
 
         """
-        return self.metric.run(obs)
+        return self.metric.run(obs,imulti=imulti)
 
     def finish(self):
         """
