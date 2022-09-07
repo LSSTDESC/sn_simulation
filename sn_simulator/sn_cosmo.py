@@ -88,8 +88,8 @@ class SN(SN_Object):
         if self.sn_type == 'SN_Ia':
             self.SN.set(t0=self.sn_parameters['daymax'] +
                         self.gen_parameters['epsilon_daymax'])
-            if 'salt2' in model or 'salt3' in model:
-                self.SN_SALT2(model)
+            if 'salt' in model:
+                self.SN_SALT(model)
         else:
             # self.SN.set(t0=self.sn_parameters['daymax'])
             # self.SN.set(t0=-36.1+self.sn_parameters['daymax'])
@@ -267,7 +267,7 @@ class SN(SN_Object):
 
         return sn_type, sel.iloc[io]['name'], str(sel.iloc[io]['version'])
 
-    def SN_SALT2(self, model):
+    def SN_SALT(self, model):
         """
         Method to set SALT2 parameters for SN
 
