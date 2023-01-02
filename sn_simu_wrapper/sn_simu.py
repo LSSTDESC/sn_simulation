@@ -1,26 +1,24 @@
 import numpy as np
-from rubin_sim.maf.metrics import BaseMetric
+#from rubin_sim.maf.metrics import BaseMetric
 from sn_stackers.coadd_stacker import CoaddStacker
 import healpy as hp
 import os
 import time
 import multiprocessing
 from astropy.table import Table
-import h5py
 from astropy.cosmology import w0waCDM
 from importlib import import_module
 from sn_tools.sn_telescope import Telescope
 from sn_simu_wrapper.sn_object import SN_Object
 from sn_tools.sn_utils import SimuParameters
 from sn_tools.sn_obs import season as seasoncalc
-from sn_tools.sn_utils import GetReference, LoadGamma, LoadDust
-from scipy.interpolate import interp1d
-from sn_tools.sn_io import check_get_dir
+from sn_tools.sn_calcFast import GetReference, LoadGamma, LoadDust
 
 # import tracemalloc
 
 
-class SNSimulation(BaseMetric):
+# class SNSimulation(BaseMetric):
+class SNSimulation:
     """LC simulation wrapper class
 
     Parameters
@@ -114,8 +112,8 @@ class SNSimulation(BaseMetric):
                                         col_group=[
                                             self.filterCol, self.nightCol],
                                         col_coadd=[self.m5Col, 'visitExposureTime'])
-        super(SNSimulation, self).__init__(
-            col=cols, metricName=metricName, **kwargs)
+        # super(SNSimulation, self).__init__(
+        #    col=cols, metricName=metricName, **kwargs)
 
         # bands considered
         self.filterNames = 'grizy'
@@ -273,7 +271,7 @@ class SNSimulation(BaseMetric):
             gammas = LoadGamma(
                 'grizy',  self.reffiles['GammaDir'],
                 self.reffiles['GammaFile'],
-                web_path, self.telescope)
+                web_path)
 
             self.gamma = gammas.gamma
             self.mag_to_flux = gammas.mag_to_flux

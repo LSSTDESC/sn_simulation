@@ -663,7 +663,7 @@ class SN(SN_Object):
         toremove = ['filter_cosmo', 'airmass', 'moonPhase',
                     'gamma', 'mag', 'magerr', 'magerr_phot']
 
-        table_lc.remove_columns(toremove)
+        #table_lc.remove_columns(toremove)
 
         return [table_lc]
 
