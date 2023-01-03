@@ -164,6 +164,58 @@ class MakeYaml:
 
         return yaml.load(filedata, Loader=yaml.FullLoader)
 
+class FitWrapper:
+    def __init__(self, yaml_config_fit):
+        """
+        Class to fit a set of light curves
+
+        Parameters
+        ----------
+        config_fit : dict
+            parameters fot fitting
+
+        Returns
+        -------
+        None.
+
+        """    
+        from sn_fit.process_fit import Fitting 
+
+        # Fit instance
+        config = load_config(yaml_config_fit)
+        self.fit = Fitting(config)
+        self.nproc = config['MultiprocessingFit']['nproc']
+        
+        
+    def __call__(self,lc_list):
+        """
+        Method to fit light curves
+
+        Parameters
+        ----------
+        lc_list : list(astropy table)
+            LC to fit
+
+        Returns
+        -------
+        None.
+
+        """
+        from astropy.table import Table, vstack
+        res = Table()
+        for lc in lc_list:
+            lc.convert_bytestring_to_unicode()
+            resfit = self.fit(lc)
+            if resfit is not None:
+                res = vstack([res, resfit])
+        
+        return res
+        
+        
+        
+
+        
+
 class InfoWrapper:
     def __init__(self, confDict):
         """
@@ -196,7 +248,7 @@ class InfoWrapper:
             
         self.selparams = selpars
         
-    def run(self,light_curves):
+    def __call__(self,light_curves):
         """
         Main method to estimate LC shepe params 
         and add a flag for selection
@@ -325,7 +377,7 @@ class InfoWrapper:
         
 
 class SimInfoFitWrapper:
-    def __init__(self, yaml_config_simu, infoDict=None):
+    def __init__(self, yaml_config_simu, infoDict,yaml_config_fit):
         """
         
 
@@ -345,18 +397,21 @@ class SimInfoFitWrapper:
         self.simu_wrapper = SimuWrapper(yaml_config_simu)
         print('hello',infoDict)
         self.info_wrapper = InfoWrapper(infoDict)
+        self.fit_wrapper = FitWrapper(yaml_config_fit)
         
     def run(self,obs,imulti=0):
         
         #get Light curves from simuWrapper
         
-        light_curves = self.simu_wrapper.run(obs,imulti)
+        light_curves = self.simu_wrapper(obs,imulti)
         
         # analyze these LC + flag for selection
-        light_curves_ana = self.info_wrapper.run(light_curves)
+        light_curves_ana = self.info_wrapper(light_curves)
         print('hello',len(light_curves_ana))
         
-        
+        # fitting here
+        fitlc = self.fit_wrapper(light_curves_ana)
+        print(fitlc,fitlc.columns)
         
 
 class SimuWrapper:
@@ -372,12 +427,8 @@ class SimuWrapper:
 
     def __init__(self, yaml_config):
 
-        config = {}
-        if isinstance(yaml_config, dict):
-            config = yaml_config
-        else:
-            with open(yaml_config) as file:
-                config = yaml.full_load(file)
+        config = load_config(yaml_config)
+      
 
         self.name = 'simulation'
 
@@ -429,7 +480,7 @@ class SimuWrapper:
 
         return np.load(x0normFile)
 
-    def run(self, obs, imulti=0):
+    def __call__(self, obs, imulti=0):
         """
         Method to run the metric
 
@@ -450,3 +501,13 @@ class SimuWrapper:
 
         """
         self.metric.save_metadata()
+
+def load_config(yaml_config):
+    config = {}
+    if isinstance(yaml_config, dict):
+        config = yaml_config
+    else:
+        with open(yaml_config) as file:
+             config = yaml.full_load(file)
+             
+    return config
