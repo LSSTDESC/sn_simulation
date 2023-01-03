@@ -3,7 +3,7 @@ import numpy as np
 import yaml
 import os
 from sn_tools.sn_io import check_get_file
-
+import operator
 
 class MakeYaml:
     """
@@ -164,6 +164,200 @@ class MakeYaml:
 
         return yaml.load(filedata, Loader=yaml.FullLoader)
 
+class InfoWrapper:
+    def __init__(self, confDict):
+        """
+        class to estimate global parameters of LC 
+        and add a selection flag according to selection values in dict
+
+        Parameters
+        ----------
+        confDict : dict
+            parameters for selection
+
+        Returns
+        -------
+        None.
+
+        """
+        
+        from astropy.table import Table
+        selfile = confDict['selection_params']
+        selpars = Table.read(selfile,format='csv',guess=False,comment='#')
+    
+        self.snr_min_value=0
+        self.snr_min_op = operator.ge
+        idx = selpars['selname'] == 'snr_min'
+        selb = selpars[idx]
+        if len(selb) > 0:
+            self.snr_min_value = selb['selval'][0]
+            self.snrmin_op = selb['selop'][0]
+            selpars = selpars[~idx]
+            
+        self.selparams = selpars
+        
+    def run(self,light_curves):
+        """
+        Main method to estimate LC shepe params 
+        and add a flag for selection
+
+        Parameters
+        ----------
+        light_curves : list of astropytables
+            LC curves to process
+
+        Returns
+        -------
+        None.
+
+        """
+        
+        getInfos = dict(zip(['n_epochs_bef','n_epochs_aft','n_epochs_phase_minus_10',
+                             'n_epochs_phase_plus_20'],[('night','phase',operator.le,0),
+                                                           ('night','phase',operator.gt,0),
+                                                           ('night','phase',operator.le,-10.),
+                                                           ('night','phase',operator.gt,20.)]))
+                                                        
+        lc_list = []                                                                        
+        for lc in light_curves:
+            print(lc.meta)
+            print(lc.columns)
+            resdict = {}
+            T0 = lc.meta['daymax']
+            z = lc.meta['z']
+            # apply SNR selection
+            idx = self.snr_min_op(lc['snr'],self.snr_min_value)
+            lc_sel = lc[idx]
+            # add phase column
+            lc_sel['phase'] = (lc_sel['time']-T0)/(1+z)
+            lc_sel.remove_columns(['filter'])
+            #self.plotLC(lc_sel)
+            for key, vals in getInfos.items():
+                resdict[key] = self.nepochs(lc_sel, vals[0],vals[1],vals[2],vals[3])
+            
+            resdict['selected'] = self.select(resdict)
+            print(resdict)
+            lc.meta.update(resdict)
+            print('allo',lc.meta)
+            lc_list.append(lc)
+     
+        return lc_list
+    
+    def select(self, dictval):
+        """
+        Method to estimate if a LC passes the cut or not
+
+        Parameters
+        ----------
+        dictval : dict
+            dict of values
+
+        Returns
+        -------
+        bool decision (1= selected, 0=not selected)
+
+        """
+        
+        for key, vals in dictval.items():
+            idx = self.selparams['selname'] == key
+            pp = self.selparams[idx]
+            if len(pp) > 0:
+                op = pp['selop'][0]
+                selval = pp['selval'][0]
+                selstr = '{}({},{})'.format(op,vals,selval)
+                resu = eval(selstr)
+                if not resu:
+                    return False
+        
+        return True
+        
+     
+    def nepochs(self, tab, colnum='night',colsel='phase',op=operator.le,val=0):
+        """
+        Method to get the number of epochs
+
+        Parameters
+        ----------
+        tab : astropy table
+            data to process
+        colnum : str, optional
+            column to extract the number of epochs from. The default is 'night'.
+        colsel : str, optional
+            selection column name. The default is 'phase'.
+        op : operator, optional
+            operator to apply. The default is operator.le.
+        val : float, optional
+            selection value. The default is 0.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
+        idx = op(tab[colsel],val)
+        tt = tab[idx]
+        
+        return len(np.unique(tt[colnum]))
+            
+    
+    def plotLC(self, tab):
+        """
+        Method to plot LC for cross-checks
+
+        Parameters
+        ----------
+        tab : astropy table
+            data to process
+
+        Returns
+        -------
+        None.
+
+        """
+        """
+        from sn_simu_wrapper.sn_object import SN_Object
+        SN_Object.plotLC(tab,time_display)
+        """
+        import matplotlib.pyplot as plt
+        plt.plot(tab['phase'],tab['flux_e_sec'],'ko')
+        plt.show()
+        
+
+class SimInfoFitWrapper:
+    def __init__(self, yaml_config_simu, infoDict=None):
+        """
+        
+
+        Parameters
+        ----------
+        yaml_config_simu : yaml file
+            config file for simulation
+        infoDict : dict
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.name = 'sim_info_fit'
+        self.simu_wrapper = SimuWrapper(yaml_config_simu)
+        print('hello',infoDict)
+        self.info_wrapper = InfoWrapper(infoDict)
+        
+    def run(self,obs,imulti=0):
+        
+        #get Light curves from simuWrapper
+        
+        light_curves = self.simu_wrapper.run(obs,imulti)
+        
+        # analyze these LC + flag for selection
+        light_curves_ana = self.info_wrapper.run(light_curves)
+        print('hello',len(light_curves_ana))
+        
+        
+        
 
 class SimuWrapper:
     """
@@ -227,6 +421,7 @@ class SimuWrapper:
             version = str(config['Simulator']['version'])
 
             # need the SALT2 dir for this
+            from sn_tools.sn_io import check_get_dir
             check_get_dir(config['Web path'], 'SALT2', salt2Dir)
             from sn_tools.sn_utils import X0_norm
             X0_norm(salt2Dir=salt2Dir, model=model, version=version,
@@ -244,7 +439,10 @@ class SimuWrapper:
           data to process
 
         """
-        return self.metric.run(obs,imulti=imulti)
+        
+        light_curves = self.metric.run(obs,imulti=imulti)
+        print('light curves',len(light_curves))
+        return light_curves
 
     def finish(self):
         """
