@@ -21,7 +21,7 @@ class SN(SN_Object):
                          param.cosmology, param.telescope, param.SNID, param.area, param.x0_grid,
                          mjdCol=param.mjdCol, RACol=param.RACol, DecCol=param.DecCol,
                          filterCol=param.filterCol, exptimeCol=param.exptimeCol,
-                         nexpCol=param.nexpCol,
+                         nexpCol=param.nexpCol,nightCol=param.nightCol,
                          m5Col=param.m5Col, seasonCol=param.seasonCol,
                          seeingEffCol=param.seeingEffCol, seeingGeomCol=param.seeingGeomCol,
                          airmassCol=param.airmassCol, skyCol=param.skyCol, moonCol=param.moonCol,
@@ -524,7 +524,7 @@ class SN(SN_Object):
 
         # preparing the results : stored in lcdf pandas DataFrame
         outvals = [self.m5Col, self.mjdCol,
-                   self.exptimeCol, self.nexpCol, self.filterCol]
+                   self.exptimeCol, self.nexpCol, self.filterCol,self.nightCol]
         for bb in [self.airmassCol, self.skyCol, self.moonCol, self.seeingEffCol, self.seeingGeomCol]:
             if bb in obs.dtype.names:
                 outvals.append(bb)
