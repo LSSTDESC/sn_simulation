@@ -5,11 +5,11 @@ from collections import OrderedDict as odict
 
 
 class SN_Object:
-    def __init__(self, name, sn_parameters, simulator_parameters,gen_parameters, cosmology,
+    def __init__(self, name, sn_parameters, simulator_parameters, gen_parameters, cosmology,
                  telescope, snid, area, x0_grid, salt2Dir='SALT2_Files',
                  mjdCol='mjd', RACol='pixRa', DecCol='pixDec',
                  filterCol='band', exptimeCol='exptime', nexpCol='numExposures',
-                 m5Col='fiveSigmaDepth', seasonCol='season',
+                 nightCol='night', m5Col='fiveSigmaDepth', seasonCol='season',
                  seeingEffCol='seeingFwhmEff', seeingGeomCol='seeingFwhmGeom',
                  airmassCol='airmass', skyCol='sky', moonCol='moonPhase'):
         """ class SN object
@@ -78,6 +78,7 @@ class SN_Object:
         self.filterCol = filterCol
         self.exptimeCol = exptimeCol
         self.nexpCol = nexpCol
+        self.nightCol = nightCol
         self.m5Col = m5Col
         self.seasonCol = seasonCol
         self.seeingEffCol = seeingEffCol
@@ -105,6 +106,7 @@ class SN_Object:
         """SN parameters
         """
         return self._simulator_parameters
+
     @property
     def gen_parameters(self):
         """ Simulation parameters
@@ -131,8 +133,9 @@ class SN_Object:
 
     def cutoff(self, obs, T0, z,
                min_rf_phase, max_rf_phase,
-               blue_cutoffs=dict(zip('ugrizy',[380.,380.,380.,360.,380.,380.])),
-               red_cutoffs=dict(zip('ugrizy',[700.,700.,700.,700.,700.,700.]))):
+               blue_cutoffs=dict(
+                   zip('ugrizy', [380., 380., 380., 360., 380., 380.])),
+               red_cutoffs=dict(zip('ugrizy', [700., 700., 700., 700., 700., 700.]))):
         """ select observations depending on phases
 
         Parameters
@@ -161,10 +164,10 @@ class SN_Object:
              (1. + z) for obser in obs])
 
         filters = np.array(obs[self.filterCol])
-        filters = filters.reshape((len(filters),1))
+        filters = filters.reshape((len(filters), 1))
 
-        blue_values= np.apply_along_axis(self.blues,1,filters)
-        red_values= np.apply_along_axis(self.reds,1,filters)
+        blue_values = np.apply_along_axis(self.blues, 1, filters)
+        red_values = np.apply_along_axis(self.reds, 1, filters)
 
         p = (obs[self.mjdCol]-T0)/(1.+z)
 
@@ -211,8 +214,8 @@ class SN_Object:
 
         return self.red_cutoffs[band[0]]
     
-
-    def plotLC(self, table, time_display):
+    @staticmethod
+    def plotLC(table, time_display,airmass=1.2):
         """ Light curve plot using sncosmo methods
 
         Parameters
@@ -237,18 +240,20 @@ class SN_Object:
             ('zpsys', set(['zpsys', 'zpmagsys', 'magsys']))
         ])
         """
+        from sn_tools.sn_telescope import Telescope
+        telescope = Telescope(airmass=airmass)
         for band in 'grizy':
             name_filter = prefix+band
-            if self.telescope.airmass > 0:
+            if telescope.airmass > 0:
                 bandpass = sncosmo.Bandpass(
-                    self.telescope.atmosphere[band].wavelen,
-                    self.telescope.atmosphere[band].sb,
+                    telescope.atmosphere[band].wavelen,
+                    telescope.atmosphere[band].sb,
                     name=name_filter,
                     wave_unit=u.nm)
             else:
                 bandpass = sncosmo.Bandpass(
-                    self.telescope.system[band].wavelen,
-                    self.telescope.system[band].sb,
+                    telescope.system[band].wavelen,
+                    telescope.system[band].sb,
                     name=name_filter,
                     wave_unit=u.nm)
             # print('registering',name_filter)
