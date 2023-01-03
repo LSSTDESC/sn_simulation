@@ -510,7 +510,7 @@ class SNSimulation:
                         self.sn_meta[iproc][key] += metadict[key]
 
         else:
-            self.multiSeason(obs, season, gen_params, iproc, npp)
+            list_lc = self.multiSeason(obs, season, gen_params, iproc, npp)
 
         if len(list_lc):
             return list_lc
@@ -540,15 +540,19 @@ class SNSimulation:
         for p in multiprocessing.active_children():
             p.join()
 
+        list_lc = []
         for j in range(npp):
             metadict = resultdict[j][0]
+            list_lc+=resultdict[j][1]
+            """
             if not self.sn_meta[iproc]:
                 self.sn_meta[iproc] = metadict
             else:
                 # self.sn_meta[iproc]= self.sn_meta[iproc].update(metadict)
                 for key in metadict.keys():
                     self.sn_meta[iproc][key] += metadict[key]
-
+            """
+        return list_lc
         # self.save_metadata()
         """
         SNID = 100
