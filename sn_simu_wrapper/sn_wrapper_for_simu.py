@@ -186,7 +186,14 @@ class FitWrapper:
         self.fit = Fitting(config)
         self.nproc = config['MultiprocessingFit']['nproc']
         
+        self.saveData = config['OutputFit']['save']
+
+        self.outDir = config['OutputFit']['directory']
         
+        if self.saveData:
+            from sn_tools.sn_io import checkDir
+            checkDir(self.outDir)
+            
     def __call__(self,lc_list):
         """
         Method to fit light curves
@@ -210,10 +217,6 @@ class FitWrapper:
                 res = vstack([res, resfit])
         
         return res
-        
-        
-        
-
         
 
 class InfoWrapper:
@@ -399,6 +402,16 @@ class SimInfoFitWrapper:
         self.info_wrapper = InfoWrapper(infoDict)
         self.fit_wrapper = FitWrapper(yaml_config_fit)
         
+        self.outName = ''
+        
+        if self.fit_wrapper.saveData:
+            outFile = 'SN_{}.hdf5'.format(self.simu_wrapper.prodid)
+            self.outName = '{}/{}'.format(self.fit_wrapper.outDir,outFile)
+            # check wether this file already exist and remove it
+            import os            
+            if os.path.isfile(self.outName):
+                os.system('rm {}'.format(self.outName))
+        
     def run(self,obs,imulti=0):
         
         #get Light curves from simuWrapper
@@ -407,11 +420,39 @@ class SimInfoFitWrapper:
         
         # analyze these LC + flag for selection
         light_curves_ana = self.info_wrapper(light_curves)
-        print('hello',len(light_curves_ana))
+        print('nlc analyzed',len(light_curves_ana))
         
         # fitting here
         fitlc = self.fit_wrapper(light_curves_ana)
-        print(fitlc,fitlc.columns)
+      
+        self.dump(fitlc)
+
+        return None
+        """
+        if self.fit_wrapper.saveData:
+            outFile = 'SN_{}.hdf5'.format(self.simu_wrapper.prodid)
+            outName = '{}/{}'.format(self.fit_wrapper.outDir,outFile)
+            import astropy        
+            astropy.io.misc.hdf5.write_table_hdf5(fitlc, outName, path='SN', overwrite=True, serialize_meta=True)
+        """
+    def dump(self,sn):
+        """
+        
+
+        Parameters
+        ----------
+        sn : astropyTable
+            data to dump
+
+        Returns
+        -------
+        None.
+
+        """
+        if self.outName != '':
+            keyhdf = '{}'.format(int(sn['healpixID'].mean()))
+            sn.write(self.outName, keyhdf, append=True, compression=True)
+        
         
 
 class SimuWrapper:
@@ -443,6 +484,8 @@ class SimuWrapper:
         #                              reference_lc=reference_lc, coadd=config['Observations']['coadd'])
         self.metric = SNSimulation(
             config=config, x0_norm=x0_tab)
+        
+        self.prodid = config['ProductionIDSimu']
 
     def x0(self, config):
         """
