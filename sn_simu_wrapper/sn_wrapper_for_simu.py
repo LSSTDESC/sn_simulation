@@ -291,9 +291,7 @@ class InfoWrapper:
                 resdict[key] = self.nepochs(lc_sel, vals[0],vals[1],vals[2],vals[3])
             
             resdict['selected'] = self.select(resdict)
-            print(resdict)
             lc.meta.update(resdict)
-            print('allo',lc.meta)
             lc_list.append(lc)
      
         return lc_list
