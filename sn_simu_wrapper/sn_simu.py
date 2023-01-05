@@ -86,10 +86,11 @@ class SNSimulation:
         self.skyCol = skyCol
         self.moonCol = moonCol
 
+        """
         cols = [self.RACol, self.DecCol, self.nightCol, self.m5Col, self.filterCol, self.mjdCol, self.obsidCol,
                 self.nexpCol, self.vistimeCol, self.exptimeCol, self.seeingEffCol, self.seeingGeomCol, self.nightCol,
                 self.airmassCol, self.moonCol]
-
+        """
         # self.airmassCol, self.skyCol, self.moonCol]
         self.stacker = None
 
@@ -230,8 +231,8 @@ class SNSimulation:
             cutoff = '{}_{}'.format(bluecutoff, redcutoff)
             if self.error_model:
                 cutoff = 'error_model'
-            lcname = 'LC_{}_{}_{}_{}_{}_ebvofMW_0.0_vstack.hdf5'.format(
-                x1, color, cutoff, sn_model, sn_version)
+            lcname = 'LC_{}_{}_{}_{}_{}_ebvofMW_{}_vstack.hdf5'.format(
+                x1, color, cutoff, sn_model, sn_version, ebvofMW)
             dustFile = 'Dust_{}_{}_{}.hdf5'.format(
                 x1, color, cutoff)
 
@@ -293,7 +294,7 @@ class SNSimulation:
     def loadReference(self, templateDir, lcname, gammaDir, gammaFile, web_path, j=-1, output_q=None):
 
         reference_lc = GetReference(templateDir,
-                                    lcname, gammaDir, gammaFile, web_path, self.telescope)
+                                    lcname, gammaDir, gammaFile, web_path)
 
         if output_q is not None:
             output_q.put({j: reference_lc})
