@@ -275,8 +275,6 @@ class InfoWrapper:
                                                         
         lc_list = []                                                                        
         for lc in light_curves:
-            print(lc.meta)
-            print(lc.columns)
             resdict = {}
             T0 = lc.meta['daymax']
             z = lc.meta['z']
@@ -285,7 +283,8 @@ class InfoWrapper:
             lc_sel = lc[idx]
             # add phase column
             lc_sel['phase'] = (lc_sel['time']-T0)/(1+z)
-            lc_sel.remove_columns(['filter'])
+            if 'filter' in lc_sel.columns:
+                lc_sel.remove_columns(['filter'])
             #self.plotLC(lc_sel)
             for key, vals in getInfos.items():
                 resdict[key] = self.nepochs(lc_sel, vals[0],vals[1],vals[2],vals[3])
