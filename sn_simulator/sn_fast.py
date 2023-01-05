@@ -56,7 +56,7 @@ class SN(SN_Object):
 
         bluecutoff = self.sn_parameters['blueCutoffg']
         redcutoff = self.sn_parameters['redCutoffg']
-        self.lcFast = LCfast(reference_lc, dustcorr, x1, color, param.telescope,
+        self.lcFast = LCfast(reference_lc, dustcorr, x1, color,
                              param.mjdCol, param.RACol, param.DecCol,
                              param.filterCol, param.exptimeCol,
                              param.m5Col, param.seasonCol,
@@ -98,11 +98,13 @@ class SN(SN_Object):
         pixRA = np.mean(obs['pixRA'])
         pixDec = np.mean(obs['pixDec'])
         pixID = np.unique(obs['healpixID']).item()
+        season = np.mean(obs['season'])
         dL = -1
         season_length = np.max(obs[self.mjdCol])-np.min(obs[self.mjdCol])
         # get ebvofMW from dust maps
         ebvofMW = self.sn_parameters['ebvofMW']
-        if ebvofMW < 0.:
+        
+        if np.abs(ebvofMW) > 1.e-5:
             # in that case ebvofMW value is taken from a map
             coords = SkyCoord(pixRA, pixDec, unit='deg')
             try:
@@ -115,7 +117,7 @@ class SN(SN_Object):
 
             sfd = SFDQuery()
             ebvofMW = sfd(coords)
-
+        
         # start timer
         ti = SNTimer(time.time())
         # Are there observations with the filters?
@@ -123,7 +125,7 @@ class SN(SN_Object):
                               np.array([b for b in 'grizy']))
 
         if len(obs[goodFilters]) == 0:
-            return [self.nosim(ra, dec, pixRA, pixDec, pixID, season, season_length, ti, -1, ebvofMW)]
+            return [self.nosim(RA, Dec, pixRA, pixDec, pixID, season, season_length, ti, -1, ebvofMW)]
 
         tab_tot = self.lcFast(obs, ebvofMW, self.gen_parameters)
 
