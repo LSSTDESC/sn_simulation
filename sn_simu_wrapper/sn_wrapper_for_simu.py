@@ -190,6 +190,8 @@ class FitWrapper:
 
         self.outDir = config['OutputFit']['directory']
         
+        self.prodid = config['Simulations']['prodid']
+        
         if self.saveData:
             from sn_tools.sn_io import checkDir
             checkDir(self.outDir)
@@ -395,7 +397,6 @@ class SimInfoFitWrapper:
         """
         self.name = 'sim_info_fit'
         self.simu_wrapper = SimuWrapper(yaml_config_simu)
-        print('hello',infoDict)
         self.info_wrapper = InfoWrapper(infoDict)
         self.fit_wrapper = FitWrapper(yaml_config_fit)
         
@@ -410,6 +411,21 @@ class SimInfoFitWrapper:
                 os.system('rm {}'.format(self.outName))
         
     def run(self,obs,imulti=0):
+        """
+        
+
+        Parameters
+        ----------
+        obs : array
+            array of observations
+        imulti : int, optional
+            Internal parameter. The default is 0.
+
+        Returns
+        -------
+        None.
+
+        """
         
         #get Light curves from simuWrapper
         
@@ -543,6 +559,20 @@ class SimuWrapper:
         self.metric.save_metadata()
 
 def load_config(yaml_config):
+    """
+    
+
+    Parameters
+    ----------
+    yaml_config : str
+        yaml fine name
+
+    Returns
+    -------
+    config : dict
+        dict of the yaml file
+
+    """
     config = {}
     if isinstance(yaml_config, dict):
         config = yaml_config
@@ -551,3 +581,81 @@ def load_config(yaml_config):
              config = yaml.full_load(file)
              
     return config
+
+
+class InfoFitWrapper:
+    def __init__(self,infoDict,yaml_config_fit):
+        """
+        
+
+        Parameters
+        ----------
+        yaml_config_simu : yaml file
+            config file for simulation
+        infoDict : dict
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.name = 'info_fit'
+        self.info_wrapper = InfoWrapper(infoDict)
+        self.fit_wrapper = FitWrapper(yaml_config_fit)
+        
+        self.outName = ''
+        
+        if self.fit_wrapper.saveData:
+            outFile = 'SN_{}.hdf5'.format(self.fit_wrapper.prodid)
+            self.outName = '{}/{}'.format(self.fit_wrapper.outDir,outFile)
+            # check wether this file already exist and remove it
+            import os            
+            if os.path.isfile(self.outName):
+                os.system('rm {}'.format(self.outName))
+        
+    def run(self,light_curves):
+        """
+        
+
+        Parameters
+        ----------
+        light_curves : list of astropy table
+            LC to process
+
+        Returns
+        -------
+        None.
+
+        """
+        
+        # analyze these LC + flag for selection
+        light_curves_ana = self.info_wrapper(light_curves)
+        print('nlc analyzed',len(light_curves_ana))
+        
+        # fitting here
+        fitlc = self.fit_wrapper(light_curves_ana)
+      
+        self.dump(fitlc)
+
+        return fitlc
+       
+    def dump(self,sn):
+        """
+        
+
+        Parameters
+        ----------
+        sn : astropyTable
+            data to dump
+
+        Returns
+        -------
+        None.
+
+        """
+        if self.outName != '':
+            keyhdf = '{}'.format(int(sn['healpixID'].mean()))
+            sn.write(self.outName, keyhdf, append=True, compression=True)
+        
+        
