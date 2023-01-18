@@ -1,5 +1,4 @@
 import numpy as np
-#from rubin_sim.maf.metrics import BaseMetric
 from sn_stackers.coadd_stacker import CoaddStacker
 import healpy as hp
 import os
@@ -150,7 +149,9 @@ class SNSimulation:
         dirFiles = None
         if 'modelPar' in self.sn_parameters.keys():
             dirFiles = self.sn_parameters['modelPar']['dirFile']
-        self.gen_par = SimuParameters(self.sn_parameters, cosmo_par, mjdCol=self.mjdCol, area=self.area,
+
+        self.gen_par = SimuParameters(self.sn_parameters, cosmo_par,
+                                      mjdCol=self.mjdCol, area=self.area,
                                       web_path=config['WebPathSimu'])
 
         # simulator parameters
@@ -500,6 +501,7 @@ class SNSimulation:
             npp = 1
 
         list_lc = []
+
         if npp == 1:
             metadict, list_lc = self.simuLoop(obs, season, gen_params, iproc)
             if self.save_status:
@@ -544,7 +546,7 @@ class SNSimulation:
         list_lc = []
         for j in range(npp):
             metadict = resultdict[j][0]
-            list_lc+=resultdict[j][1]
+            list_lc += resultdict[j][1]
             """
             if not self.sn_meta[iproc]:
                 self.sn_meta[iproc] = metadict
@@ -704,6 +706,7 @@ class SNSimulation:
         list_lc = []
         list_lc_keep = []
         meta_lc = {}
+
         if 'sn_fast' not in self.simu_config['name']:
             for genpar in gen_params:
                 lc = self.simuLCs(obs, season, genpar)
