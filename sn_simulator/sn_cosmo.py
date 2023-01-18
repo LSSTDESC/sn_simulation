@@ -1,8 +1,8 @@
 import sncosmo
 import numpy as np
-from rubin_sim.photUtils import Sed
-from rubin_sim.photUtils import SignalToNoise
-from rubin_sim.photUtils import PhotometricParameters
+from rubin_sim.phot_utils import Sed
+from rubin_sim.phot_utils import signaltonoise
+from rubin_sim.phot_utils import photometric_parameters
 from astropy.table import Table
 from scipy.interpolate import griddata, interp1d
 from sn_simu_wrapper.sn_object import SN_Object
@@ -21,7 +21,7 @@ class SN(SN_Object):
                          param.cosmology, param.telescope, param.SNID, param.area, param.x0_grid,
                          mjdCol=param.mjdCol, RACol=param.RACol, DecCol=param.DecCol,
                          filterCol=param.filterCol, exptimeCol=param.exptimeCol,
-                         nexpCol=param.nexpCol,nightCol=param.nightCol,
+                         nexpCol=param.nexpCol, nightCol=param.nightCol,
                          m5Col=param.m5Col, seasonCol=param.seasonCol,
                          seeingEffCol=param.seeingEffCol, seeingGeomCol=param.seeingGeomCol,
                          airmassCol=param.airmassCol, skyCol=param.skyCol, moonCol=param.moonCol,
@@ -524,7 +524,7 @@ class SN(SN_Object):
 
         # preparing the results : stored in lcdf pandas DataFrame
         outvals = [self.m5Col, self.mjdCol,
-                   self.exptimeCol, self.nexpCol, self.filterCol,self.nightCol]
+                   self.exptimeCol, self.nexpCol, self.filterCol, self.nightCol]
         for bb in [self.airmassCol, self.skyCol, self.moonCol, self.seeingEffCol, self.seeingGeomCol]:
             if bb in obs.dtype.names:
                 outvals.append(bb)
@@ -663,7 +663,7 @@ class SN(SN_Object):
         toremove = ['filter_cosmo', 'airmass', 'moonPhase',
                     'gamma', 'mag', 'magerr', 'magerr_phot']
 
-        #table_lc.remove_columns(toremove)
+        # table_lc.remove_columns(toremove)
 
         return [table_lc]
 
