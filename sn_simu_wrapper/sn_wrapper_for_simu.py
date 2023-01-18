@@ -4,6 +4,9 @@ import yaml
 import os
 from sn_tools.sn_io import check_get_file
 import operator
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+
 
 class MakeYaml:
     """
@@ -164,6 +167,7 @@ class MakeYaml:
 
         return yaml.load(filedata, Loader=yaml.FullLoader)
 
+
 class FitWrapper:
     def __init__(self, yaml_config_fit):
         """
@@ -178,25 +182,25 @@ class FitWrapper:
         -------
         None.
 
-        """    
-        from sn_fit.process_fit import Fitting 
+        """
+        from sn_fit.process_fit import Fitting
 
         # Fit instance
         config = load_config(yaml_config_fit)
         self.fit = Fitting(config)
         self.nproc = config['MultiprocessingFit']['nproc']
-        
+
         self.saveData = config['OutputFit']['save']
 
         self.outDir = config['OutputFit']['directory']
-        
+
         self.prodid = config['Simulations']['prodid']
-        
+
         if self.saveData:
             from sn_tools.sn_io import checkDir
             checkDir(self.outDir)
-            
-    def __call__(self,lc_list):
+
+    def __call__(self, lc_list):
         """
         Method to fit light curves
 
@@ -217,9 +221,9 @@ class FitWrapper:
             resfit = self.fit(lc)
             if resfit is not None:
                 res = vstack([res, resfit])
-        
+
         return res
-        
+
 
 class InfoWrapper:
     def __init__(self, confDict):
@@ -237,12 +241,12 @@ class InfoWrapper:
         None.
 
         """
-        
+
         from astropy.table import Table
         selfile = confDict['selection_params']
-        selpars = Table.read(selfile,format='csv',guess=False,comment='#')
-    
-        self.snr_min_value=0
+        selpars = Table.read(selfile, format='csv', guess=False, comment='#')
+
+        self.snr_min_value = 0
         self.snr_min_op = operator.ge
         idx = selpars['selname'] == 'snr_min'
         selb = selpars[idx]
@@ -250,10 +254,10 @@ class InfoWrapper:
             self.snr_min_value = selb['selval'][0]
             self.snrmin_op = selb['selop'][0]
             selpars = selpars[~idx]
-            
+
         self.selparams = selpars
-        
-    def __call__(self,light_curves):
+
+    def __call__(self, light_curves):
         """
         Main method to estimate LC shepe params 
         and add a flag for selection
@@ -268,35 +272,38 @@ class InfoWrapper:
         None.
 
         """
-        
-        getInfos = dict(zip(['n_epochs_bef','n_epochs_aft','n_epochs_phase_minus_10',
-                             'n_epochs_phase_plus_20'],[('night','phase',operator.le,0),
-                                                           ('night','phase',operator.gt,0),
-                                                           ('night','phase',operator.le,-10.),
-                                                           ('night','phase',operator.gt,20.)]))
-                                                        
-        lc_list = []                                                                        
+
+        getInfos = dict(zip(['n_epochs_bef', 'n_epochs_aft',
+                             'n_epochs_phase_minus_10',
+                             'n_epochs_phase_plus_20'],
+                            [('night', 'phase', operator.le, 0),
+                             ('night', 'phase', operator.gt, 0),
+                             ('night', 'phase', operator.le, -10.),
+                             ('night', 'phase', operator.gt, 20.)]))
+
+        lc_list = []
         for lc in light_curves:
             resdict = {}
             T0 = lc.meta['daymax']
             z = lc.meta['z']
             # apply SNR selection
-            idx = self.snr_min_op(lc['snr'],self.snr_min_value)
+            idx = self.snr_min_op(lc['snr'], self.snr_min_value)
             lc_sel = lc[idx]
             # add phase column
             lc_sel['phase'] = (lc_sel['time']-T0)/(1+z)
             if 'filter' in lc_sel.columns:
                 lc_sel.remove_columns(['filter'])
-            #self.plotLC(lc_sel)
+            # self.plotLC(lc_sel)
             for key, vals in getInfos.items():
-                resdict[key] = self.nepochs(lc_sel, vals[0],vals[1],vals[2],vals[3])
-            
+                resdict[key] = self.nepochs(
+                    lc_sel, vals[0], vals[1], vals[2], vals[3])
+
             resdict['selected'] = self.select(resdict)
             lc.meta.update(resdict)
             lc_list.append(lc)
-     
+
         return lc_list
-    
+
     def select(self, dictval):
         """
         Method to estimate if a LC passes the cut or not
@@ -311,22 +318,22 @@ class InfoWrapper:
         bool decision (1= selected, 0=not selected)
 
         """
-        
+
         for key, vals in dictval.items():
             idx = self.selparams['selname'] == key
             pp = self.selparams[idx]
             if len(pp) > 0:
                 op = pp['selop'][0]
                 selval = pp['selval'][0]
-                selstr = '{}({},{})'.format(op,vals,selval)
+                selstr = '{}({},{})'.format(op, vals, selval)
                 resu = eval(selstr)
                 if not resu:
                     return False
-        
+
         return True
-        
-     
-    def nepochs(self, tab, colnum='night',colsel='phase',op=operator.le,val=0):
+
+    def nepochs(self, tab, colnum='night',
+                colsel='phase', op=operator.le, val=0):
         """
         Method to get the number of epochs
 
@@ -335,7 +342,8 @@ class InfoWrapper:
         tab : astropy table
             data to process
         colnum : str, optional
-            column to extract the number of epochs from. The default is 'night'.
+            column to extract the number of epochs from.
+            The default is 'night'.
         colsel : str, optional
             selection column name. The default is 'phase'.
         op : operator, optional
@@ -349,12 +357,11 @@ class InfoWrapper:
             DESCRIPTION.
 
         """
-        idx = op(tab[colsel],val)
+        idx = op(tab[colsel], val)
         tt = tab[idx]
-        
+
         return len(np.unique(tt[colnum]))
-            
-    
+
     def plotLC(self, tab):
         """
         Method to plot LC for cross-checks
@@ -374,14 +381,14 @@ class InfoWrapper:
         SN_Object.plotLC(tab,time_display)
         """
         import matplotlib.pyplot as plt
-        plt.plot(tab['phase'],tab['flux_e_sec'],'ko')
+        plt.plot(tab['phase'], tab['flux_e_sec'], 'ko')
         plt.show()
-        
+
 
 class SimInfoFitWrapper:
-    def __init__(self, yaml_config_simu, infoDict,yaml_config_fit):
+    def __init__(self, yaml_config_simu, infoDict, yaml_config_fit):
         """
-        
+
 
         Parameters
         ----------
@@ -399,20 +406,20 @@ class SimInfoFitWrapper:
         self.simu_wrapper = SimuWrapper(yaml_config_simu)
         self.info_wrapper = InfoWrapper(infoDict)
         self.fit_wrapper = FitWrapper(yaml_config_fit)
-        
+
         self.outName = ''
-        
+
         if self.fit_wrapper.saveData:
             outFile = 'SN_{}.hdf5'.format(self.simu_wrapper.prodid)
-            self.outName = '{}/{}'.format(self.fit_wrapper.outDir,outFile)
+            self.outName = '{}/{}'.format(self.fit_wrapper.outDir, outFile)
             # check wether this file already exist and remove it
-            import os            
+            import os
             if os.path.isfile(self.outName):
                 os.system('rm {}'.format(self.outName))
-        
-    def run(self,obs,imulti=0):
+
+    def run(self, obs, imulti=0):
         """
-        
+
 
         Parameters
         ----------
@@ -426,18 +433,18 @@ class SimInfoFitWrapper:
         None.
 
         """
-        
-        #get Light curves from simuWrapper
-        
-        light_curves = self.simu_wrapper(obs,imulti)
-        
+
+        # get Light curves from simuWrapper
+
+        light_curves = self.simu_wrapper(obs, imulti)
+
         # analyze these LC + flag for selection
         light_curves_ana = self.info_wrapper(light_curves)
-        print('nlc analyzed',len(light_curves_ana))
-        
+        print('nlc analyzed', len(light_curves_ana))
+
         # fitting here
         fitlc = self.fit_wrapper(light_curves_ana)
-      
+
         self.dump(fitlc)
 
         return None
@@ -445,12 +452,15 @@ class SimInfoFitWrapper:
         if self.fit_wrapper.saveData:
             outFile = 'SN_{}.hdf5'.format(self.simu_wrapper.prodid)
             outName = '{}/{}'.format(self.fit_wrapper.outDir,outFile)
-            import astropy        
-            astropy.io.misc.hdf5.write_table_hdf5(fitlc, outName, path='SN', overwrite=True, serialize_meta=True)
+            import astropy
+            astropy.io.misc.hdf5.write_table_hdf5(fitlc, outName,
+                                                  path='SN', overwrite=True,
+                                                  serialize_meta=True)
         """
-    def dump(self,sn):
+
+    def dump(self, sn):
         """
-        
+
 
         Parameters
         ----------
@@ -465,8 +475,7 @@ class SimInfoFitWrapper:
         if self.outName != '':
             keyhdf = '{}'.format(int(sn['healpixID'].mean()))
             sn.write(self.outName, keyhdf, append=True, compression=True)
-        
-        
+
 
 class SimuWrapper:
     """
@@ -482,7 +491,6 @@ class SimuWrapper:
     def __init__(self, yaml_config):
 
         config = load_config(yaml_config)
-      
 
         self.name = 'simulation'
 
@@ -494,10 +502,12 @@ class SimuWrapper:
 
         # now define the metric instance
         # self.metric = SNMAFSimulation(config=config, x0_norm=x0_tab,
-        #                              reference_lc=reference_lc, coadd=config['Observations']['coadd'])
+        #                              reference_lc=reference_lc,
+        #                              coadd=config['Observations']['coadd'])
+
         self.metric = SNSimulation(
             config=config, x0_norm=x0_tab)
-        
+
         self.prodid = config['ProductionIDSimu']
 
     def x0(self, config):
@@ -513,7 +523,8 @@ class SimuWrapper:
         -----------
 
         """
-        # check whether X0_norm file exist or not (and generate it if necessary)
+        # check whether X0_norm file exist or not
+        # (and generate it if necessary)
         absMag = config['SN']['absmag']
         x0normFile = 'reference_files/X0_norm_{}.npy'.format(absMag)
         if not os.path.isfile(x0normFile):
@@ -546,9 +557,9 @@ class SimuWrapper:
           data to process
 
         """
-        
-        light_curves = self.metric.run(obs,imulti=imulti)
-        print('light curves',len(light_curves))
+
+        light_curves = self.metric.run(obs, imulti=imulti)
+        print('light curves', len(light_curves))
         return light_curves
 
     def finish(self):
@@ -558,9 +569,10 @@ class SimuWrapper:
         """
         self.metric.save_metadata()
 
+
 def load_config(yaml_config):
     """
-    
+
 
     Parameters
     ----------
@@ -578,15 +590,15 @@ def load_config(yaml_config):
         config = yaml_config
     else:
         with open(yaml_config) as file:
-             config = yaml.full_load(file)
-             
+            config = yaml.full_load(file)
+
     return config
 
 
 class InfoFitWrapper:
-    def __init__(self,infoDict,yaml_config_fit):
+    def __init__(self, infoDict, yaml_config_fit):
         """
-        
+
 
         Parameters
         ----------
@@ -603,20 +615,20 @@ class InfoFitWrapper:
         self.name = 'info_fit'
         self.info_wrapper = InfoWrapper(infoDict)
         self.fit_wrapper = FitWrapper(yaml_config_fit)
-        
+
         self.outName = ''
-        
+
         if self.fit_wrapper.saveData:
             outFile = 'SN_{}.hdf5'.format(self.fit_wrapper.prodid)
-            self.outName = '{}/{}'.format(self.fit_wrapper.outDir,outFile)
+            self.outName = '{}/{}'.format(self.fit_wrapper.outDir, outFile)
             # check wether this file already exist and remove it
-            import os            
+            import os
             if os.path.isfile(self.outName):
                 os.system('rm {}'.format(self.outName))
-        
-    def run(self,light_curves):
+
+    def run(self, light_curves):
         """
-        
+
 
         Parameters
         ----------
@@ -628,21 +640,21 @@ class InfoFitWrapper:
         None.
 
         """
-        
+
         # analyze these LC + flag for selection
         light_curves_ana = self.info_wrapper(light_curves)
-        print('nlc analyzed',len(light_curves_ana))
-        
+        print('nlc analyzed', len(light_curves_ana))
+
         # fitting here
         fitlc = self.fit_wrapper(light_curves_ana)
-      
+
         self.dump(fitlc)
 
         return fitlc
-       
-    def dump(self,sn):
+
+    def dump(self, sn):
         """
-        
+
 
         Parameters
         ----------
@@ -657,5 +669,3 @@ class InfoFitWrapper:
         if self.outName != '':
             keyhdf = '{}'.format(int(sn['healpixID'].mean()))
             sn.write(self.outName, keyhdf, append=True, compression=True)
-        
-        
