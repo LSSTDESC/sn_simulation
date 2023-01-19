@@ -7,7 +7,7 @@ import multiprocessing
 from astropy.table import Table
 from astropy.cosmology import w0waCDM
 from importlib import import_module
-from sn_tools.sn_telescope import Telescope
+#from sn_tools.sn_telescope import Telescope
 from sn_simu_wrapper.sn_object import SN_Object
 from sn_tools.sn_utils import SimuParameters
 from sn_tools.sn_obs import season as seasoncalc
@@ -59,9 +59,12 @@ class SNSimulation:
     """
 
     def __init__(self, metricName='SNSimulation',
-                 mjdCol='observationStartMJD', RACol='fieldRA', DecCol='fieldDec',
-                 filterCol='filter', m5Col='fiveSigmaDepth', exptimeCol='visitExposureTime',
-                 nightCol='night', obsidCol='observationId', nexpCol='numExposures',
+                 mjdCol='observationStartMJD',
+                 RACol='fieldRA', DecCol='fieldDec',
+                 filterCol='filter', m5Col='fiveSigmaDepth',
+                 exptimeCol='visitExposureTime',
+                 nightCol='night', obsidCol='observationId',
+                 nexpCol='numExposures',
                  vistimeCol='visitTime', seeingEffCol='seeingFwhmEff',
                  airmassCol='airmass',
                  skyCol='sky', moonCol='moonPhase',
@@ -96,22 +99,19 @@ class SNSimulation:
         coadd = config['Observations']['coadd']
 
         if coadd:
-            # cols += ['sn_coadd']
-            """
-            self.stacker = CoaddStacker(mjdCol=self.mjdCol,
-                                        RACol=self.RACol, DecCol=self.DecCol,
-                                        m5Col=self.m5Col, nightCol=self.nightCol,
-                                        filterCol=self.filterCol, numExposuresCol=self.nexpCol,
-                                        visitTimeCol=self.vistimeCol, visitExposureTimeCol='visitExposureTime')
-            """
-            self.stacker = CoaddStacker(col_sum=[self.nexpCol, self.vistimeCol, 'visitExposureTime'],
-                                        col_mean=[self.mjdCol, self.RACol, self.DecCol,
-                                                  self.m5Col, 'pixRA', 'pixDec', 'healpixID', 'season'],
-                                        col_median=['airmass',
-                                                    'sky', 'moonPhase'],
+
+            self.stacker = CoaddStacker(col_sum=[self.nexpCol, self.vistimeCol,
+                                                 'visitExposureTime'],
+                                        col_mean=[self.mjdCol,
+                                                  self.RACol, self.DecCol,
+                                                  self.m5Col, 'pixRA',
+                                                  'pixDec', 'healpixID',
+                                                  'season', 'airmass'],
+                                        col_median=['sky', 'moonPhase'],
                                         col_group=[
                                             self.filterCol, self.nightCol],
-                                        col_coadd=[self.m5Col, 'visitExposureTime'])
+                                        col_coadd=[self.m5Col,
+                                                   'visitExposureTime'])
         # super(SNSimulation, self).__init__(
         #    col=cols, metricName=metricName, **kwargs)
 
@@ -136,6 +136,7 @@ class SNSimulation:
                                  w0=cosmo_par['w0'], wa=cosmo_par['wa'])
 
         # load telescope
+        """
         tel_par = config['InstrumentSimu']
         self.telescope = Telescope(name=tel_par['name'],
                                    throughput_dir=tel_par['throughputDir'],
@@ -143,7 +144,7 @@ class SNSimulation:
                                    atmos=tel_par['atmos'],
                                    aerosol=tel_par['aerosol'],
                                    airmass=tel_par['airmass'])
-
+        """
         # sn parameters
         self.sn_parameters = config['SN']
         dirFiles = None
@@ -349,7 +350,6 @@ class SNSimulation:
         # stack if necessary
         if self.stacker is not None:
             obs = self.stacker._run(obs)
-        # obs = Observations(data=tab, names=self.names)
 
         self.fieldname = 'unknown'
         self.fieldid = 0
@@ -795,7 +795,7 @@ class SNSimulation:
                               simulator_par,
                               gen_params,
                               self.cosmology,
-                              self.telescope, SNID, self.area,
+                              SNID, self.area,
                               x0_grid=self.x0_grid,
                               salt2Dir=self.salt2Dir,
                               mjdCol=self.mjdCol,
@@ -807,7 +807,7 @@ class SNSimulation:
 
         module = import_module(self.simu_config['name'])
         simu = module.SN(sn_object, self.simu_config,
-                         self.reference_lc, self.gamma, self.mag_to_flux, self.dustcorr)
+                         self.reference_lc, self.dustcorr)
         # simulation - this is supposed to be a list of astropytables
         lc_table = simu(obs, self.display_lc, self.time_display)
 

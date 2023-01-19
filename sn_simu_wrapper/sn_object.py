@@ -1,14 +1,16 @@
 import numpy as np
 import astropy.units as u
-from astropy.table import Table
-from collections import OrderedDict as odict
+#from astropy.table import Table
+#from collections import OrderedDict as odict
 
 
 class SN_Object:
-    def __init__(self, name, sn_parameters, simulator_parameters, gen_parameters, cosmology,
-                 telescope, snid, area, x0_grid, salt2Dir='SALT2_Files',
+    def __init__(self, name, sn_parameters, simulator_parameters,
+                 gen_parameters, cosmology, snid, area, x0_grid,
+                 salt2Dir='SALT2_Files',
                  mjdCol='mjd', RACol='pixRa', DecCol='pixDec',
-                 filterCol='band', exptimeCol='exptime', nexpCol='numExposures',
+                 filterCol='band', exptimeCol='exptime',
+                 nexpCol='numExposures',
                  nightCol='night', m5Col='fiveSigmaDepth', seasonCol='season',
                  seeingEffCol='seeingFwhmEff', seeingGeomCol='seeingFwhmGeom',
                  airmassCol='airmass', skyCol='sky', moonCol='moonPhase'):
@@ -28,7 +30,6 @@ class SN_Object:
          simulation parameters
         cosmology: dict
          cosmological parameters used for simulation
-        telescope: sn_tools.Telescope
         snid: int
          supernova identifier
         area: float
@@ -69,7 +70,6 @@ class SN_Object:
         self._simulator_parameters = simulator_parameters
         self._gen_parameters = gen_parameters
         self._cosmology = cosmology
-        self._telescope = telescope
         self._SNID = snid
 
         self.mjdCol = mjdCol
@@ -90,6 +90,10 @@ class SN_Object:
         self.area = area
         self.salt2Dir = salt2Dir
         self.x0_grid = x0_grid
+
+        self.mean_wavelength = dict(zip('ugrizy', [368.41544788, 479.98080171,
+                                                   623.00583188, 754.10402246,
+                                                   869.01326737, 973.60607034]))
 
     @property
     def name(self):
@@ -120,12 +124,6 @@ class SN_Object:
         return self._cosmology
 
     @property
-    def telescope(self):
-        """ Telescope
-        """
-        return self._telescope
-
-    @property
     def SNID(self):
         """ SN identifier
         """
@@ -135,7 +133,8 @@ class SN_Object:
                min_rf_phase, max_rf_phase,
                blue_cutoffs=dict(
                    zip('ugrizy', [380., 380., 380., 360., 380., 380.])),
-               red_cutoffs=dict(zip('ugrizy', [700., 700., 700., 700., 700., 700.]))):
+               red_cutoffs=dict(zip('ugrizy',
+                                    [700., 700., 700., 700., 700., 700.]))):
         """ select observations depending on phases
 
         Parameters
@@ -159,8 +158,13 @@ class SN_Object:
         self.blue_cutoffs = blue_cutoffs
         self.red_cutoffs = red_cutoffs
 
+        """
         mean_restframe_wavelength = np.asarray(
             [self.telescope.mean_wavelength[obser[self.filterCol][-1]] /
+             (1. + z) for obser in obs])
+        """
+        mean_restframe_wavelength = np.asarray(
+            [self.mean_wavelength[obser[self.filterCol][-1]] /
              (1. + z) for obser in obs])
 
         filters = np.array(obs[self.filterCol])
@@ -180,7 +184,6 @@ class SN_Object:
         idx &= (mean_restframe_wavelength - red_values <= 0.)
         return obs[idx]
 
-
     def blues(self, band):
         """
         Method to return blue_cutoff value
@@ -196,7 +199,7 @@ class SN_Object:
 
         """
         return self.blue_cutoffs[band[0]]
- 
+
     def reds(self, band):
         """
         Method to return the red_cutoff value
@@ -213,9 +216,9 @@ class SN_Object:
         """
 
         return self.red_cutoffs[band[0]]
-    
+
     @staticmethod
-    def plotLC(table, time_display,airmass=1.2):
+    def plotLC(table, time_display, airmass=1.2):
         """ Light curve plot using sncosmo methods
 
         Parameters
@@ -228,7 +231,7 @@ class SN_Object:
 
         import pylab as plt
         import sncosmo
-        prefix = 'LSST::'
+        # prefix = 'LSST::'
         """
         _photdata_aliases = odict([
             ('time', set(['time', 'date', 'jd', 'mjd', 'mjdobs', 'mjd_obs'])),
@@ -239,6 +242,7 @@ class SN_Object:
             ('zp', set(['zp', 'zpt', 'zeropoint', 'zero_point'])),
             ('zpsys', set(['zpsys', 'zpmagsys', 'magsys']))
         ])
+        """
         """
         from sn_tools.sn_telescope import Telescope
         telescope = Telescope(airmass=airmass)
@@ -258,7 +262,7 @@ class SN_Object:
                     wave_unit=u.nm)
             # print('registering',name_filter)
             sncosmo.registry.register(bandpass, force=True)
-
+        """
         z = table.meta['z']
         if 'x1' in table.meta.keys():
             x1 = table.meta['x1']
@@ -274,7 +278,7 @@ class SN_Object:
         model.set(z=z,
                   c=color,
                   t0=daymax,
-                  #x0=x0,
+                  # x0=x0,
                   x1=x1)
         """
         print('tests',isinstance(table, np.ndarray),isinstance(table,Table),isinstance(table,dict))
@@ -300,7 +304,7 @@ class SN_Object:
         new_data.dtype.names = _photdata_aliases.keys()
         """
         # display only 1 sigma LC points
-        table = table[table['flux']/table['fluxerr']>=1.]
+        table = table[table['flux']/table['fluxerr'] >= 1.]
         """
         if 'x1' in table.meta.keys():
             sncosmo.plot_lc(data=table,model=model)

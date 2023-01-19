@@ -1,30 +1,36 @@
 import sncosmo
 import numpy as np
-from rubin_sim.phot_utils import Sed
-from rubin_sim.phot_utils import signaltonoise
-from rubin_sim.phot_utils import photometric_parameters
 from astropy.table import Table
 from scipy.interpolate import griddata, interp1d
 from sn_simu_wrapper.sn_object import SN_Object
 import time
 from sn_tools.sn_utils import SNTimer
-from sn_tools.sn_calcFast import srand
 import pandas as pd
-from astropy import units as u
 import os
 
 
 class SN(SN_Object):
-    def __init__(self, param, simu_param, reference_lc=None, gamma=None, mag_to_flux=None, dustcorr=None, snr_fluxsec='interp'):
-        super().__init__(param.name, param.sn_parameters, param.simulator_parameters,
+    def __init__(self, param, simu_param, reference_lc=None, dustcorr=None):
+        super().__init__(param.name,
+                         param.sn_parameters,
+                         param.simulator_parameters,
                          param.gen_parameters,
-                         param.cosmology, param.telescope, param.SNID, param.area, param.x0_grid,
-                         mjdCol=param.mjdCol, RACol=param.RACol, DecCol=param.DecCol,
-                         filterCol=param.filterCol, exptimeCol=param.exptimeCol,
-                         nexpCol=param.nexpCol, nightCol=param.nightCol,
-                         m5Col=param.m5Col, seasonCol=param.seasonCol,
-                         seeingEffCol=param.seeingEffCol, seeingGeomCol=param.seeingGeomCol,
-                         airmassCol=param.airmassCol, skyCol=param.skyCol, moonCol=param.moonCol,
+                         param.cosmology,
+                         param.SNID,
+                         param.area, param.x0_grid,
+                         mjdCol=param.mjdCol,
+                         RACol=param.RACol,
+                         DecCol=param.DecCol,
+                         filterCol=param.filterCol,
+                         exptimeCol=param.exptimeCol,
+                         nexpCol=param.nexpCol,
+                         nightCol=param.nightCol,
+                         m5Col=param.m5Col,
+                         seasonCol=param.seasonCol,
+                         seeingEffCol=param.seeingEffCol,
+                         seeingGeomCol=param.seeingGeomCol,
+                         airmassCol=param.airmassCol,
+                         skyCol=param.skyCol, moonCol=param.moonCol,
                          salt2Dir=param.salt2Dir)
         """ SN class - inherits from SN_Object
 
@@ -39,22 +45,15 @@ class SN(SN_Object):
                version: version of the model (str)
         reference_lc : griddata,opt
            reference_light curves (default: None)
-        gamma: griddata, opt
-           reference gamma values (default: None)
-        mag_to_flux: griddata, opt
-           reference mag->flux values (default: None)
-        snr_fluxsec: str, opt
-          type of method to estimate snr and flux in pe.s-1:
-          lsstsim: estimated from rubin_sim tools
-          interp: estimated from interpolation (default)
-          all : estimated from the two above-mentioned methods
 
         """
 
         # this is common to all models
+        """
         self.gamma = gamma
         self.mag_to_flux = mag_to_flux
         self.snr_fluxsec = snr_fluxsec
+        """
         self.error_model = self.simulator_parameters['errorModel']
         # self.error_model_cut = self.simulator_parameters['errorModelCut']
 
@@ -100,28 +99,34 @@ class SN(SN_Object):
                             'observationId', param.RACol, param.DecCol]))
 
         # names for metadata
-        self.names_meta = ['RA', 'Dec', 'sn_type', 'sn_model', 'sn_version', 'daymax',
+        self.names_meta = ['RA', 'Dec', 'sn_type', 'sn_model', 'sn_version',
+                           'daymax',
                            'z', 'survey_area',
                            'healpixID', 'pixRA', 'pixDec',
-                           'season', 'season_length', 'dL', 'ptime', 'snr_fluxsec_meth', 'status', 'ebvofMW']
+                           'season', 'season_length', 'dL', 'ptime',
+                           'status', 'ebvofMW']
 
         if self.sn_type == 'SN_Ia':
             self.names_meta += ['x0', 'epsilon_x0', 'x1',
-                                'epsilon_x1', 'color', 'epsilon_color', 'epsilon_daymax']
+                                'epsilon_x1', 'color', 'epsilon_color',
+                                'epsilon_daymax']
 
         self.mag_inf = 100.  # mag values to replace infs
 
         # band registery in sncosmo
-
+        """
         for band in 'grizy':
             name = 'LSST::'+band
             throughput = self.telescope.atmosphere[band]
             try:
                 band = sncosmo.get_bandpass(name)
             except Exception as err:
+                print(err)
                 bandcosmo = sncosmo.Bandpass(
-                    throughput.wavelen, throughput.sb, name=name, wave_unit=u.nm)
+                    throughput.wavelen, throughput.sb, name=name,
+                    wave_unit=u.nm)
                 sncosmo.registry.register(bandcosmo)
+        """
 
     def source(self, model, version):
         """
@@ -210,7 +215,8 @@ class SN(SN_Object):
         self.SN.set(z=self.sn_parameters['z'])
 
         self.SN.set_source_peakabsmag(self.sn_parameters['absmag'],
-                                      self.sn_parameters['band'], self.sn_parameters['magsys'])
+                                      self.sn_parameters['band'],
+                                      self.sn_parameters['magsys'])
         # print(self.SN)
         # self.SN.set(amplitude=2.e-8)
 
@@ -298,7 +304,8 @@ class SN(SN_Object):
         else:
             SALT2Dir = 'SALT2.Guy10_UV2IR'
             self.SALT2Templates(
-                SALT2Dir=SALT2Dir, blue_cutoff=10.*self.sn_parameters['blue_cutoff'])
+                SALT2Dir=SALT2Dir,
+                blue_cutoff=10.*self.sn_parameters['blue_cutoff'])
             source = sncosmo.SALT2Source(modeldir=SALT2Dir)
         """
         # set x1 and c parameters
@@ -310,7 +317,8 @@ class SN(SN_Object):
         self.X0 = self.x0(self.dL)
         """
         self.SN.set_source_peakabsmag(self.sn_parameters['absmag'],
-                                      self.sn_parameters['band'], self.sn_parameters['magsys'])
+                                      self.sn_parameters['band'],
+                                      self.sn_parameters['magsys'])
 
         # get X0 fro source_abspeak norm
 
@@ -353,8 +361,10 @@ class SN(SN_Object):
 
         """
 
-        X0_grid = griddata((self.x0_grid['x1'], self.x0_grid['color']), self.x0_grid['x0_norm'], (
-            self.sn_parameters['x1'], self.sn_parameters['color']),  method='nearest')
+        X0_grid = griddata((self.x0_grid['x1'], self.x0_grid['color']),
+                           self.x0_grid['x0_norm'], (
+            self.sn_parameters['x1'], self.sn_parameters['color']),
+            method='nearest')
         X0 = X0_grid / lumidist ** 2
         alpha = 0.13
         beta = 3.1
@@ -400,7 +410,8 @@ class SN(SN_Object):
 
         for vv in ['salt2_template_0', 'salt2_template_1']:
             fName = '{}/{}_orig.dat'.format(SALT2Dir, vv)
-            data = np.loadtxt(fName, dtype={'names': ('phase', 'wavelength', 'flux'),
+            data = np.loadtxt(fName, dtype={'names': ('phase', 'wavelength',
+                                                      'flux'),
                                             'formats': ('f8', 'i4', 'f8')})
             # print(data)
             data['flux'][data['wavelength'] <= blue_cutoff] = 0.0
@@ -449,7 +460,8 @@ class SN(SN_Object):
           flux: SN flux(Jy)
           fluxerr: EN error flux(Jy)
           snr_m5: Signal-to-Noise Ratio(float)
-          gamma: gamma parameter(see LSST: From Science...data products eq. 5)(float)
+          gamma: gamma parameter(see LSST:
+                From Science...data products eq. 5)(float)
           m5: five-sigma depth(float)
           seeingFwhmEff: seeing eff(float)
           seeingFwhmGeom: seeing geom(float)
@@ -488,85 +500,76 @@ class SN(SN_Object):
         # start timer
         ti = SNTimer(time.time())
 
-        # Are there observations with the filters?
-        goodFilters = np.in1d(obs[self.filterCol],
-                              np.array([b for b in 'grizy']))
-
-        if len(obs[goodFilters]) == 0:
-            return [self.nosim(ra, dec, pix, area, season, season_length, ti, self.snr_fluxsec, -1, ebvofMW)]
-
-        # Select obs depending on min and max phases
-        # blue and red cutoffs applied
-
-        blue_cutoff = 0.
-        red_cutoff = 1.e8
-        blue_cutoffs = dict(zip('urgizy', [blue_cutoff]*6))
-        red_cutoffs = dict(zip('urgizy', [red_cutoff]*6))
-        if self.sn_type == 'SN_Ia':
-            if not self.error_model:
-                for b in 'ugrizy':
-                    blue_cutoffs[b] = self.sn_parameters['blueCutoff{}'.format(
-                        b)]
-                    red_cutoffs[b] = self.sn_parameters['redCutoff{}'.format(
-                        b)]
-
-        obs = self.cutoff(obs, self.sn_parameters['daymax'],
-                          self.sn_parameters['z'],
-                          self.sn_parameters['minRFphase'],
-                          self.sn_parameters['maxRFphase'],
-                          blue_cutoffs, red_cutoffs)
+        obs = self.select_filter_cutoff(obs, ra, dec, pix, area, season,
+                                        season_length,
+                                        ti, ebvofMW)
 
         if len(obs) == 0:
-            return [self.nosim(ra, dec, pix, area, season, season_length, ti, self.snr_fluxsec, -1, ebvofMW)]
-
-        # Sort data according to mjd
-        obs.sort(order=self.mjdCol)
+            return [self.nosim(ra, dec, pix, area, season, season_length,
+                               ti, -1, ebvofMW)]
 
         # preparing the results : stored in lcdf pandas DataFrame
         outvals = [self.m5Col, self.mjdCol,
-                   self.exptimeCol, self.nexpCol, self.filterCol, self.nightCol]
-        for bb in [self.airmassCol, self.skyCol, self.moonCol, self.seeingEffCol, self.seeingGeomCol]:
+                   self.exptimeCol, self.nexpCol,
+                   self.filterCol, self.nightCol]
+        for bb in [self.airmassCol, self.skyCol, self.moonCol,
+                   self.seeingEffCol, self.seeingGeomCol]:
             if bb in obs.dtype.names:
                 outvals.append(bb)
 
         lcdf = pd.DataFrame(np.copy(obs[outvals]))
 
-        # print(self.fluxSED(lcdf))
-
         band_cosmo = '{}_cosmo'.format(self.filterCol)
-        lcdf[band_cosmo] = 'LSST::'+lcdf[self.filterCol]
+        # lcdf[band_cosmo] = 'LSST::'+lcdf[self.filterCol]
+        lcdf[band_cosmo] = 'lsst::'+lcdf[self.filterCol]
+        coeff = dict(zip('ugrizy', [-0.47542596, -0.20838888, -0.12194391,
+                                    -0.07404442, -0.05725837, -0.09556892]))
+        zp = dict(zip('ugrizy', [27.37034271, 28.56481594, 28.26447884,
+                                 27.90263111, 27.47379902, 26.73071282]))
+
+        lst = lcdf[self.filterCol].tolist()
+        airmass = np.array(lcdf[self.airmassCol].tolist())
+        lcdf['coeff'] = np.array([*map(coeff.get, lst)])
+        lcdf['zp_airmass_1'] = np.array([*map(zp.get, lst)])
+        lcdf['zp'] = lcdf['coeff']*lcdf['airmass']+lcdf['zp_airmass_1']
+
         lcdf['flux'] = self.SN.bandflux(
-            lcdf[band_cosmo], lcdf[self.mjdCol], zpsys='ab', zp=2.5*np.log10(3631))
+            lcdf[band_cosmo], lcdf[self.mjdCol], zpsys='ab',
+            zp=lcdf['zp'])
 
         # estimate error model (if necessary)
         # print('error model',self.error_model)
+        lcdf['fluxerr_model'] = 0.
         if self.error_model and self.sn_type == 'SN_Ia':
             fluxcov_cosmo = self.SN.bandfluxcov(
-                lcdf[band_cosmo], lcdf[self.mjdCol], zpsys='ab', zp=2.5*np.log10(3631))
+                lcdf[band_cosmo], lcdf[self.mjdCol], zpsys='ab',
+                zp=2.5*np.log10(3631))
             lcdf['fluxerr_model'] = np.sqrt(np.diag(fluxcov_cosmo[1]))
-        else:
-            lcdf['fluxerr_model'] = 0.
 
         # lcdf = lcdf[idx]
         lcdf.loc[lcdf.flux <= 0., 'fluxerr_photo'] = -1.
         lcdf.loc[lcdf.flux <= 0., 'fluxerr_model'] = -1.
         lcdf.loc[lcdf.flux <= 0., 'flux'] = 9999.
 
-        # deltaT.loc[deltaT['data'] < 0, 'data'] = 0
-
-        # print('simulating',season,len(lcdf))
         if len(lcdf) == 0:
             return []
         # ti(time.time(), 'fluxes_b')
 
         # magnitudes - integrated  fluxes are in Jy
-        lcdf['mag'] = -2.5 * np.log10(lcdf['flux'] / 3631.0)
+        lcdf['mag'] = -2.5 * np.log10(lcdf['flux'])+lcdf['zp']
+        idx = lcdf['mag'] > 0.
+        lcdf = lcdf[idx]
 
         # if mag have inf values -> set to 50.
         lcdf['mag'] = lcdf['mag'].replace([np.inf, -np.inf], self.mag_inf)
 
-        # ti(time.time(), 'mags')
+        flux5 = 10**(-0.4*(lcdf[self.m5Col]-lcdf['zp']))
+        sigma_5 = flux5/5.
+        shot_noise = np.sqrt(lcdf['flux']/lcdf[self.exptimeCol])
+        lcdf['fluxerr'] = np.sqrt(sigma_5**2+shot_noise**2)
+        lcdf['snr_m5'] = lcdf['flux']/lcdf['fluxerr']
 
+        """
         # SNR and flux in pe.sec estimations
 
         if self.snr_fluxsec == 'all' or self.snr_fluxsec == 'lsstsim':
@@ -590,9 +593,12 @@ class SN(SN_Object):
 
         # ti(time.time(), 'estimate 1')
 
+        print('there man', lcdf[['snr_m5', 'snr_m5_adu']])
+        print(test)
+        """
         # complete the LC
         lcdf['magerr_phot'] = (2.5/np.log(10.))/lcdf['snr_m5']  # mag error
-        # lcdf['fluxerr'] = lcdf['flux']/lcdf['snr_m5']  # flux error - photometry
+        # lcdf['fluxerr'] = lcdf['flux']/lcdf['snr_m5'] # flux error-photometry
         lcdf['fluxerr_photo'] = lcdf['flux'] / \
             lcdf['snr_m5']  # flux error - photometry
 
@@ -600,15 +606,14 @@ class SN(SN_Object):
             lcdf['fluxerr_model']**2+lcdf['fluxerr_photo']**2)  # flux error
         lcdf['snr'] = lcdf['flux']/lcdf['fluxerr']  # snr
         lcdf['magerr'] = (2.5/np.log(10.))/lcdf['snr']  # mag error
-
-        lcdf['zp'] = 2.5*np.log10(3631)  # zp
         lcdf['zpsys'] = 'ab'  # zpsys
         lcdf['phase'] = (lcdf[self.mjdCol]-self.sn_parameters['daymax']
                          )/(1.+self.sn_parameters['z'])  # phase
 
         # rename some of the columns
         lcdf = lcdf.rename(
-            columns={self.mjdCol: 'time', self.filterCol: 'band', self.m5Col: 'm5', self.exptimeCol: 'exptime'})
+            columns={self.mjdCol: 'time', self.filterCol: 'band',
+                     self.m5Col: 'm5', self.exptimeCol: 'exptime'})
         lcdf['filter'] = lcdf['band']
         lcdf['band'] = 'LSST::'+lcdf['band']
 
@@ -630,7 +635,8 @@ class SN(SN_Object):
 
         # print('fluxb',lcdf[['flux','fluxerr','fluxerr_photo','snr_m5']])
         if len(lcdf) == 0:
-            return [self.nosim(ra, dec, pix, area, season, season_length, ti, self.snr_fluxsec, -1, ebvofMW)]
+            return [self.nosim(ra, dec, pix, area, season, season_length,
+                               ti, -1, ebvofMW)]
 
         # get the processing time
         ptime = ti.finish(time.time())['ptime'].item()
@@ -639,12 +645,14 @@ class SN(SN_Object):
         table_lc = Table.from_pandas(lcdf)
         # set metadata
         table_lc.meta = self.metadata(
-            ra, dec, pix, area, season, season_length, ptime, self.snr_fluxsec, 1, ebvofMW)
+            ra, dec, pix, area, season, season_length, ptime,
+            1, ebvofMW)
 
         # if the user chooses to display the results...
         if display:
             self.plotLC(table_lc['time', 'band',
-                                 'flux', 'fluxerr', 'zp', 'zpsys'], time_display)
+                                 'flux', 'fluxerr', 'zp', 'zpsys'],
+                        time_display)
 
         # remove LC points with too high error model value
         """
@@ -654,11 +662,15 @@ class SN(SN_Object):
                     table_lc['flux']<= self.error_model_cut
                 table_lc = table_lc[idx]
         """
-        toremove = ['m5', 'exptime', 'numExposures', 'filter_cosmo', 'airmass', 'moonPhase',
-                    'seeingFwhmEff', 'seeingFwhmGeom', 'gamma', 'mag', 'magerr', 'flux_e_sec', 'magerr_phot']
+        toremove = ['m5', 'exptime', 'numExposures', 'filter_cosmo',
+                    'airmass', 'moonPhase',
+                    'seeingFwhmEff', 'seeingFwhmGeom', 'gamma', 'mag',
+                    'magerr', 'flux_e_sec', 'magerr_phot']
 
-        toremove = ['m5', 'exptime', 'numExposures', 'filter_cosmo', 'airmass', 'moonPhase',
-                    'seeingFwhmEff', 'seeingFwhmGeom', 'gamma', 'mag', 'magerr', 'magerr_phot']
+        toremove = ['m5', 'exptime', 'numExposures', 'filter_cosmo',
+                    'airmass', 'moonPhase',
+                    'seeingFwhmEff', 'seeingFwhmGeom', 'gamma', 'mag',
+                    'magerr', 'magerr_phot']
 
         toremove = ['filter_cosmo', 'airmass', 'moonPhase',
                     'gamma', 'mag', 'magerr', 'magerr_phot']
@@ -667,7 +679,91 @@ class SN(SN_Object):
 
         return [table_lc]
 
-    def calcSNR_Flux(self, df, transm):
+    def select_filter_cutoff(self, obs, ra, dec, pix, area, season,
+                             season_length,
+                             ti, ebvofMW):
+        """
+        Function to select obs: filters and blue and red cutoffs
+
+        Parameters
+        ----------
+        obs : array
+            data to process.
+        ra : float
+            pixRA.
+        dec : float
+            pixDec.
+        pix : TYPE
+            DESCRIPTION.
+        area : str
+            pixarea.
+        season : int
+            season of obs.
+        season_length : float
+            season length
+        ti : float
+            timer val.
+        ebvofMW : float
+            E(B-V) MW
+
+        Returns
+        -------
+        array
+            selected data.
+
+        """
+
+        # Are there observations with the filters?
+        goodFilters = np.in1d(obs[self.filterCol],
+                              np.array([b for b in 'grizy']))
+
+        if len(obs[goodFilters]) == 0:
+            return [self.nosim(ra, dec, pix, area, season, season_length,
+                               ti, -1, ebvofMW)]
+
+        # Select obs depending on min and max phases
+        # blue and red cutoffs applied
+
+        blue_cutoffs, red_cutoffs = self.get_cutoffs()
+
+        obs = self.cutoff(obs, self.sn_parameters['daymax'],
+                          self.sn_parameters['z'],
+                          self.sn_parameters['minRFphase'],
+                          self.sn_parameters['maxRFphase'],
+                          blue_cutoffs, red_cutoffs)
+        if len(obs) > 0:
+            # Sort data according to mjd
+            obs.sort(order=self.mjdCol)
+
+        return obs
+
+    def get_cutoffs(self):
+        """
+        Method to estimate blue and red cutoffs as dict
+
+        Returns
+        -------
+        blue_cutoffs : dict
+            blue cutoffs (key=band).
+        red_cutoffs : dict
+            red cutoffs (key=band)
+
+        """
+
+        blue_cutoff = 0.
+        red_cutoff = 1.e8
+        blue_cutoffs = dict(zip('urgizy', [blue_cutoff]*6))
+        red_cutoffs = dict(zip('urgizy', [red_cutoff]*6))
+        if self.sn_type == 'SN_Ia' and not self.error_model:
+            for b in 'ugrizy':
+                blue_cutoffs[b] = self.sn_parameters['blueCutoff{}'.format(
+                    b)]
+                red_cutoffs[b] = self.sn_parameters['redCutoff{}'.format(
+                    b)]
+
+        return blue_cutoffs, red_cutoffs
+
+    def calcSNR_Flux_deprecated(self, df, transm):
         """
         Method to estimate SNRs and fluxes(in e.sec)
         using lsst sims estimators
@@ -690,11 +786,15 @@ class SN(SN_Object):
 
         # estimate SNR
         # Get photometric parameters to estimate SNR
-        photParams = [PhotometricParameters(exptime=vv[self.exptimeCol]/vv[self.nexpCol],
-                                            nexp=vv[self.nexpCol]) for index, vv in df.iterrows()]
+        from rubin_sim.phot_utils.photometric_parameters \
+            import PhotometricParameters
+        from rubin_sim.phot_utils import signaltonoise
+        photParams = [PhotometricParameters(
+            exptime=vv[self.exptimeCol]/vv[self.nexpCol],
+            nexp=vv[self.nexpCol]) for index, vv in df.iterrows()]
 
         nvals = range(len(df))
-        calc = [SignalToNoise.calcSNR_m5(
+        calc = [signaltonoise.calcSNR_m5(
             df.iloc[i]['mag'], transm[i], df.iloc[i][self.m5Col],
             photParams[i]) for i in nvals]
 
@@ -702,11 +802,13 @@ class SN(SN_Object):
         df['gamma'] = [calc[i][1] for i in nvals]
         # estimate the flux in elec.sec-1
         df['flux_e_sec'] = self.telescope.mag_to_flux_e_sec(
-            df['mag'].values, df[self.filterCol].values, df[self.exptimeCol]/df[self.nexpCol], df[self.nexpCol])[:, 1]
+            df['mag'].values, df[self.filterCol].values,
+            df[self.exptimeCol]/df[self.nexpCol], df[self.nexpCol])[:, 1]
 
         return df
 
-    def interp_gamma_flux(self, grp, gammaName='gamma_int', fluxName='flux_e_sec_int'):
+    def interp_gamma_flux_deprecated(self, grp, gammaName='gamma_int',
+                                     fluxName='flux_e_sec_int'):
         """
         Method to estimate gamma and mag_to_flux values from interpolation
 
@@ -741,7 +843,8 @@ class SN(SN_Object):
         """
         return grp
 
-    def nosim(self, ra, dec, pix, area, season, season_length, ti, snr_fluxsec, status, ebvofMW):
+    def nosim(self, ra, dec, pix, area, season, season_length,
+              ti, status, ebvofMW):
         """
         Method to construct an empty table when no simulation was not possible
 
@@ -761,8 +864,6 @@ class SN(SN_Object):
           season length
         ptime: float
            processing time
-        snr_fluxsec: str
-          method used to estimate snr and flux in pe.s-1
         status: int
           status of the processing(1=ok, -1=no simu)
         ebvofMW: float
@@ -772,10 +873,12 @@ class SN(SN_Object):
         table_lc = Table()
         # set metadata
         table_lc.meta = self.metadata(
-            ra, dec, pix, area, season, season_length, ptime, snr_fluxsec, status, ebvofMW)
+            ra, dec, pix, area, season, season_length, ptime,
+            status, ebvofMW)
         return table_lc
 
-    def metadata(self, ra, dec, pix, area, season, season_length, ptime, snr_fluxsec, status, ebvofMW):
+    def metadata(self, ra, dec, pix, area, season, season_length,
+                 ptime, status, ebvofMW):
         """
         Method to fill metadata
 
@@ -795,8 +898,6 @@ class SN(SN_Object):
           season length
         ptime: float
            processing time
-        snr_fluxsec: str
-          method used to estimate snr and flux in pe.s-1
         status: int
           status of the simulation(1=ok, -1=not simulation)
 
@@ -810,12 +911,15 @@ class SN(SN_Object):
                     self.sn_parameters['daymax'],
                     self.sn_parameters['z'], area,
                     pix['healpixID'], pix['pixRA'], pix['pixDec'],
-                    season, season_length, self.dL, ptime, snr_fluxsec, status, ebvofMW]
+                    season, season_length, self.dL, ptime,
+                    status, ebvofMW]
 
         if self.sn_type == 'SN_Ia':
             val_meta += [self.X0, self.gen_parameters['epsilon_x0'],
-                         self.sn_parameters['x1'], self.gen_parameters['epsilon_x1'],
-                         self.sn_parameters['color'], self.gen_parameters['epsilon_color'],
+                         self.sn_parameters['x1'],
+                         self.gen_parameters['epsilon_x1'],
+                         self.sn_parameters['color'],
+                         self.gen_parameters['epsilon_color'],
                          self.gen_parameters['epsilon_daymax']]
 
         return dict(zip(self.names_meta, val_meta))
@@ -836,7 +940,7 @@ class SN(SN_Object):
          the fluxes
 
         """
-
+        from rubin_sim.phot_utils import Sed
         # Get the fluxes (vs wavelength) for each obs
         fluxes = 10.*self.SN.flux(obs[self.mjdCol], self.wave)
 
@@ -858,14 +962,15 @@ class SN(SN_Object):
         int_fluxes = np.asarray(
             [seds[i].calcFlux(bandpass=transes[i]) for i in nvals])
 
-        # negative fluxes are a pb for mag estimate -> set neg flux to nearly nothing
+        # negative fluxes are a pb for mag estimate
+        # -> set neg flux to nearly nothing
         int_fluxes[int_fluxes < 0.] = 1.e-10
 
         return int_fluxes
 
     def lambdabar(self, band):
 
-        return self.telescope.mean_wavelength[band[0]]
+        return self.mean_wavelength[band[0]]
 
     def ebvofMW_calc(self, RA, Dec):
         """
