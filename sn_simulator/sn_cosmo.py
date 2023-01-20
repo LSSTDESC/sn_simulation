@@ -16,6 +16,7 @@ class SN(SN_Object):
                          param.simulator_parameters,
                          param.gen_parameters,
                          param.cosmology,
+                         param.zp_airmass,
                          param.SNID,
                          param.area, param.x0_grid,
                          mjdCol=param.mjdCol,
@@ -48,12 +49,6 @@ class SN(SN_Object):
 
         """
 
-        # this is common to all models
-        """
-        self.gamma = gamma
-        self.mag_to_flux = mag_to_flux
-        self.snr_fluxsec = snr_fluxsec
-        """
         self.error_model = self.simulator_parameters['errorModel']
         # self.error_model_cut = self.simulator_parameters['errorModelCut']
 
@@ -113,7 +108,14 @@ class SN(SN_Object):
 
         self.mag_inf = 100.  # mag values to replace infs
 
-        # band registery in sncosmo
+        """
+        bands = self.zp_airmass['band'].tolist()
+        slope = self.zp_airmass['slope'].tolist()
+        intercept = self.zp_airmass['intercept'].tolist()
+        self.zp_slope = dict(zip(bands, slope))
+        self.zp_intercept = dict(zip(bands, intercept))
+        """
+        # band registery in sncosmo - deprecated
         """
         for band in 'grizy':
             name = 'LSST::'+band
@@ -522,6 +524,7 @@ class SN(SN_Object):
         band_cosmo = '{}_cosmo'.format(self.filterCol)
         # lcdf[band_cosmo] = 'LSST::'+lcdf[self.filterCol]
         lcdf[band_cosmo] = 'lsst::'+lcdf[self.filterCol]
+        """
         coeff = dict(zip('ugrizy', [-0.47542596, -0.20838888, -0.12194391,
                                     -0.07404442, -0.05725837, -0.09556892]))
         zp = dict(zip('ugrizy', [27.37034271, 28.56481594, 28.26447884,
@@ -529,9 +532,11 @@ class SN(SN_Object):
 
         lst = lcdf[self.filterCol].tolist()
         airmass = np.array(lcdf[self.airmassCol].tolist())
-        lcdf['coeff'] = np.array([*map(coeff.get, lst)])
-        lcdf['zp_airmass_1'] = np.array([*map(zp.get, lst)])
-        lcdf['zp'] = lcdf['coeff']*lcdf['airmass']+lcdf['zp_airmass_1']
+        """
+        lst = lcdf[self.filterCol].tolist()
+        lcdf['zp_slope'] = np.array([*map(self.zp_slope.get, lst)])
+        lcdf['zp_intercept'] = np.array([*map(self.zp_intercept.get, lst)])
+        lcdf['zp'] = lcdf['zp_slope']*lcdf['airmass']+lcdf['zp_intercept']
 
         lcdf['flux'] = self.SN.bandflux(
             lcdf[band_cosmo], lcdf[self.mjdCol], zpsys='ab',

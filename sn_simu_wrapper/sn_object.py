@@ -1,12 +1,12 @@
 import numpy as np
 import astropy.units as u
-#from astropy.table import Table
-#from collections import OrderedDict as odict
+# from astropy.table import Table
+# from collections import OrderedDict as odict
 
 
 class SN_Object:
     def __init__(self, name, sn_parameters, simulator_parameters,
-                 gen_parameters, cosmology, snid, area, x0_grid,
+                 gen_parameters, cosmology, zp_airmass, snid, area, x0_grid,
                  salt2Dir='SALT2_Files',
                  mjdCol='mjd', RACol='pixRa', DecCol='pixDec',
                  filterCol='band', exptimeCol='exptime',
@@ -70,8 +70,8 @@ class SN_Object:
         self._simulator_parameters = simulator_parameters
         self._gen_parameters = gen_parameters
         self._cosmology = cosmology
+        self.zp_airmass = zp_airmass
         self._SNID = snid
-
         self.mjdCol = mjdCol
         self.RACol = RACol
         self.DecCol = DecCol
@@ -91,39 +91,50 @@ class SN_Object:
         self.salt2Dir = salt2Dir
         self.x0_grid = x0_grid
 
-        self.mean_wavelength = dict(zip('ugrizy', [368.41544788, 479.98080171,
-                                                   623.00583188, 754.10402246,
-                                                   869.01326737, 973.60607034]))
+        """
+        self.mean_wavelength = dict(zip('ugrizy',
+                                        [368.41544788, 479.98080171,
+                                         623.00583188, 754.10402246,
+                                         869.01326737, 973.60607034]))
+        """
+        bands = zp_airmass['band'].tolist()
+        mean_waves = zp_airmass['mean_wavelength'].tolist()
+        slope = zp_airmass['slope'].tolist()
+        intercept = zp_airmass['intercept'].tolist()
 
-    @property
+        self.mean_wavelength = dict(zip(bands, mean_waves))
+        self.zp_slope = dict(zip(bands, slope))
+        self.zp_intercept = dict(zip(bands, intercept))
+
+    @ property
     def name(self):
         return self._name
 
-    @property
+    @ property
     def sn_parameters(self):
         """SN parameters
         """
         return self._sn_parameters
 
-    @property
+    @ property
     def simulator_parameters(self):
         """SN parameters
         """
         return self._simulator_parameters
 
-    @property
+    @ property
     def gen_parameters(self):
         """ Simulation parameters
         """
         return self._gen_parameters
 
-    @property
+    @ property
     def cosmology(self):
         """ Cosmology
         """
         return self._cosmology
 
-    @property
+    @ property
     def SNID(self):
         """ SN identifier
         """
@@ -158,20 +169,12 @@ class SN_Object:
         self.blue_cutoffs = blue_cutoffs
         self.red_cutoffs = red_cutoffs
 
-        """
-        mean_restframe_wavelength = np.asarray(
-            [self.telescope.mean_wavelength[obser[self.filterCol][-1]] /
-             (1. + z) for obser in obs])
-        """
-        mean_restframe_wavelength = np.asarray(
-            [self.mean_wavelength[obser[self.filterCol][-1]] /
-             (1. + z) for obser in obs])
-
-        filters = np.array(obs[self.filterCol])
+        filters = np.array(obs[self.filterCol].tolist())
         filters = filters.reshape((len(filters), 1))
-
         blue_values = np.apply_along_axis(self.blues, 1, filters)
         red_values = np.apply_along_axis(self.reds, 1, filters)
+        mean_restframe_wavelength = \
+            np.apply_along_axis(self.mean_wave, 1, filters)/(1.+z)
 
         p = (obs[self.mjdCol]-T0)/(1.+z)
 
@@ -182,7 +185,10 @@ class SN_Object:
         """
         idx &= (mean_restframe_wavelength - blue_values >= 0.)
         idx &= (mean_restframe_wavelength - red_values <= 0.)
-        return obs[idx]
+
+        selobs = obs[idx]
+
+        return selobs
 
     def blues(self, band):
         """
@@ -217,7 +223,25 @@ class SN_Object:
 
         return self.red_cutoffs[band[0]]
 
-    @staticmethod
+    def mean_wave(self, band):
+        """
+        Method to return the mean_restframe_wavelength
+
+        Parameters
+        ----------
+        band : str
+            the band to process
+
+        Returns
+        -------
+        float
+            the mean restframe wavelength corresponding to band
+
+        """
+
+        return self.mean_wavelength[band[0]]
+
+    @ staticmethod
     def plotLC(table, time_display, airmass=1.2):
         """ Light curve plot using sncosmo methods
 
@@ -281,13 +305,15 @@ class SN_Object:
                   # x0=x0,
                   x1=x1)
         """
-        print('tests',isinstance(table, np.ndarray),isinstance(table,Table),isinstance(table,dict))
+        print('tests',isinstance(table, np.ndarray),
+              isinstance(table,Table),isinstance(table,dict))
         array_tab = np.asarray(table)
         print(array_tab.dtype)
         colnames = array_tab.dtype.names
         # Create mapping from lowercased column names to originals
-        lower_to_orig = dict([(colname.lower(), colname) for colname in colnames])
-        
+        lower_to_orig = dict([(colname.lower(), colname)
+                             for colname in colnames])
+
         # Set of lowercase column names
         lower_colnames = set(lower_to_orig.keys())
         orig_colnames_to_use = []
@@ -298,7 +324,7 @@ class SN_Object:
                                  '(case independent)'.format(', '.join(aliases)))
             orig_colnames_to_use.append(lower_to_orig[i.pop()])
 
-        
+
         new_data = table[orig_colnames_to_use].copy()
         print('bbbb',orig_colnames_to_use,_photdata_aliases.keys(),new_data.dtype.names)
         new_data.dtype.names = _photdata_aliases.keys()

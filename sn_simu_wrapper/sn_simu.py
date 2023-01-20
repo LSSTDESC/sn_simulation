@@ -7,7 +7,6 @@ import multiprocessing
 from astropy.table import Table
 from astropy.cosmology import w0waCDM
 from importlib import import_module
-#from sn_tools.sn_telescope import Telescope
 from sn_simu_wrapper.sn_object import SN_Object
 from sn_tools.sn_utils import SimuParameters
 from sn_tools.sn_obs import season as seasoncalc
@@ -16,8 +15,398 @@ from sn_tools.sn_calcFast import GetReference, LoadGamma, LoadDust
 # import tracemalloc
 
 
-# class SNSimulation(BaseMetric):
-class SNSimulation:
+class SNSimu_Params:
+    def __init__(self, mjdCol,
+                 RACol, DecCol,
+                 filterCol, m5Col,
+                 exptimeCol,
+                 nightCol, obsidCol,
+                 nexpCol,
+                 vistimeCol, seeingEffCol,
+                 airmassCol,
+                 skyCol, moonCol,
+                 seeingGeomCol, config, x0_norm):
+        """
+        Class to load simulation parameters
+
+        Parameters
+        ----------
+        config : dict
+            dict of parameters
+
+        Returns
+        -------
+        None.
+
+        """
+        # data columns
+        self.mjdCol = mjdCol
+        self.m5Col = m5Col
+        self.filterCol = filterCol
+        self.RACol = RACol
+        self.DecCol = DecCol
+        self.exptimeCol = exptimeCol
+        self.seasonCol = 'season'
+        self.nightCol = nightCol
+        self.obsidCol = obsidCol
+        self.nexpCol = nexpCol
+        self.vistimeCol = vistimeCol
+        self.seeingEffCol = seeingEffCol
+        self.seeingGeomCol = seeingGeomCol
+        self.airmassCol = airmassCol
+        self.skyCol = skyCol
+        self.moonCol = moonCol
+
+        # load stacker
+        self.stacker = self.load_stacker(config['Observations']['coadd'])
+
+        # bands considered
+        self.filterNames = 'grizy'
+
+        # grab config file
+        self.config = config
+
+        # healpix nside and area
+        self.nside = config['Pixelisation']['nside']
+        self.area = hp.nside2pixarea(self.nside, degrees=True)
+
+        # prodid
+        self.prodid = config['ProductionIDSimu']
+
+        # load cosmology
+        self.cosmology = self.load_cosmology(config['Cosmology'])
+
+        # sn parameters
+        self.sn_parameters = config['SN']
+        dirFiles = None
+        if 'modelPar' in self.sn_parameters.keys():
+            dirFiles = self.sn_parameters['modelPar']['dirFile']
+
+        self.gen_par = SimuParameters(self.sn_parameters, config['Cosmology'],
+                                      mjdCol=self.mjdCol, area=self.area,
+                                      web_path=config['WebPathSimu'])
+
+        # simulator parameters
+        self.simulator_parameters = config['Simulator']
+
+        # this is for output
+
+        save_status = config['OutputSimu']['save']
+        self.save_status = save_status
+        self.outdir = config['OutputSimu']['directory']
+        self.throwaway_empty = config['OutputSimu']['throwempty']
+        self.throwafterdump = config['OutputSimu']['throwafterdump']
+        # number of procs to run simu here
+        self.nprocs = config['MultiprocessingSimu']['nproc']
+
+        # simulator parameter
+        self.simu_config = config['Simulator']
+
+        # reference files
+        self.reffiles = config['ReferenceFiles']
+
+        # load zp vs airmass
+        self.zp_airmass = self.load_zp(config['WebPathSimu'],
+                                       self.reffiles['zpDir'],
+                                       self.reffiles['zpFile'])
+
+        # LC display in "real-time"
+
+        self.display_lc = config['Display']['LC']['display']
+        self.time_display = config['Display']['LC']['time']
+
+        # fieldtype
+        self.field_type = config['Observations']['fieldtype']
+
+        # seasons
+        self.season = self.load_season(config['Observations']['season'])
+
+        self.type = 'simulation'
+
+        # get the x0_norm values to be put on a 2D(x1,color) griddata
+        self.x0_grid = x0_norm
+
+        # SALT2DIR
+        self.salt2Dir = self.sn_parameters['salt2Dir']
+
+        # hdf5 index
+        self.index_hdf5 = 100
+
+        # load reference LC if simulator is sn_fast
+        self.reference_lc = None
+        self.gamma = None
+        self.mag_to_flux = None
+        self.dustcorr = None
+        web_path = config['WebPathSimu']
+        self.error_model = self.simu_config['errorModel']
+
+        if 'sn_fast' in self.simu_config['name']:
+            self.reference_lc, self.dustcorr = self.load_for_snfast(web_path)
+        else:
+            gammas = LoadGamma(
+                'grizy',  self.reffiles['GammaDir'],
+                self.reffiles['GammaFile'],
+                web_path)
+
+            self.gamma = gammas.gamma
+            self.mag_to_flux = gammas.mag_to_flux
+
+        self.filterNames = ['g', 'r', 'i', 'z', 'y']
+
+        self.nprocdict = {}
+        self.simu_out = {}
+        self.lc_out = {}
+        self.SNID = {}
+        self.sn_meta = {}
+
+    def load_for_snfast(self, web_path):
+        """
+        Method to load reference files for sn_fast
+
+        Parameters
+        ----------
+        web_path : str
+              web dir where files are located.
+
+        Returns
+        -------
+        reference_lc : astropy table
+          lc reference files
+        dustcorr : astropy table
+          dust correction data.
+
+        """
+        n_to_load = 1
+        templateDir = self.reffiles['TemplateDir']
+        gammaDir = self.reffiles['GammaDir']
+        gammaFile = self.reffiles['GammaFile']
+        dustDir = self.reffiles['DustCorrDir']
+
+        # x1 and color are unique for this simulator
+        x1 = self.sn_parameters['x1']['min']
+        color = self.sn_parameters['color']['min']
+        bluecutoff = self.sn_parameters['blueCutoffg']
+        redcutoff = self.sn_parameters['redCutoffg']
+        ebvofMW = self.sn_parameters['ebvofMW']
+        sn_model = self.simulator_parameters['model']
+        sn_version = self.simulator_parameters['version']
+
+        cutoff = '{}_{}'.format(bluecutoff, redcutoff)
+        if self.error_model:
+            cutoff = 'error_model'
+        lcname = 'LC_{}_{}_{}_{}_{}_ebvofMW_{}_vstack.hdf5'.format(
+            x1, color, cutoff, sn_model, sn_version, ebvofMW)
+        dustFile = 'Dust_{}_{}_{}.hdf5'.format(
+            x1, color, cutoff)
+
+        print('loading reference files')
+        time_ref = time.time()
+
+        result_queue = multiprocessing.Queue()
+        p = multiprocessing.Process(name='Subprocess-0',
+                                    target=self.loadReference, args=(
+                                        templateDir, lcname, gammaDir,
+                                        gammaFile, web_path, 0,
+                                        result_queue))
+        p.start()
+
+        if np.abs(ebvofMW) > 1.e-5:
+            n_to_load = 2
+            print('loading dust files')
+            pb = multiprocessing.Process(
+                name='Subprocess-1', target=self.loadDust,
+                args=(dustDir, dustFile, web_path, 1, result_queue))
+            pb.start()
+
+        resultdict = {}
+        for j in range(n_to_load):
+            resultdict.update(result_queue.get())
+
+        for p in multiprocessing.active_children():
+            p.join()
+
+        reference_lc = resultdict[0]
+        dustcorr = None
+        if n_to_load > 1:
+            dustcorr = resultdict[1]
+
+        return reference_lc, dustcorr
+
+    def load_season(self, seasons):
+        """
+        Method to get the list of seasons
+
+        Parameters
+        ----------
+        seasons : str
+              list of seasons.
+
+        Returns
+        -------
+        season : list(int)
+           list of seasons to process
+
+        """
+        if '-' not in seasons or seasons[0] == '-':
+            season = list(map(int, seasons.split(',')))
+        else:
+            seasl = seasons.split('-')
+            seasmin = int(seasl[0])
+            seasmax = int(seasl[1])
+            season = list(range(seasmin, seasmax+1))
+
+        return season
+
+    def load_stacker(self, coadd=False):
+        """
+        Method to load stacker class
+
+        Parameters
+        ----------
+        coadd : bool, optional
+              to stack or not. The default is False.
+
+        Returns
+        -------
+        stacker : class
+              CoaddStacker class instance.
+
+        """
+
+        stacker = None
+
+        if coadd:
+            stacker = CoaddStacker(col_sum=[self.nexpCol, self.vistimeCol,
+                                            'visitExposureTime'],
+                                   col_mean=[self.mjdCol,
+                                             self.RACol, self.DecCol,
+                                             self.m5Col, 'pixRA',
+                                             'pixDec', 'healpixID',
+                                             'season', 'airmass'],
+                                   col_median=['sky', 'moonPhase'],
+                                   col_group=[
+                                       self.filterCol, self.nightCol],
+                                   col_coadd=[self.m5Col,
+                                              'visitExposureTime'])
+        return stacker
+
+    def load_cosmology(self, cosmo_par):
+        """
+        Method to load cosmology parameters
+
+        Parameters
+        ----------
+        cosmo_par : dict
+              cosmology parameters
+
+        Returns
+        -------
+        cosmology class
+
+        """
+
+        cosmology = w0waCDM(H0=cosmo_par['H0'],
+                            Om0=cosmo_par['Om'],
+                            Ode0=cosmo_par['Ol'],
+                            w0=cosmo_par['w0'], wa=cosmo_par['wa'])
+        return cosmology
+
+    def loadReference(self, templateDir, lcname, gammaDir,
+                      gammaFile, web_path, j=-1, output_q=None):
+        """
+        Method to load reference files (lc and gamma)
+
+        Parameters
+        ----------
+        templateDir : str
+              template dir.
+        lcname : str
+              lc reference name.
+        gammaDir : str
+              gamma loc dir.
+        gammaFile : str
+              gamma file name.
+        web_path : str
+              web path of original files.
+        j : int, optional
+              internal tag for multiproc. The default is -1.
+        output_q : multiprocessing queue, optional
+              queue for multiprocessing. The default is None.
+
+        Returns
+        -------
+        None or multiprocessing queue.
+
+        """
+
+        reference_lc = GetReference(templateDir,
+                                    lcname, gammaDir, gammaFile, web_path)
+
+        if output_q is not None:
+            output_q.put({j: reference_lc})
+        else:
+            return None
+
+    def loadDust(self, dustDir, dustFile, web_path, j=-1, output_q=None):
+        """
+        Method to load dust files
+
+        Parameters
+        ----------
+        dustDir : str
+              dust location dir.
+        dustFile : str
+              dust file name.
+        web_path : str
+              web path of original files.
+        j : int, optional
+              internal tag for multiproc. The default is -1.
+        output_q : multiprocessing queue, optional
+              queue for multiprocessing. The default is None.
+
+        Returns
+        -------
+        None or multiprocessing queue.
+
+        """
+
+        dustcorr = LoadDust(dustDir, dustFile, web_path).dustcorr
+
+        if output_q is not None:
+            output_q.put({j: dustcorr})
+        else:
+            return None
+
+    def load_zp(self, web_path, templateDir, fName):
+        """
+        Method to load zp_airmass results
+
+        Parameters
+        ----------
+        web_path : str
+              web path of original files.
+        templateDir : str
+              location dir
+        fName : str
+              file name
+
+        Returns
+        -------
+        res : record array
+              array with data.
+
+        """
+
+        from sn_tools.sn_io import check_get_file
+        check_get_file(web_path, templateDir, fName)
+        fullName = '{}/{}'.format(templateDir, fName)
+
+        res = np.load(fullName)
+
+        return res
+
+
+class SNSimulation(SNSimu_Params):
     """LC simulation wrapper class
 
     Parameters
@@ -50,9 +439,7 @@ class SNSimulation:
     coadd: bool, opt
      coaddition of obs (per band and per night) if set to True (default: True)
     config: dict
-     configuration dict for simulation (SN parameters, cosmology, telescope, ...)
-     ex: {'ProductionID': 'DD_baseline2018a_Cosmo', 'SN parameters': {'Id': 100, 'x1_color': {'type': 'fixed', 'min': [-2.0, 0.2], 'max': [0.2, 0.2], 'rate': 'JLA'}, 'z': {'type': 'uniform', 'min': 0.01, 'max': 0.9, 'step': 0.05, 'rate': 'Perrett'}, 'daymax': {'type': 'unique', 'step': 1}, 'min_rf_phase': -20.0, 'max_rf_phase': 60.0, 'absmag': -19.0906, 'band': 'bessellB', 'magsys': 'vega', 'differential_flux': False}, 'Cosmology': {'Model': 'w0waCDM', 'Omega_m': 0.3, 'Omega_l': 0.7, 'H0': 72.0, 'w0': -1.0, 'wa': 0.0}, 'Instrument': {
-         'name': 'LSST', 'throughput_dir': 'LSST_THROUGHPUTS_BASELINE', 'atmos_dir': 'THROUGHPUTS_DIR', 'airmass': 1.2, 'atmos': True, 'aerosol': False}, 'Observations': {'filename': '/home/philippe/LSST/DB_Files/kraken_2026.db', 'fieldtype': 'DD', 'coadd': True, 'season': 1}, 'Simulator': {'name': 'sn_simulator.sn_cosmo', 'model': 'salt2-extended', 'version': 1.0, 'Reference File': 'LC_Test_today.hdf5'}, 'Host Parameters': 'None', 'Display_LC': {'display': True, 'time': 1}, 'Output': {'directory': 'Output_Simu', 'save': True}, 'Multiprocessing': {'nproc': 1}, 'Metric': 'sn_mafsim.sn_maf_simulation', 'Pixelisation': {'nside': 64}}
+     configuration dict for simulation (SN parameters, cosmology, telescope,..)
     x0_norm: array of float
      grid ox (x1,color,x0) values
 
@@ -70,247 +457,17 @@ class SNSimulation:
                  skyCol='sky', moonCol='moonPhase',
                  seeingGeomCol='seeingFwhmGeom',
                  uniqueBlocks=False, config=None, x0_norm=None, **kwargs):
-
-        self.mjdCol = mjdCol
-        self.m5Col = m5Col
-        self.filterCol = filterCol
-        self.RACol = RACol
-        self.DecCol = DecCol
-        self.exptimeCol = exptimeCol
-        self.seasonCol = 'season'
-        self.nightCol = nightCol
-        self.obsidCol = obsidCol
-        self.nexpCol = nexpCol
-        self.vistimeCol = vistimeCol
-        self.seeingEffCol = seeingEffCol
-        self.seeingGeomCol = seeingGeomCol
-        self.airmassCol = airmassCol
-        self.skyCol = skyCol
-        self.moonCol = moonCol
-
-        """
-        cols = [self.RACol, self.DecCol, self.nightCol, self.m5Col, self.filterCol, self.mjdCol, self.obsidCol,
-                self.nexpCol, self.vistimeCol, self.exptimeCol, self.seeingEffCol, self.seeingGeomCol, self.nightCol,
-                self.airmassCol, self.moonCol]
-        """
-        # self.airmassCol, self.skyCol, self.moonCol]
-        self.stacker = None
-
-        coadd = config['Observations']['coadd']
-
-        if coadd:
-
-            self.stacker = CoaddStacker(col_sum=[self.nexpCol, self.vistimeCol,
-                                                 'visitExposureTime'],
-                                        col_mean=[self.mjdCol,
-                                                  self.RACol, self.DecCol,
-                                                  self.m5Col, 'pixRA',
-                                                  'pixDec', 'healpixID',
-                                                  'season', 'airmass'],
-                                        col_median=['sky', 'moonPhase'],
-                                        col_group=[
-                                            self.filterCol, self.nightCol],
-                                        col_coadd=[self.m5Col,
-                                                   'visitExposureTime'])
-        # super(SNSimulation, self).__init__(
-        #    col=cols, metricName=metricName, **kwargs)
-
-        # bands considered
-        self.filterNames = 'grizy'
-
-        # grab config file
-        self.config = config
-
-        # healpix nside and area
-        self.nside = config['Pixelisation']['nside']
-        self.area = hp.nside2pixarea(self.nside, degrees=True)
-
-        # prodid
-        self.prodid = config['ProductionIDSimu']
-
-        # load cosmology
-        cosmo_par = config['Cosmology']
-        self.cosmology = w0waCDM(H0=cosmo_par['H0'],
-                                 Om0=cosmo_par['Om'],
-                                 Ode0=cosmo_par['Ol'],
-                                 w0=cosmo_par['w0'], wa=cosmo_par['wa'])
-
-        # load telescope
-        """
-        tel_par = config['InstrumentSimu']
-        self.telescope = Telescope(name=tel_par['name'],
-                                   throughput_dir=tel_par['throughputDir'],
-                                   atmos_dir=tel_par['atmosDir'],
-                                   atmos=tel_par['atmos'],
-                                   aerosol=tel_par['aerosol'],
-                                   airmass=tel_par['airmass'])
-        """
-        # sn parameters
-        self.sn_parameters = config['SN']
-        dirFiles = None
-        if 'modelPar' in self.sn_parameters.keys():
-            dirFiles = self.sn_parameters['modelPar']['dirFile']
-
-        self.gen_par = SimuParameters(self.sn_parameters, cosmo_par,
-                                      mjdCol=self.mjdCol, area=self.area,
-                                      web_path=config['WebPathSimu'])
-
-        # simulator parameters
-        self.simulator_parameters = config['Simulator']
-
-        # this is for output
-
-        save_status = config['OutputSimu']['save']
-        self.save_status = save_status
-        self.outdir = config['OutputSimu']['directory']
-        self.throwaway_empty = config['OutputSimu']['throwempty']
-        self.throwafterdump = config['OutputSimu']['throwafterdump']
-        # number of procs to run simu here
-        self.nprocs = config['MultiprocessingSimu']['nproc']
-
-        # if saving activated, prepare output dirs
-        """
-        if self.save_status:
-            self.prepareSave(outdir, prodid)
-        """
-        # simulator parameter
-        self.simu_config = config['Simulator']
-
-        # reference files
-        self.reffiles = config['ReferenceFiles']
-
-        # LC display in "real-time"
-        self.display_lc = config['Display']['LC']['display']
-        self.time_display = config['Display']['LC']['time']
-
-        # fieldtype, season
-        self.field_type = config['Observations']['fieldtype']
-        seasons = config['Observations']['season']
-
-        if '-' not in seasons or seasons[0] == '-':
-            self.season = list(map(int, seasons.split(',')))
-        else:
-            seasl = seasons.split('-')
-            seasmin = int(seasl[0])
-            seasmax = int(seasl[1])
-            self.season = list(range(seasmin, seasmax+1))
-
-        self.type = 'simulation'
-
-        # get the x0_norm values to be put on a 2D(x1,color) griddata
-        self.x0_grid = x0_norm
-
-        # SALT2DIR
-        self.salt2Dir = self.sn_parameters['salt2Dir']
-
-        # hdf5 index
-        self.index_hdf5 = 100
-
-        # load reference LC if simulator is sn_fast
-        self.reference_lc = None
-        self.gamma = None
-        self.mag_to_flux = None
-        self.dustcorr = None
-        web_path = config['WebPathSimu']
-        self.error_model = self.simu_config['errorModel']
-
-        if 'sn_fast' in self.simu_config['name']:
-            n_to_load = 1
-            templateDir = self.reffiles['TemplateDir']
-            gammaDir = self.reffiles['GammaDir']
-            gammaFile = self.reffiles['GammaFile']
-            dustDir = self.reffiles['DustCorrDir']
-
-            # x1 and color are unique for this simulator
-            x1 = self.sn_parameters['x1']['min']
-            color = self.sn_parameters['color']['min']
-            bluecutoff = self.sn_parameters['blueCutoffg']
-            redcutoff = self.sn_parameters['redCutoffg']
-            ebvofMW = self.sn_parameters['ebvofMW']
-            sn_model = self.simulator_parameters['model']
-            sn_version = self.simulator_parameters['version']
-            # Loading reference file
-            cutoff = '{}_{}'.format(bluecutoff, redcutoff)
-            if self.error_model:
-                cutoff = 'error_model'
-            lcname = 'LC_{}_{}_{}_{}_{}_ebvofMW_{}_vstack.hdf5'.format(
-                x1, color, cutoff, sn_model, sn_version, ebvofMW)
-            dustFile = 'Dust_{}_{}_{}.hdf5'.format(
-                x1, color, cutoff)
-
-            print('loading reference files')
-            time_ref = time.time()
-
-            result_queue = multiprocessing.Queue()
-            p = multiprocessing.Process(name='Subprocess-0', target=self.loadReference, args=(
-                templateDir, lcname, gammaDir, gammaFile, web_path, 0, result_queue))
-            p.start()
-
-            """
-            self.reference_lc = GetReference(templateDir,
-                                             lcname, gammaDir, gammaFile, web_path, self.telescope)
-            """
-            if np.abs(ebvofMW) > 1.e-5:
-                n_to_load = 2
-                print('loading dust files')
-                pb = multiprocessing.Process(
-                    name='Subprocess-1', target=self.loadDust, args=(dustDir, dustFile, web_path, 1, result_queue))
-                pb.start()
-
-            resultdict = {}
-            for j in range(n_to_load):
-                resultdict.update(result_queue.get())
-
-            for p in multiprocessing.active_children():
-                p.join()
-
-            self.reference_lc = resultdict[0]
-            if n_to_load > 1:
-                self.dustcorr = resultdict[1]
-
-            # self.dustcorr = LoadDust(dustDir, dustFile, web_path).dustcorr
-            print('Files loaded', time.time()-time_ref)
-        else:
-            gammas = LoadGamma(
-                'grizy',  self.reffiles['GammaDir'],
-                self.reffiles['GammaFile'],
-                web_path)
-
-            self.gamma = gammas.gamma
-            self.mag_to_flux = gammas.mag_to_flux
-
-        self.filterNames = ['g', 'r', 'i', 'z', 'y']
-        # this is deprecated
-        """
-        if self.error_model:
-            SALT2Dir = 'SALT2.Guy10_UV2IR'
-            check_get_dir(web_path,SALT2Dir,SALT2Dir)
-        """
-
-        self.nprocdict = {}
-        self.simu_out = {}
-        self.lc_out = {}
-        self.SNID = {}
-        self.sn_meta = {}
-
-    def loadReference(self, templateDir, lcname, gammaDir, gammaFile, web_path, j=-1, output_q=None):
-
-        reference_lc = GetReference(templateDir,
-                                    lcname, gammaDir, gammaFile, web_path)
-
-        if output_q is not None:
-            output_q.put({j: reference_lc})
-        else:
-            return None
-
-    def loadDust(self, dustDir, dustFile, web_path, j=-1, output_q=None):
-
-        dustcorr = LoadDust(dustDir, dustFile, web_path).dustcorr
-
-        if output_q is not None:
-            output_q.put({j: dustcorr})
-        else:
-            return None
+        super().__init__(mjdCol=mjdCol,
+                         RACol=RACol, DecCol=DecCol,
+                         filterCol=filterCol, m5Col=m5Col,
+                         exptimeCol=exptimeCol,
+                         nightCol=nightCol, obsidCol=obsidCol,
+                         nexpCol=nexpCol,
+                         vistimeCol=vistimeCol, seeingEffCol=seeingEffCol,
+                         airmassCol=airmassCol,
+                         skyCol=skyCol, moonCol=moonCol,
+                         seeingGeomCol=seeingGeomCol,
+                         config=config, x0_norm=x0_norm)
 
     def run(self, obs, slicePoint=None, imulti=0):
         """ LC simulations
@@ -335,7 +492,8 @@ class SNSimulation:
         if slicePoint is not None:
             import numpy.lib.recfunctions as rf
             healpixID = hp.ang2pix(
-                slicePoint['nside'], np.rad2deg(slicePoint['ra']), np.rad2deg(slicePoint['dec']), nest=True, lonlat=True)
+                slicePoint['nside'], np.rad2deg(slicePoint['ra']),
+                np.rad2deg(slicePoint['dec']), nest=True, lonlat=True)
             pixRA, pixDec = hp.pix2ang(
                 self.nside, healpixID, nest=True, lonlat=True)
             obs = rf.append_fields(obs, 'healpixID', [healpixID]*len(obs))
@@ -795,6 +953,7 @@ class SNSimulation:
                               simulator_par,
                               gen_params,
                               self.cosmology,
+                              self.zp_airmass,
                               SNID, self.area,
                               x0_grid=self.x0_grid,
                               salt2Dir=self.salt2Dir,
@@ -824,4 +983,5 @@ class SNSimulation:
                 if vals:
                     # print('metadata',vals)
                     Table(vals).write(
-                        self.simu_out[key], 'summary_{}'.format(isav), append=True, compression=True)
+                        self.simu_out[key], 'summary_{}'.format(isav),
+                        append=True, compression=True)

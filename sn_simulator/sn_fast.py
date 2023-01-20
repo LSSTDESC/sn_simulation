@@ -1,11 +1,9 @@
 import numpy as np
 from astropy.table import Table
 import time
-import pandas as pd
-from sn_tools.sn_calcFast import LCfast, srand
+from sn_tools.sn_calcFast import LCfast
 from sn_simu_wrapper.sn_object import SN_Object
 from sn_tools.sn_utils import SNTimer
-from sn_tools.sn_io import dustmaps
 from astropy.coordinates import SkyCoord
 from dustmaps.sfd import SFDQuery
 
@@ -23,14 +21,23 @@ class SN(SN_Object):
 
     """
 
-    def __init__(self, param, simu_param, reference_lc=None, gamma=None, mag_to_flux=None, dustcorr=None, snr_fluxsec=''):
-        super().__init__(param.name, param.sn_parameters, param.simulator_parameters,
+    def __init__(self, param, simu_param, reference_lc=None, dustcorr=None):
+        super().__init__(param.name,
+                         param.sn_parameters,
+                         param.simulator_parameters,
                          param.gen_parameters,
-                         param.cosmology, param.telescope, param.SNID, param.area, param.x0_grid,
+                         param.cosmology,
+                         param.zp_airmass,
+                         param.SNID,
+                         param.area,
+                         param.x0_grid,
                          param.salt2Dir,
-                         mjdCol=param.mjdCol, RACol=param.RACol, DecCol=param.DecCol,
-                         filterCol=param.filterCol, exptimeCol=param.exptimeCol,
-                         m5Col=param.m5Col, seasonCol=param.seasonCol)
+                         mjdCol=param.mjdCol, RACol=param.RACol,
+                         DecCol=param.DecCol,
+                         filterCol=param.filterCol,
+                         exptimeCol=param.exptimeCol,
+                         m5Col=param.m5Col,
+                         seasonCol=param.seasonCol)
 
         # x1 and color are unique for this simulator
         x1 = np.unique(self.sn_parameters['x1']).item()
@@ -47,8 +54,8 @@ class SN(SN_Object):
             fname, self.gammaFile, param.telescope)
         """
         self.reference_lc = reference_lc
-        self.gamma = gamma
-        self.mag_to_flux = mag_to_flux
+        # self.gamma = gamma
+        # self.mag_to_flux = mag_to_flux
         # blue and red cutoffs are taken into account in the reference files
 
         # SN parameters for Fisher matrix estimation
@@ -56,7 +63,9 @@ class SN(SN_Object):
 
         bluecutoff = self.sn_parameters['blueCutoffg']
         redcutoff = self.sn_parameters['redCutoffg']
-        self.lcFast = LCfast(reference_lc, dustcorr, x1, color,
+
+        self.lcFast = LCfast(reference_lc, dustcorr, self.zp_slope,
+                             self.zp_intercept, x1, color,
                              param.mjdCol, param.RACol, param.DecCol,
                              param.filterCol, param.exptimeCol,
                              param.m5Col, param.seasonCol,
@@ -102,22 +111,9 @@ class SN(SN_Object):
         dL = -1
         season_length = np.max(obs[self.mjdCol])-np.min(obs[self.mjdCol])
         # get ebvofMW from dust maps
-        ebvofMW = self.sn_parameters['ebvofMW']
-        
-        if np.abs(ebvofMW) > 1.e-5:
-            # in that case ebvofMW value is taken from a map
-            coords = SkyCoord(pixRA, pixDec, unit='deg')
-            try:
-                sfd = SFDQuery()
-            except Exception as err:
-                from dustmaps.config import config
-                config['data_dir'] = 'dustmaps'
-                import dustmaps.sfd
-                dustmaps.sfd.fetch()
+        ebvofMW = self.get_ebvofMW(
+            pixRA, pixDec, self.sn_parameters['ebvofMW'])
 
-            sfd = SFDQuery()
-            ebvofMW = sfd(coords)
-        
         # start timer
         ti = SNTimer(time.time())
         # Are there observations with the filters?
@@ -125,7 +121,8 @@ class SN(SN_Object):
                               np.array([b for b in 'grizy']))
 
         if len(obs[goodFilters]) == 0:
-            return [self.nosim(RA, Dec, pixRA, pixDec, pixID, season, season_length, ti, -1, ebvofMW)]
+            return [self.nosim(RA, Dec, pixRA, pixDec, pixID,
+                               season, season_length, ti, -1, ebvofMW)]
 
         tab_tot = self.lcFast(obs, ebvofMW, self.gen_parameters)
 
@@ -138,11 +135,14 @@ class SN(SN_Object):
         """
 
         # apply dust correction here
-        #tab_tot = self.dust_corrections(tab_tot, pixRA, pixDec)
+        # tab_tot = self.dust_corrections(tab_tot, pixRA, pixDec)
 
         ptime = ti.finish(time.time())['ptime'].item()
-        self.premeta.update(dict(zip(['RA', 'Dec', 'pixRA', 'pixDec', 'healpixID', 'dL', 'ptime', 'status', 'ebvofMW'],
-                                     [RA, Dec, pixRA, pixDec, pixID, dL, ptime, 1, ebvofMW])))
+        self.premeta.update(dict(zip(['RA', 'Dec', 'pixRA', 'pixDec',
+                                      'healpixID', 'dL', 'ptime',
+                                      'status', 'ebvofMW'],
+                                     [RA, Dec, pixRA, pixDec, pixID, dL,
+                                      ptime, 1, ebvofMW])))
 
         """
         ii = tab_tot['band'] == 'LSST::z'
@@ -158,13 +158,52 @@ class SN(SN_Object):
         if display:
             for table_lc in list_tables:
                 self.plotLC(table_lc['time', 'band',
-                                     'flux', 'fluxerr', 'zp', 'zpsys'], time_display)
+                                     'flux', 'fluxerr',
+                                     'zp', 'zpsys'], time_display)
 
         return list_tables
 
+    def get_ebvofMW(self, pixRA, pixDec, ebvofMW):
+        """
+        Method to get E(B-V) MW.
+
+        Parameters
+        ----------
+        pixRA : float
+            RA position.
+        pixDec : float
+            Dec position.
+        ebvofMW : float
+            E(B-V).
+
+        Returns
+        -------
+        ebvofMW : float
+            E(B-V).
+
+        """
+
+        if np.abs(ebvofMW) > 1.e-5:
+            # in that case ebvofMW value is taken from a map
+            coords = SkyCoord(pixRA, pixDec, unit='deg')
+            try:
+                sfd = SFDQuery()
+            except Exception as err:
+                print('dustmap not found', err)
+                from dustmaps.config import config
+                config['data_dir'] = 'dustmaps'
+                import dustmaps.sfd
+                dustmaps.sfd.fetch()
+
+            sfd = SFDQuery()
+            ebvofMW = sfd(coords)
+
+        return ebvofMW
+
     def transform(self, tab):
         """
-        Method to transform a pandas df to a set of astropytables with metadata
+        Method to transform a pandas df to a set of astropytables
+        with metadata
 
         Parameters
         ---------------
@@ -189,15 +228,16 @@ class SN(SN_Object):
 
         return tab_tot
 
-    def nosim(self, RA, Dec, pixRA, pixDec, healpixID, season, season_length, ti, status, ebvofMW):
+    def nosim(self, RA, Dec, pixRA, pixDec, healpixID, season,
+              season_length, ti, status, ebvofMW):
         """
         Method to construct an empty table when no simulation was not possible
 
         Parameters
         ---------------
-        ra: float
+        RA: float
           SN RA
-        dec: float
+        Dec: float
           SN Dec
         pixRA: float
           pixel RA
@@ -220,5 +260,6 @@ class SN(SN_Object):
         table_lc = Table()
         # set metadata
         table_lc.meta = self.metadata(
-            ra, dec, pix, area, season, season_length, ptime, snr_fluxsec, status, ebvofMW)
+            RA, Dec, pixRA, pixDec, season, season_length,
+            ptime, status, ebvofMW)
         return table_lc
