@@ -523,7 +523,8 @@ class SN(SN_Object):
 
         band_cosmo = '{}_cosmo'.format(self.filterCol)
         # lcdf[band_cosmo] = 'LSST::'+lcdf[self.filterCol]
-        lcdf[band_cosmo] = 'lsst::'+lcdf[self.filterCol]
+        #lcdf[band_cosmo] = 'lsst::'+lcdf[self.filterCol]
+        lcdf[band_cosmo] = 'lsst'+lcdf[self.filterCol]
         """
         coeff = dict(zip('ugrizy', [-0.47542596, -0.20838888, -0.12194391,
                                     -0.07404442, -0.05725837, -0.09556892]))
@@ -620,8 +621,8 @@ class SN(SN_Object):
             columns={self.mjdCol: 'time', self.filterCol: 'band',
                      self.m5Col: 'm5', self.exptimeCol: 'exptime'})
         lcdf['filter'] = lcdf['band']
-        lcdf['band'] = 'LSST::'+lcdf['band']
-
+        #lcdf['band'] = 'LSST::'+lcdf['band']
+        lcdf['band'] = 'lsst'+lcdf['band']
         # remove rows with mag_inf values
 
         idf = lcdf['mag'] < self.mag_inf
