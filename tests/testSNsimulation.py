@@ -1,7 +1,7 @@
+import pytest
 from builtins import zip
 import numpy as np
 import unittest
-import lsst.utils.tests
 import os
 from numpy.testing import assert_almost_equal, assert_equal
 import h5py
@@ -14,7 +14,23 @@ from sn_simu_wrapper.config_simulation import ConfigSimulation
 main_repo = 'https://me.lsst.eu/gris/DESC_SN_pipeline'
 m5_ref = dict(zip('ugrizy', [23.60, 24.83, 24.38, 23.92, 23.35, 22.44]))
 
+
 def getFile(refdir, fname):
+    """
+    Function to get file (web) named fname and located in refdir
+
+    Parameters
+    ----------
+    refdir : str
+        directory location of the file.
+    fname : str
+        file name.
+
+    Returns
+    -------
+    None.
+
+    """
     fullname = '{}/{}/{}'.format(main_repo, refdir, fname)
 
     # check whether the file is available; if not-> get it!
@@ -25,60 +41,53 @@ def getFile(refdir, fname):
 
 
 def getRefDir(dirname):
+    """
+    Function to grab a directory.
+
+    Parameters
+    ----------
+    dirname : str
+        directory name.
+
+    Returns
+    -------
+    None.
+
+    """
     fullname = '{}/{}'.format(main_repo, dirname)
 
     if not os.path.exists(dirname):
         print('wget path:', fullname)
-        cmd = 'wget --no-verbose --recursive {} --directory-prefix={} --no-clobber --no-parent -nH --cut-dirs=3 -R \'index.html*\''.format(
+        cmd = 'wget - -no-verbose - -recursive {} - -directory-prefix = {} \
+        --no-clobber - -no-parent - nH - -cut-dirs = 3 - R \'index.html*\''.format(
             fullname+'/', dirname)
         os.system(cmd)
 
-"""
-def getconfig(prodid,sn_type,sn_model,sn_model_version,
-              x1Type, x1min, x1max, x1step,
-              colorType, colormin, colormax, colorstep,
-              zType, zmin, zmax, zstep,
-              daymaxType, daymaxstep, diffflux,
-              fulldbName, fieldType, fcoadd, seasval,ebvofMW=0.0,bluecutoff=380.,redcutoff=800.,error_model=0,display=False,
-              simu='sn_cosmo', nside=64, nproc=1, outputDir='Output_Simu',config_orig='param_simulation_gen.yaml'):
 
-    prodid = prodid+'_'+simu
-    with open(config_orig, 'r') as file:
-            filedata = file.read()
-            filedata = filedata.replace('prodid', prodid)
-            filedata = filedata.replace('sn_type', sn_type)
-            filedata = filedata.replace('x1Type', x1Type)
-            filedata = filedata.replace('x1min', str(x1min))
-            filedata = filedata.replace('x1max', str(x1max))
-            filedata = filedata.replace('x1step', str(x1step))
-            filedata = filedata.replace('colorType', colorType)
-            filedata = filedata.replace('colormin', str(colormin))
-            filedata = filedata.replace('colormax', str(colormax))
-            filedata = filedata.replace('colorstep', str(colorstep))
-            filedata = filedata.replace('zmin', str(zmin))
-            filedata = filedata.replace('zmax', str(zmax))
-            filedata = filedata.replace('zstep', str(zstep))
-            filedata = filedata.replace('zType', zType)
-            filedata = filedata.replace('daymaxType', daymaxType)
-            filedata = filedata.replace('daymaxstep', str(daymaxstep))
-            filedata = filedata.replace('fcoadd', str(fcoadd))
-            filedata = filedata.replace('seasval', str(seasval))
-            filedata = filedata.replace('mysimu', simu)
-            filedata = filedata.replace('ebvofMWval', str(ebvofMW))
-            filedata = filedata.replace('bluecutoffval', str(bluecutoff))
-            filedata = filedata.replace('redcutoffval', str(redcutoff))
-            filedata = filedata.replace('errmod', str(error_model))
-            filedata = filedata.replace('sn_model', sn_model)
-            filedata = filedata.replace('sn_mod_version', sn_model_version)
-            filedata = filedata.replace('nnside', str(nside))
-            filedata = filedata.replace('nnproc', str(nproc))
-            filedata = filedata.replace('outputDir', outputDir)
-            filedata = filedata.replace('diffflux', str(diffflux))
-            filedata = filedata.replace('thedisp', str(display))
-            
-    return yaml.load(filedata, Loader=yaml.FullLoader)
-"""
-def Observations_band(day0=59000, daymin=59000, cadence=3., season_length=140., band='r'):
+def Observations_band(day0=59000, daymin=59000, cadence=3.,
+                      season_length=140., band='r'):
+    """
+    Function to generate observations per band
+
+    Parameters
+    ----------
+    day0 : float, optional
+        Min day for obs. The default is 59000.
+    daymin : float, optional
+        Min day for obs. The default is 59000.
+    cadence : float. optional
+        cadence of observation (in days). The default is 3..
+    season_length : float, optional
+        Season length (in days). The default is 140..
+    band : str, optional
+        filter for obs. The default is 'r'.
+
+    Returns
+    -------
+    data : array
+        array of obs.
+
+    """
     # Define fake data
     names = ['observationStartMJD', 'fieldRA', 'fieldDec',
              'fiveSigmaDepth', 'visitExposureTime', 'numExposures',
@@ -118,6 +127,24 @@ def Observations_band(day0=59000, daymin=59000, cadence=3., season_length=140., 
 
 
 def Observations_season(day0=59000, mjdmin=59000, cadence=3.):
+    """
+    Function to generate observations per season
+
+    Parameters
+    ----------
+    day0 : float, optional
+        First day of obs. The default is 59000.
+    mjdmin : float, optional
+        min day for obs. The default is 59000.
+    cadence : float, optional
+        cadence of observations (in days). The default is 3..
+
+    Returns
+    -------
+    data : array
+        array of observations.
+
+    """
     bands = 'grizy'
     Nvisits = dict(zip(bands, [10, 20, 20, 26, 20]))
     rat = 34./3600./24.
@@ -138,7 +165,8 @@ def Observations_season(day0=59000, mjdmin=59000, cadence=3.):
         for i in range(Nvisits[band]):
             mjd += shift
             dat = Observations_band(
-                daymin=mjd, season_length=season_length, cadence=cadence, band=band)
+                daymin=mjd, season_length=season_length,
+                cadence=cadence, band=band)
             if data is None:
                 data = dat
             else:
@@ -146,12 +174,31 @@ def Observations_season(day0=59000, mjdmin=59000, cadence=3.):
 
     return data
 
-def fake_data(day0 = 59000, diff_season = 280.,nseasons = 1):
+
+def fake_data(day0=59000, diff_season=280., nseasons=1):
+    """
+    Function to generate fake data
+
+    Parameters
+    ----------
+    day0 : float, optional
+        First day of obs. The default is 59000.
+    diff_season : float, optional
+        delta time (in days) between two seasons. The default is 280..
+    nseasons : int, optional
+        Number of seasons. The default is 1.
+
+    Returns
+    -------
+    data : array
+        array of obs.
+
+    """
 
     # Generate fake data
-   
+
     data = None
-    
+
     for val in np.arange(59000, 59000+nseasons*diff_season, diff_season):
         dat = Observations_season(day0, val)
         if data is None:
@@ -161,14 +208,31 @@ def fake_data(day0 = 59000, diff_season = 280.,nseasons = 1):
 
     return data
 
+
 def getSimu(config_name):
-    
+    """
+    Function to perform simulations
+
+    Parameters
+    ----------
+    config_name : yaml file
+        Simulation parameters.
+
+    Returns
+    -------
+    simu : class instance
+        instance of SNSimulation.
+    conf : dict
+        suimulation parameters.
+
+    """
+
     # get the config file from these
     ffi = open(config_name)
-    conf =yaml.load(ffi, Loader=yaml.FullLoader)
+    conf = yaml.load(ffi, Loader=yaml.FullLoader)
     ffi.close()
-    
-    #print('conf',conf)
+
+    # print('conf',conf)
     absMag = conf['SN']['absmag']
     x0normFile = 'reference_files/X0_norm_{}.npy'.format(absMag)
 
@@ -177,8 +241,6 @@ def getSimu(config_name):
         check_get_file(conf['WebPathSimu'], 'reference_files',
                        'X0_norm_{}.npy'.format(absMag))
     x0_norm = np.load(x0normFile)
-    
-    area = 9.6  # survey area (deg2)
 
     simu = SNSimulation(mjdCol='observationStartMJD',
                         filterCol='filter',
@@ -186,33 +248,61 @@ def getSimu(config_name):
                         exptimeCol='visitExposureTime',
                         config=conf, x0_norm=x0_norm)
 
-    return simu,conf
+    return simu, conf
+
 
 def dump(fname, thedict):
+    """
+    Function to dump a dict in a yaml file.
 
-    #with open(fname, 'w') as ffile:
-    ffile = open(fname,'w')
+    Parameters
+    ----------
+    fname : str
+        output file name.
+    thedict : dict
+        dict to dum in the yaml file.
+
+    Returns
+    -------
+    None.
+
+    """
+
+    # with open(fname, 'w') as ffile:
+    ffile = open(fname, 'w')
     documents = yaml.dump(thedict, ffile)
     ffile.close()
-    
-def testSimu(data,config_name):
-    
-    simu,conf = getSimu(config_name)
-    name_config = config_name.split('/')[-1].split('.')[0]
+
+
+def simulation(data, config_name):
+    """
+    Functio to perform LC simulations
+
+    Parameters
+    ----------
+    data : array
+        observations used to simulate LCs.
+    config_name : str
+        yaml config name.
+
+    Returns
+    -------
+    None.
+
+    """
+
+    simu, conf = getSimu(config_name)
+
     # now simulate LC on this data
 
     simu.run(data)
-    
-    # save metadata
-    
-    simu.save_metadata()
-    
-    # check what we have inside the data
 
-    simu_name = '{}/Simu_{}_1.hdf5'.format(
-        conf['OutputSimu']['directory'], conf['ProductionIDSimu'])
-    lc_name = '{}/LC_{}_1.hdf5'.format(
-        conf['OutputSimu']['directory'], conf['ProductionIDSimu'])
+    # save metadata
+
+    simu.save_metadata()
+
+
+def gimeSimu(simu_name):
 
     f = h5py.File(simu_name, 'r')
     # reading the simu file
@@ -220,95 +310,237 @@ def testSimu(data,config_name):
     for i, key in enumerate(f.keys()):
         simul = vstack([simul, Table.read(simu_name, path=key)])
 
-    # first check on simulation parameters
-        
+    return simul
+
+
+def gimerefSimu(config_name):
+    """
+    Functio to get reference simu params
+
+    Parameters
+    ----------
+    config_name : str
+        config file name.
+
+    Returns
+    -------
+    tab_simu_ref : astropy table
+        Reference simulation parameters.
+
+    """
+
+    name_config = config_name.split('/')[-1].split('.')[0]
+
     ref_simul = 'data_tests/ref_simu_{}.hdf5'.format(name_config)
-
-    if not os.path.exists(ref_simul):
-        simul.write(ref_simul,'simu_parameters', append=True, compression=True)
-
+    print('alors:::', ref_simul)
     # load reference parameters
-    tab_simu_ref = Table.read(ref_simul,path='simu_parameters')
+    tab_simu_ref = Table.read(ref_simul, path='simu_parameters')
     if 'ptime' in tab_simu_ref.columns:
         tab_simu_ref.remove_column('ptime')
 
-   
-    for key in tab_simu_ref.columns:
-        if key not in ['index_hdf5', 'fieldname', 'snr_fluxsec_meth','sn_type','sn_model','sn_version']:
-            assert(np.isclose(tab_simu_ref[key].tolist(), simul[key].tolist()).all())
-        else:
-            assert((tab_simu_ref[key]== simul[key]).all())
+    return tab_simu_ref
 
-    # now grab LC
 
-    vars = ['snr_m5', 'flux_e_sec', 'mag',
-            'exptime', 'magerr', 'band', 'phase']
+def simuName(conf):
+    """
+    get the name of the simu parameter file
 
-    for simu in simul:
+    Parameters
+    ----------
+    conf : dict
+        simu parameters.
+
+    Returns
+    -------
+    simu_name : str
+        simu file name.
+
+    """
+
+    simu_name = '{}/Simu_{}_1.hdf5'.format(
+        conf['OutputSimu']['directory'], conf['ProductionIDSimu'])
+
+    return simu_name
+
+
+def lcName(conf):
+    """
+    get the name of the lc file
+
+    Parameters
+    ----------
+    conf : dict
+        simu params.
+
+    Returns
+    -------
+    lc_name : astropy table
+        light curve points
+
+    """
+
+    lc_name = '{}/LC_{}_1.hdf5'.format(
+        conf['OutputSimu']['directory'], conf['ProductionIDSimu'])
+
+    return lc_name
+
+
+def conftest(data, config, fname,
+             cols_simpars=['sn_model', 'sn_version', 'daymax',
+                           'z', 'ebvofMW', 'x0', 'x1', 'color'],
+             cols_lc=['snr_m5', 'flux', 'mag',
+                      'exptime', 'magerr', 'band', 'phase']):
+    """
+    Function to perform unit tests
+
+    Parameters
+    ----------
+    data : array
+        observations used in simulations.
+    config : dict
+        simu parameters.
+    fname : str
+        yaml output file name.
+    cols_simpars : list(str), optional
+        list of columns for comparison of simu params.
+        The default is ['sn_model', 'sn_version', 'daymax',
+                        'z', 'ebvofMW', 'x0', 'x1', 'color'].
+    cols_lc : list(str), optional
+        list of columns for LC points comparison.
+        The default is ['snr_m5', 'flux', 'mag',
+                        'exptime', 'magerr', 'band', 'phase'].
+
+    Returns
+    -------
+    None.
+
+    """
+
+    dump(fname, config)
+    name_config = fname.split('/')[-1].split('.')[0]
+
+    #####################
+    #  Simu parameters  #
+    #####################
+
+    # load simu data
+    simulation(data, fname)
+    simu_name = simuName(config)
+    simu_data = gimeSimu(simu_name)
+    print('kkk', simu_data)
+    ref_simul = 'data_tests/ref_simu_{}.hdf5'.format(name_config)
+
+    if not os.path.exists(ref_simul):
+        simu_data.write(ref_simul, 'simu_parameters',
+                        append=True, compression=True)
+
+    refSimu = gimerefSimu(fname)
+
+    # check simu parameters here
+    @ pytest.mark.parametrize("simu_data,expected", refSimu)
+    def testsimu_data(simu_data, expected):
+        print('ccol', expected.columns)
+        print(simu_data['n_lc_points'], expected['n_lc_points'])
+        print(type(simu_data), type(expected))
+        for key in cols_simpars:
+            if key not in ['index_hdf5', 'fieldname', 'snr_fluxsec_meth',
+                           'sn_type', 'sn_model', 'sn_version', 'SNID']:
+                assert(np.isclose(
+                    expected[key].tolist(), simu_data[key].tolist()).all())
+            else:
+                assert((expected[key] == simu_data[key]).all())
+    testsimu_data(simu_data, refSimu)
+
+    ####################
+    #    LC data       #
+    ####################
+
+    lc_name = lcName(config)
+
+    for simu in simu_data:
         lc = Table.read(lc_name, path='lc_{}'.format(simu['index_hdf5']))
         idx = lc['snr_m5'] >= 5.
-        lc = lc[idx][:20]
+        lc = lc[idx][: 20]
         break
-  
-    ref_lc =  'data_tests/ref_lc_{}.hdf5'.format(name_config)
+
+    ref_lc = 'data_tests/ref_lc_{}.hdf5'.format(name_config)
     if not os.path.exists(ref_lc):
-        lc.write(ref_lc,'lc_points', append=True, compression=True)
+        lc.write(ref_lc, 'lc_points', append=True, compression=True)
 
     # load lc reference points
-    tab_lc_ref = Table.read(ref_lc,path='lc_points')
-    if 'index' in tab_lc_ref.columns:
-         tab_lc_ref.remove_column('index')
+    tab_lc_ref = Table.read(ref_lc, path='lc_points')
 
-    for key in tab_lc_ref.columns:
-        if key not in ['band','filter_cosmo','zpsys']:
-            assert(np.isclose(tab_lc_ref[key].tolist(), lc[key].tolist()).all())
-        else:
-            assert(set(tab_lc_ref[key].tolist()) == set(lc[key].tolist()))
+    if 'index' in tab_lc_ref.columns:
+        tab_lc_ref.remove_column('index')
+
+    # check lc data here
+
+    @ pytest.mark.parametrize("lc_data,expected", tab_lc_ref)
+    def testsimu_lc(lc_data, expected):
+
+        for key in cols_lc:
+            if key not in ['band', 'filter_cosmo', 'zpsys']:
+                assert(np.isclose(
+                    expected[key].tolist(), lc_data[key].tolist()).all())
+            else:
+                assert(set(expected[key].tolist())
+                       == set(lc_data[key].tolist()))
+    testsimu_lc(lc, tab_lc_ref)
 
 
 class TestSNsimulation(unittest.TestCase):
+    """
+    class to perform unit tests.
+    """
 
     def testSimuSNCosmo(self):
+        """
+        Method to test simulated data with sncosmo
+
+        Returns
+        -------
+        None.
+
+        """
 
         # fake data
         data = fake_data()
 
-        
         # test Ia simulation
         # test Ia - no error model
         # get configuration file
-        config = ConfigSimulation('Ia','salt2','../sn_simu_input/config_simulation.txt').conf_dict
+        config = ConfigSimulation(
+            'Ia', 'salt3', '../sn_simu_input/config_simulation.txt').conf_dict
         config['ProductionIDSimu'] = 'prod_Ia_sncosmo_errormodel_0'
-        config['Simulator']['errorModel']=0
+        config['Simulator']['errorModel'] = 0
         config['SN']['z']['type'] = 'uniform'
         config['SN']['z']['step'] = 0.1
         config['SN']['z']['min'] = 0.1
         config['SN']['z']['max'] = 1.0
+        config['SN']['NSNabsolute'] = 1
+        config['SN']['ebvofMW'] = 0.0
+        config['ReferenceFiles']['GammaFile'] = 'gamma_DDF.hdf5'
         """
         config['SN']['x1']['type'] = 'random'
         config['SN']['color']['type'] = 'random'
         config['Display']['LC']['display'] = 1
         """
         fname = 'config2.yaml'
-        dump(fname,config)
-        testSimu(data,fname)
+        conftest(data, config, fname)
 
+        print('running with error model')
         # test Ia - with error model
-        config['Simulator']['errorModel']=1
+        config['Simulator']['errorModel'] = 1
         config['ProductionIDSimu'] = 'prod_Ia_sncosmo_errormodel_1'
         fname = 'config1.yaml'
-        dump(fname,config)
-        testSimu(data,fname)
-        
+        conftest(data, config, fname)
 
-        
         # test non Ia - error_model=0
         config['ProductionIDSimu'] = 'prod_Ib_sncosmo_errormodel_0'
         error_model = 0
-        sn_type='SN_Ib'
+        sn_type = 'SN_Ib'
         sn_model = 'nugent-sn2p'
         sn_model_version = '1.2'
-        config = ConfigSimulation(sn_type,sn_model,'../sn_simu_input/config_simulation.txt').conf_dict
         config['Simulator']['model'] = sn_model
         config['Simulator']['version'] = sn_model_version
         config['SN']['type'] = sn_type
@@ -316,37 +548,49 @@ class TestSNsimulation(unittest.TestCase):
         config['SN']['z']['step'] = 0.1
         config['SN']['z']['min'] = 0.01
         config['SN']['z']['max'] = 1.0
+        config['Simulator']['errorModel'] = error_model
+
         # test Ib
         fname = 'config3.yaml'
-        dump(fname,config)
-        testSimu(data,fname)
-        
+        conftest(data, config, fname,
+                 cols_simpars=['sn_model', 'sn_version', 'daymax',
+                               'z', 'ebvofMW'])
 
     def testSimuSNFast(self):
+        """
+        Method to test SN fast simu output
+
+        Returns
+        -------
+        None.
+
+        """
 
         # fake data
         data = fake_data()
+        print('data', data)
 
-        config = ConfigSimulation('Ia','salt2','../sn_simu_input/config_simulation.txt').conf_dict
+        config = ConfigSimulation(
+            'Ia', 'salt2', '../sn_simu_input/config_simulation.txt').conf_dict
         config['ProductionIDSimu'] = 'prod_Ia_snfast_errormodel_0'
-        config['Simulator']['errorModel']=0
+        config['Simulator']['errorModel'] = 0
         config['SN']['z']['type'] = 'uniform'
         config['SN']['z']['step'] = 0.1
         config['SN']['z']['min'] = 0.1
         config['SN']['z']['max'] = 1.0
+        config['SN']['ebvofMW'] = 0.0
+        config['SN']['NSNabsolute'] = 1
 
         config['Simulator']['name'] = 'sn_simulator.sn_fast'
-        """
-        config['SN']['x1']['type'] = 'random'
-        config['SN']['color']['type'] = 'random'
-       
-        config['Display']['LC']['display'] = 1
-        """
+        config['ReferenceFiles']['GammaFile'] = 'gamma_DDF.hdf5'
+
+        print('ccc', config)
         fname = 'config4.yaml'
-        dump(fname,config)
-        testSimu(data,fname)
+        conftest(data, config, fname, cols_simpars=['season', 'daymax',
+                                                    'z', 'ebvofMW'],
+                 cols_lc=['snr_m5', 'flux', 'mag',
+                          'magerr', 'band', 'phase'])
 
 
 if __name__ == "__main__":
-    lsst.utils.tests.init()
     unittest.main(verbosity=5)
