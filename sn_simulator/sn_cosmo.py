@@ -539,10 +539,13 @@ class SN(SN_Object):
         lcdf['zp_intercept'] = np.array([*map(self.zp_intercept.get, lst)])
         lcdf['zp'] = lcdf['zp_slope']*lcdf['airmass']+lcdf['zp_intercept']
 
+        lcdf['zpsys'] = 'ab'
+
         lcdf['flux'] = self.SN.bandflux(
-            lcdf[band_cosmo], lcdf[self.mjdCol], zpsys='ab',
+            lcdf[band_cosmo], lcdf[self.mjdCol], zpsys=lcdf['zpsys'],
             zp=lcdf['zp'])
 
+        print('aaa', lcdf[['airmass', 'zp', self.filterCol, 'flux']])
         # estimate error model (if necessary)
         # print('error model',self.error_model)
         lcdf['fluxerr_model'] = 0.
@@ -612,7 +615,7 @@ class SN(SN_Object):
             lcdf['fluxerr_model']**2+lcdf['fluxerr_photo']**2)  # flux error
         lcdf['snr'] = lcdf['flux']/lcdf['fluxerr']  # snr
         lcdf['magerr'] = (2.5/np.log(10.))/lcdf['snr']  # mag error
-        lcdf['zpsys'] = 'ab'  # zpsys
+        # lcdf['zpsys'] = 'ab'  # zpsys
         lcdf['phase'] = (lcdf[self.mjdCol]-self.sn_parameters['daymax']
                          )/(1.+self.sn_parameters['z'])  # phase
 

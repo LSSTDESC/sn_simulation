@@ -191,9 +191,12 @@ class SNSimu_Params:
         sn_model = self.simulator_parameters['model']
         sn_version = self.simulator_parameters['version']
 
-        cutoff = '{}_{}'.format(bluecutoff, redcutoff)
+        #cutoff = '{}_{}'.format(bluecutoff, redcutoff)
+        cutoff = 'cutoff'
         if self.error_model:
             cutoff = 'error_model'
+        lcname = 'LC_{}_{}_{}_{}_{}_ebvofMW_{}_vstack.hdf5'.format(
+            x1, color, cutoff, sn_model, sn_version, ebvofMW)
         lcname = 'LC_{}_{}_{}_{}_{}_ebvofMW_{}_vstack.hdf5'.format(
             x1, color, cutoff, sn_model, sn_version, ebvofMW)
         dustFile = 'Dust_{}_{}_{}.hdf5'.format(
@@ -634,7 +637,8 @@ class SNSimulation(SNSimu_Params):
             os.remove(fileName)
 
     def simuSeason(self, obs, season, iproc):
-        """ Generate LC for a season (multiprocessing available) and all simu parameters
+        """ Generate LC for a season (multiprocessing available) 
+        and all simu parameters
 
         Parameters
         --------------
@@ -647,7 +651,7 @@ class SNSimulation(SNSimu_Params):
 
         """
 
-        gen_params = self.gen_par.Params(obs)
+        gen_params = self.gen_par.simuparams(obs)
 
         if gen_params is None:
             return

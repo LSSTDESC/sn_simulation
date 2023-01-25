@@ -547,7 +547,7 @@ class SimuWrapper:
 
         return np.load(x0normFile)
 
-    def __call__(self, obs, imulti=0):
+    def run(self, obs, imulti=0):
         """
         Method to run the metric
 
@@ -559,8 +559,13 @@ class SimuWrapper:
         """
 
         light_curves = self.metric.run(obs, imulti=imulti)
-        print('light curves', len(light_curves))
+        if light_curves is not None:
+            print('light curves', len(light_curves))
+        else:
+            print('no lc on output')
         return light_curves
+
+    __call__ = run
 
     def finish(self):
         """
