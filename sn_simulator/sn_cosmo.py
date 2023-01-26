@@ -522,18 +522,9 @@ class SN(SN_Object):
         lcdf = pd.DataFrame(np.copy(obs[outvals]))
 
         band_cosmo = '{}_cosmo'.format(self.filterCol)
-        # lcdf[band_cosmo] = 'LSST::'+lcdf[self.filterCol]
-        #lcdf[band_cosmo] = 'lsst::'+lcdf[self.filterCol]
         lcdf[band_cosmo] = 'lsst'+lcdf[self.filterCol]
-        """
-        coeff = dict(zip('ugrizy', [-0.47542596, -0.20838888, -0.12194391,
-                                    -0.07404442, -0.05725837, -0.09556892]))
-        zp = dict(zip('ugrizy', [27.37034271, 28.56481594, 28.26447884,
-                                 27.90263111, 27.47379902, 26.73071282]))
 
-        lst = lcdf[self.filterCol].tolist()
-        airmass = np.array(lcdf[self.airmassCol].tolist())
-        """
+        # zp variation vs airmass
         lst = lcdf[self.filterCol].tolist()
         lcdf['zp_slope'] = np.array([*map(self.zp_slope.get, lst)])
         lcdf['zp_intercept'] = np.array([*map(self.zp_intercept.get, lst)])
@@ -541,13 +532,20 @@ class SN(SN_Object):
 
         lcdf['zpsys'] = 'ab'
 
+        # get band flux
         lcdf['flux'] = self.SN.bandflux(
             lcdf[band_cosmo], lcdf[self.mjdCol], zpsys=lcdf['zpsys'],
             zp=lcdf['zp'])
 
-        print('aaa', lcdf[['airmass', 'zp', self.filterCol, 'flux']])
+        """
+        # flux in JY
+        lcdf['flux_old'] = self.SN.bandflux(
+            lcdf[band_cosmo], lcdf[self.mjdCol], zpsys='ab', zp=2.5*np.log10(3631))
+        lcdf['mag_old'] = -2.5 * np.log10(lcdf['flux_old'] / 3631.0)
+        """
+
         # estimate error model (if necessary)
-        # print('error model',self.error_model)
+
         lcdf['fluxerr_model'] = 0.
         if self.error_model and self.sn_type == 'SN_Ia':
             fluxcov_cosmo = self.SN.bandfluxcov(
@@ -555,61 +553,36 @@ class SN(SN_Object):
                 zp=2.5*np.log10(3631))
             lcdf['fluxerr_model'] = np.sqrt(np.diag(fluxcov_cosmo[1]))
 
-        # lcdf = lcdf[idx]
+        """
         lcdf.loc[lcdf.flux <= 0., 'fluxerr_photo'] = -1.
         lcdf.loc[lcdf.flux <= 0., 'fluxerr_model'] = -1.
         lcdf.loc[lcdf.flux <= 0., 'flux'] = 9999.
+        lcdf.loc[lcdf.flux_old <= 0., 'flux'] = 9999.
+        """
+        # positive flux only
+        idx = lcdf['flux'] > 0.
+        lcdf = lcdf[idx]
 
         if len(lcdf) == 0:
             return []
         # ti(time.time(), 'fluxes_b')
 
-        # magnitudes - integrated  fluxes are in Jy
+        # magnitudes - fluxes are in ADU/s
         lcdf['mag'] = -2.5 * np.log10(lcdf['flux'])+lcdf['zp']
-        idx = lcdf['mag'] > 0.
-        lcdf = lcdf[idx]
 
         # if mag have inf values -> set to 50.
         lcdf['mag'] = lcdf['mag'].replace([np.inf, -np.inf], self.mag_inf)
 
+        # flux error
         flux5 = 10**(-0.4*(lcdf[self.m5Col]-lcdf['zp']))
         sigma_5 = flux5/5.
         shot_noise = np.sqrt(lcdf['flux']/lcdf[self.exptimeCol])
         lcdf['fluxerr'] = np.sqrt(sigma_5**2+shot_noise**2)
         lcdf['snr_m5'] = lcdf['flux']/lcdf['fluxerr']
 
-        """
-        # SNR and flux in pe.sec estimations
-
-        if self.snr_fluxsec == 'all' or self.snr_fluxsec == 'lsstsim':
-            lcdf = self.calcSNR_Flux(lcdf, transes)
-
-        if self.snr_fluxsec == 'all' or self.snr_fluxsec == 'interp':
-            gammaName = 'gamma'
-            fluxName = 'flux_e_sec'
-            snrName = 'snr_m5'
-
-            if gammaName in lcdf.columns:
-                gammaName += '_interp'
-                fluxName += '_interp'
-                snrName += '_interp'
-
-            lcdf = lcdf.groupby([self.filterCol]).apply(
-                lambda x: self.interp_gamma_flux(x, gammaName, fluxName)).reset_index()
-
-            lcdf[snrName] = 1./srand(
-                lcdf[gammaName].values, lcdf['mag'], lcdf[self.m5Col])
-
-        # ti(time.time(), 'estimate 1')
-
-        print('there man', lcdf[['snr_m5', 'snr_m5_adu']])
-        print(test)
-        """
         # complete the LC
         lcdf['magerr_phot'] = (2.5/np.log(10.))/lcdf['snr_m5']  # mag error
-        # lcdf['fluxerr'] = lcdf['flux']/lcdf['snr_m5'] # flux error-photometry
-        lcdf['fluxerr_photo'] = lcdf['flux'] / \
-            lcdf['snr_m5']  # flux error - photometry
+        lcdf['fluxerr_photo'] = lcdf['fluxerr']
 
         lcdf['fluxerr'] = np.sqrt(
             lcdf['fluxerr_model']**2+lcdf['fluxerr_photo']**2)  # flux error
@@ -623,9 +596,10 @@ class SN(SN_Object):
         lcdf = lcdf.rename(
             columns={self.mjdCol: 'time', self.filterCol: 'band',
                      self.m5Col: 'm5', self.exptimeCol: 'exptime'})
+
         lcdf['filter'] = lcdf['band']
-        #lcdf['band'] = 'LSST::'+lcdf['band']
-        lcdf['band'] = 'lsst'+lcdf['band']
+        lcdf['band'] = lcdf[band_cosmo]
+
         # remove rows with mag_inf values
 
         idf = lcdf['mag'] < self.mag_inf
@@ -642,13 +616,17 @@ class SN(SN_Object):
 
         lcdf['lambdabar'] = np.apply_along_axis(self.lambdabar, 1, filters)
 
-        # print('fluxb',lcdf[['flux','fluxerr','fluxerr_photo','snr_m5']])
         if len(lcdf) == 0:
             return [self.nosim(ra, dec, pix, area, season, season_length,
                                ti, -1, ebvofMW)]
 
         # get the processing time
         ptime = ti.finish(time.time())['ptime'].item()
+
+        """
+        print('kkkkk', lcdf[['mag', 'mag_old', 'flux',
+               'flux_old', 'snr_m5', 'm5', 'band', 'filter']], len(lcdf))
+        """
 
         # transform pandas df to astropy Table
         table_lc = Table.from_pandas(lcdf)

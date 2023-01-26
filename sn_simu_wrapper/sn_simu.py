@@ -1,5 +1,4 @@
 import numpy as np
-from sn_stackers.coadd_stacker import CoaddStacker
 import healpy as hp
 import os
 import time
@@ -11,6 +10,7 @@ from sn_simu_wrapper.sn_object import SN_Object
 from sn_tools.sn_utils import SimuParameters
 from sn_tools.sn_obs import season as seasoncalc
 from sn_tools.sn_calcFast import GetReference, LoadGamma, LoadDust
+from sn_tools.sn_stacker import CoaddStacker
 
 # import tracemalloc
 
@@ -78,10 +78,12 @@ class SNSimu_Params:
 
         # sn parameters
         self.sn_parameters = config['SN']
+
+        """
         dirFiles = None
         if 'modelPar' in self.sn_parameters.keys():
             dirFiles = self.sn_parameters['modelPar']['dirFile']
-
+        """
         self.gen_par = SimuParameters(self.sn_parameters, config['Cosmology'],
                                       mjdCol=self.mjdCol, area=self.area,
                                       web_path=config['WebPathSimu'])
@@ -185,13 +187,10 @@ class SNSimu_Params:
         # x1 and color are unique for this simulator
         x1 = self.sn_parameters['x1']['min']
         color = self.sn_parameters['color']['min']
-        bluecutoff = self.sn_parameters['blueCutoffg']
-        redcutoff = self.sn_parameters['redCutoffg']
         ebvofMW = self.sn_parameters['ebvofMW']
         sn_model = self.simulator_parameters['model']
         sn_version = self.simulator_parameters['version']
 
-        #cutoff = '{}_{}'.format(bluecutoff, redcutoff)
         cutoff = 'cutoff'
         if self.error_model:
             cutoff = 'error_model'
@@ -637,7 +636,7 @@ class SNSimulation(SNSimu_Params):
             os.remove(fileName)
 
     def simuSeason(self, obs, season, iproc):
-        """ Generate LC for a season (multiprocessing available) 
+        """ Generate LC for a season (multiprocessing available)
         and all simu parameters
 
         Parameters
@@ -694,8 +693,10 @@ class SNSimulation(SNSimu_Params):
 
             ida = batch[i]
             idb = batch[i+1]
-            p = multiprocessing.Process(name='Subprocess', target=self.simuLoop, args=(
-                obs, season, gen_params[ida:idb], iproc, i, result_queue))
+            p = multiprocessing.Process(name='Subprocess',
+                                        target=self.simuLoop, args=(
+                                            obs, season, gen_params[ida:idb],
+                                            iproc, i, result_queue))
             p.start()
 
         resultdict = {}
