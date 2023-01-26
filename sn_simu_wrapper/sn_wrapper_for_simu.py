@@ -214,6 +214,7 @@ class FitWrapper:
         None.
 
         """
+        """
         from astropy.table import Table, vstack
         res = Table()
         for lc in lc_list:
@@ -223,6 +224,48 @@ class FitWrapper:
                 res = vstack([res, resfit])
 
         return res
+        """
+        from sn_tools.sn_utils import multiproc
+        params = {}
+
+        res = multiproc(lc_list, params, self.fit_lcs, self.nproc)
+
+        return res
+
+    def fit_lcs(self, lc_list, params, j=-1, output_q=None):
+        """
+        Method to fit LCs
+
+        Parameters
+        ----------
+        lc_list : list(astropy table)
+            light-curves to fit.
+        params : dict
+            parameters.
+        j : int, optional
+            Tag for multiprocessing. The default is 0.
+        output_q : multiprocessing queue, optional
+            queue managing multiprocessing run. The default is None.
+
+        Returns
+        -------
+        astropytable
+            Result of the fit.
+
+        """
+
+        from astropy.table import Table, vstack
+        res = Table()
+        for lc in lc_list:
+            lc.convert_bytestring_to_unicode()
+            resfit = self.fit(lc)
+            if resfit is not None:
+                res = vstack([res, resfit])
+
+        if output_q is not None:
+            return output_q.put({j: res})
+        else:
+            return res
 
 
 class InfoWrapper:
