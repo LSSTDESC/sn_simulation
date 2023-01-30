@@ -342,6 +342,20 @@ class InfoWrapper:
                     lc_sel, vals[0], vals[1], vals[2], vals[3])
 
             resdict['selected'] = self.select(resdict)
+            # add snr per band
+            SNRtot = 0.
+            for b in 'ugrizy':
+                idx = lc_sel['band'] == 'lsst{}'.format(b)
+                sel = lc_sel[idx]
+                SNR = 0.
+                if len(sel) > 0:
+                    SNR = np.sum(sel['snr_m5']**2)
+                    SNRtot += SNR
+                resdict['SNR_{}'.format(b)] = np.sqrt(SNR)
+
+            resdict['SNR'] = SNRtot
+
+            # update meta data
             lc.meta.update(resdict)
             lc_list.append(lc)
 

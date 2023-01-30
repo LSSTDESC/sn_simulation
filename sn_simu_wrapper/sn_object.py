@@ -267,26 +267,6 @@ class SN_Object:
             ('zpsys', set(['zpsys', 'zpmagsys', 'magsys']))
         ])
         """
-        """
-        from sn_tools.sn_telescope import Telescope
-        telescope = Telescope(airmass=airmass)
-        for band in 'grizy':
-            name_filter = prefix+band
-            if telescope.airmass > 0:
-                bandpass = sncosmo.Bandpass(
-                    telescope.atmosphere[band].wavelen,
-                    telescope.atmosphere[band].sb,
-                    name=name_filter,
-                    wave_unit=u.nm)
-            else:
-                bandpass = sncosmo.Bandpass(
-                    telescope.system[band].wavelen,
-                    telescope.system[band].sb,
-                    name=name_filter,
-                    wave_unit=u.nm)
-            # print('registering',name_filter)
-            sncosmo.registry.register(bandpass, force=True)
-        """
         z = table.meta['z']
         if 'x1' in table.meta.keys():
             x1 = table.meta['x1']
