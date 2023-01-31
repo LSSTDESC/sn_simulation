@@ -65,7 +65,8 @@ class SN(SN_Object):
         redcutoff = self.sn_parameters['redCutoffg']
 
         self.lcFast = LCfast(reference_lc, dustcorr, self.zp_slope,
-                             self.zp_intercept, x1, color,
+                             self.zp_intercept, self.mean_wavelength,
+                             x1, color,
                              param.mjdCol, param.RACol, param.DecCol,
                              param.filterCol, param.exptimeCol,
                              param.m5Col, param.seasonCol,

@@ -9,7 +9,7 @@ from importlib import import_module
 from sn_simu_wrapper.sn_object import SN_Object
 from sn_tools.sn_utils import SimuParameters
 from sn_tools.sn_obs import season as seasoncalc
-from sn_tools.sn_calcFast import GetReference, LoadGamma, LoadDust
+from sn_tools.sn_calcFast import GetReference, LoadDust
 from sn_tools.sn_stacker import CoaddStacker
 
 # import tracemalloc
@@ -136,23 +136,23 @@ class SNSimu_Params:
 
         # load reference LC if simulator is sn_fast
         self.reference_lc = None
-        self.gamma = None
-        self.mag_to_flux = None
+        #self.gamma = None
+        #self.mag_to_flux = None
         self.dustcorr = None
         web_path = config['WebPathSimu']
         self.error_model = self.simu_config['errorModel']
 
         if 'sn_fast' in self.simu_config['name']:
             self.reference_lc, self.dustcorr = self.load_for_snfast(web_path)
+        """
         else:
             gammas = LoadGamma(
                 'grizy',  self.reffiles['GammaDir'],
                 self.reffiles['GammaFile'],
                 web_path)
-
             self.gamma = gammas.gamma
             self.mag_to_flux = gammas.mag_to_flux
-
+        """
         self.filterNames = ['g', 'r', 'i', 'z', 'y']
 
         self.nprocdict = {}
