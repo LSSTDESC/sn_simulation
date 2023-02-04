@@ -271,7 +271,7 @@ class FitWrapper:
 class InfoWrapper:
     def __init__(self, confDict):
         """
-        class to estimate global parameters of LC 
+        class to estimate global parameters of LC
         and add a selection flag according to selection values in dict
 
         Parameters
@@ -302,7 +302,7 @@ class InfoWrapper:
 
     def __call__(self, light_curves):
         """
-        Main method to estimate LC shepe params 
+        Main method to estimate LC shepe params
         and add a flag for selection
 
         Parameters
@@ -316,13 +316,25 @@ class InfoWrapper:
 
         """
 
-        getInfos = dict(zip(['n_epochs_bef', 'n_epochs_aft',
-                             'n_epochs_phase_minus_10',
-                             'n_epochs_phase_plus_20'],
-                            [('night', 'phase', operator.le, 0),
-                             ('night', 'phase', operator.gt, 0),
-                             ('night', 'phase', operator.le, -10.),
-                             ('night', 'phase', operator.gt, 20.)]))
+        conf_names = ['n_epochs_bef',
+                      'n_epochs_aft',
+                      'n_epochs_phase_minus_10',
+                      'n_epochs_phase_plus_20',
+                      'n_epochs_m10_p35',
+                      'n_epochs_m10_p5',
+                      'n_epochs_p5_p20',
+                      'n_bands_m8_p10']
+
+        configs = [('night', 'phase', operator.ge, -20, operator.le, 0),
+                   ('night', 'phase', operator.gt, 0, operator.le, 60),
+                   ('night', 'phase', operator.ge, -20, operator.le, -10.),
+                   ('night', 'phase', operator.gt, 20., operator.le, 60.),
+                   ('night', 'phase', operator.ge, -10., operator.le, 35.),
+                   ('night', 'phase', operator.ge, -10., operator.le, 5.),
+                   ('night', 'phase', operator.ge, 5., operator.le, 20.),
+                   ('band', 'phase', operator.ge, -8, operator.le, 10.)]
+
+        getInfos = dict(zip(conf_names, configs))
 
         lc_list = []
         for lc in light_curves:
@@ -338,8 +350,9 @@ class InfoWrapper:
                 lc_sel.remove_columns(['filter'])
             # self.plotLC(lc_sel)
             for key, vals in getInfos.items():
-                resdict[key] = self.nepochs(
-                    lc_sel, vals[0], vals[1], vals[2], vals[3])
+                resdict[key] = self.nepochs_phase(
+                    lc_sel, vals[0], vals[1], vals[2],
+                    vals[3], vals[4], vals[5])
 
             resdict['selected'] = self.select(resdict)
             # add snr per band
@@ -389,10 +402,11 @@ class InfoWrapper:
 
         return True
 
-    def nepochs(self, tab, colnum='night',
-                colsel='phase', op=operator.le, val=0):
+    def nepochs_phase(self, tab, colnum='night',
+                      colsel='phase', opa=operator.ge, vala=0,
+                      opb=operator.le, valb=10):
         """
-        Method to get the number of epochs
+        Method to get the number of epochs between two vals vala and valb
 
         Parameters
         ----------
@@ -403,10 +417,14 @@ class InfoWrapper:
             The default is 'night'.
         colsel : str, optional
             selection column name. The default is 'phase'.
-        op : operator, optional
-            operator to apply. The default is operator.le.
-        val : float, optional
+        opa : operator, optional
+            operator to apply. The default is operator.ge.
+        vala : float, optional
             selection value. The default is 0.
+        opb: operator, optional
+            operator to apply. The default is operator.le.
+        valb : float, optional
+            selection value. The default is 10.  
 
         Returns
         -------
@@ -414,7 +432,8 @@ class InfoWrapper:
             DESCRIPTION.
 
         """
-        idx = op(tab[colsel], val)
+        idx = opa(tab[colsel], vala)
+        idx &= opb(tab[colsel], valb)
         tt = tab[idx]
 
         return len(np.unique(tt[colnum]))
@@ -496,6 +515,8 @@ class SimInfoFitWrapper:
         light_curves = self.simu_wrapper(obs, imulti)
 
         # analyze these LC + flag for selection
+        if light_curves is None:
+            return None
         light_curves_ana = self.info_wrapper(light_curves)
         print('nlc analyzed', len(light_curves_ana))
 
