@@ -338,6 +338,8 @@ class InfoWrapper:
 
         lc_list = []
         for lc in light_curves:
+            if len(lc) == 0:
+                continue
             resdict = {}
             T0 = lc.meta['daymax']
             z = lc.meta['z']
@@ -636,7 +638,7 @@ class SimuWrapper:
 
         """
 
-        light_curves = self.metric.run(obs, imulti=imulti)
+        light_curves = self.metric.run_new(obs, imulti=imulti)
         if light_curves is not None:
             print('light curves', len(light_curves))
         else:
