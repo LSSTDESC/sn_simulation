@@ -484,28 +484,6 @@ class SNSimulation(SNSimu_Params):
         """
         iproc = 1
 
-        if 'iproc' in obs.dtype.names:
-            iproc = int(np.mean(obs['iproc']))
-
-        if iproc not in self.nprocdict:
-            self.nprocdict[iproc] = iproc
-            if self.save_status:
-                self.prepareSave(self.outdir, self.prodid, iproc)
-
-        # if 'healpixID' not in obs.dtype.names:
-        if slicePoint is not None:
-            import numpy.lib.recfunctions as rf
-            healpixID = hp.ang2pix(
-                slicePoint['nside'], np.rad2deg(slicePoint['ra']),
-                np.rad2deg(slicePoint['dec']), nest=True, lonlat=True)
-            pixRA, pixDec = hp.pix2ang(
-                self.nside, healpixID, nest=True, lonlat=True)
-            obs = rf.append_fields(obs, 'healpixID', [healpixID]*len(obs))
-            obs = rf.append_fields(obs, 'pixRA', [pixRA]*len(obs))
-            obs = rf.append_fields(obs, 'pixDec', [pixDec]*len(obs))
-
-            print('processing pixel', healpixID)
-
         # estimate seasons
         obs = seasoncalc(obs)
 
@@ -534,102 +512,15 @@ class SNSimulation(SNSimu_Params):
         tracemalloc.start()
         start = tracemalloc.take_snapshot()
         """
-        list_lc = []
 
-        for seas in seasons:
-            self.index_hdf5 += 10000*(seas-1)
-
-            idxa = obs[self.seasonCol] == seas
-            obs_season = obs[idxa]
-
-            if len(obs_season) >= 5:
-                print('obs in season', len(obs_season), seas, iproc)
-                simres = self.simuSeason(obs_season, seas, iproc)
-                if simres is not None:
-                    list_lc += simres
-
-            """
-            current = tracemalloc.take_snapshot()
-            stats = current.compare_to(start, 'filename')
-            for i, stat in enumerate(stats[:5], 1):
-                print("since_start", i, str(stat))
-            """
-        # save metadata
-        if self.save_status:
-            self.save_metadata(np.unique(obs['healpixID']).item())
-        # reset metadata dict
-        self.sn_meta[iproc] = {}
-
-        """
-        top_stats = snapshot.statistics('lineno')
-
-        print("[ Top 10 ]")
-        for stat in top_stats[:10]:
-            print(stat)
-        """
-        # print('End of simulation', time.time()-time_ref)
-
-        if list_lc:
-            return list_lc
-
-        return None
-
-    def run_new(self, obs, slicePoint=None, imulti=0):
-        """ LC simulations
-
-        Parameters
-        --------------
-        obs: array
-          array of observations
-
-        """
-        iproc = 1
-
-        # estimate seasons
-        obs = seasoncalc(obs)
-
-        # select filters
-        goodFilters = np.in1d(obs[self.filterCol], self.filterNames)
-        obs = obs[goodFilters]
-
-        # stack if necessary
-        if self.stacker is not None:
-            obs = self.stacker._run(obs)
-
-        self.fieldname = 'unknown'
-        self.fieldid = 0
-        try:
-            iter(self.season)
-        except TypeError:
-            self.season = [self.season]
-
-        if self.season == [-1]:
-            seasons = np.unique(obs[self.seasonCol])
-        else:
-            seasons = self.season
-
-        time_ref = time.time()
-        """
-        tracemalloc.start()
-        start = tracemalloc.take_snapshot()
-        """
-        list_lc = []
-
+        # get simulation parameters
         gen_params = self.get_all_gen_params(obs, seasons)
 
-        print(gen_params)
+        # LC simulation using multiprocessing
         par = {}
         par['obs'] = obs
 
-        multiproc(gen_params, par, self.simuLoop_new, self.nprocs)
-
-        print(test)
-
-        # save metadata
-        if self.save_status:
-            self.save_metadata(np.unique(obs['healpixID']).item())
-        # reset metadata dict
-        self.sn_meta[iproc] = {}
+        list_lc = multiproc(gen_params, par, self.simuLoop, self.nprocs)
 
         """
         top_stats = snapshot.statistics('lineno')
@@ -638,7 +529,6 @@ class SNSimulation(SNSimu_Params):
         for stat in top_stats[:10]:
             print(stat)
         """
-        # print('End of simulation', time.time()-time_ref)
 
         if list_lc:
             return list_lc
@@ -681,16 +571,85 @@ class SNSimulation(SNSimu_Params):
 
         return gp
 
-    def simuLoop_new(self, gen_params, params, j=0, output_q=None):
+    def simuLoop(self, gen_params, params, j=0, output_q=None):
+        """
+        Method to simulate LC (llop, multiproc)
+
+        Parameters
+        ----------
+        gen_params : array
+            simulation parameters.
+        params : dict
+            parameters to use.
+        j : int, optional
+            internal tag for multiproc. The default is 0.
+        output_q : multiprocessing queue, optional
+            container for output if multiproc used. The default is None.
+
+        Returns
+        -------
+        list(astropy table)
+            list of simulated LC.
+
+        """
 
         obs = params['obs']
         simu_out, lc_out = None, None
 
         if self.save_status:
-            simu_out, lc_out = self.prepareSave_new(
+            simu_out, lc_out = self.prepareSave(
                 self.outdir, self.prodid, j)
 
+        if 'sn_fast' not in self.simu_config['name']:
+            lc_list, lc_list_keep, tab_meta = \
+                self.loop_gen(obs, gen_params, j, lc_out)
+        else:
+            lc_list = self.simuLCs(obs, gen_params)
+            if not self.throwafterdump:
+                import copy
+                lc_list_keep = copy.deepcopy(lc_list)
+
+        if self.save_status:
+            if len(lc_list) > 0:
+                self.dump(lc_list, lc_out)
+                lc_list = []
+            tab_meta.meta['lc_dir'] = self.outdir
+            tab_meta.meta['lc_fileName'] = lc_out.split('/')[-1]
+            self.write_meta(tab_meta, simu_out)
+
+        if output_q is not None:
+            return output_q.put({j: lc_list_keep})
+        else:
+            return lc_list_keep
+
+    def loop_gen(self, obs, gen_params, j, lc_out):
+        """
+        Method to generate LCs by looping on genparams
+
+        Parameters
+        ----------
+        obs : array
+            data to process (observations).
+        gen_params : array
+            simulation parameters.
+        j : int
+            tag for SNID and output file.
+        lc_out : str
+            output file name.
+
+        Returns
+        -------
+        lc_list : TYPE
+            DESCRIPTION.
+        lc_list_keep : TYPE
+            DESCRIPTION.
+        tab_meta : TYPE
+            DESCRIPTION.
+
+        """
+
         lc_list = []
+        lc_list_keep = []
         isn = 0
         tab_meta = Table()
         for genpar in gen_params:
@@ -698,7 +657,7 @@ class SNSimulation(SNSimu_Params):
             season = genpar['season']
             idx = obs['season'] == season
             obs_season = obs[idx]
-            lc = self.simuLCs(obs_season, season, genpar)
+            lc = self.simuLCs(obs_season, genpar)
             if len(lc) == 0:
                 continue
             lc = lc[0]
@@ -706,27 +665,18 @@ class SNSimulation(SNSimu_Params):
             lc.meta['SNID'] = sn_id
             lc_list += [lc]
 
-            # every 20 SN: dump to file
+            if not self.throwafterdump:
+                lc_list_keep += [lc]
+            # every xx SN: dump to file
             if self.save_status:
-                if len(lc_list) >= 20:
-                    self.dump_new(lc_list, lc_out)
+                if len(lc_list) >= 100:
+                    self.dump(lc_list, lc_out)
                     lc_list = []
                 tab_meta = vstack([tab_meta, Table(rows=[lc.meta])])
 
-        print('finished', tab_meta)
+        return lc_list, lc_list_keep, tab_meta
 
-        if self.save_status:
-            if len(lc_list) > 0:
-                self.dump_new(lc_list, lc_out)
-                list_lc = []
-            self.write_meta(tab_meta, simu_out)
-
-        if output_q is not None:
-            return output_q.put({j: lc_list})
-        else:
-            return lc_list
-
-    def prepareSave_new(self, outdir, prodid, iproc):
+    def prepareSave(self, outdir, prodid, iproc):
         """ Prepare output directories for data
 
         Parameters
@@ -766,55 +716,6 @@ class SNSimulation(SNSimu_Params):
 
         return simu_out, lc_out
 
-    def prepareSave(self, outdir, prodid, iproc):
-        """ Prepare output directories for data
-
-        Parameters
-        --------------
-        outdir: str
-         output directory where to copy the data
-        prodid: str
-         production id(label for input files)
-        iproc: int
-          internal tag for multiprocessing
-
-        Returns
-        ----------
-        Two output files are open:
-        - astropy table with (SNID, RA, Dec, X1, Color, z) parameters
-        -> name: Simu_prodid.hdf5
-        - astropy tables with LC
-        -> name: LC_prodid.hdf5
-
-        """
-
-        if not os.path.exists(outdir):
-            print('Creating output directory', outdir)
-            os.makedirs(outdir)
-        # Two files  to be opened - tagged by iproc
-        # One containing a summary of the simulation:
-        # astropy table with (SNID,RA,Dec,X1,Color,z) parameters
-        # -> name: Simu_prodid.hdf5
-        # A second containing the Light curves (list of astropy tables)
-        # -> name : LC_prodid.hdf5
-
-        self.simu_out[iproc] = '{}/Simu_{}_{}.hdf5'.format(
-            outdir, prodid, iproc)
-        self.lc_out[iproc] = '{}/LC_{}_{}.hdf5'.format(outdir, prodid, iproc)
-        self.check_del(self.simu_out[iproc])
-        self.check_del(self.lc_out[iproc])
-        self.SNID[iproc] = 10**iproc
-        self.sn_meta[iproc] = {}
-
-        """
-        # and these files will be removed now (before processing)
-        # if they exist (to avoid confusions)
-        if os.path.exists(self.simu_out):
-            os.remove(self.simu_out)
-        if os.path.exists(self.lc_out):
-            os.remove(self.lc_out)
-        """
-
     def check_del(self, fileName):
         """
         Method to remove a file if already exist
@@ -828,7 +729,140 @@ class SNSimulation(SNSimu_Params):
         if os.path.exists(fileName):
             os.remove(fileName)
 
-    def simuSeason(self, obs, season, iproc):
+    def simuLCs(self, obs, gen_params):
+        """ Generate LC for one season and a set of simu parameters
+
+        Parameters
+        --------------
+        obs: array
+          array of observations
+        gen_params: dict
+           generation parameters
+
+        Returns
+        ----------
+        lc_table: astropy table
+          table with LC informations(flux, time, ...)
+        """
+        sn_par = self.sn_parameters.copy()
+        simulator_par = self.simulator_parameters.copy()
+
+        for name in ['z', 'x1', 'color', 'daymax']:
+            if name in gen_params.dtype.names:
+                sn_par[name] = gen_params[name]
+
+        SNID = sn_par['Id']
+        sn_object = SN_Object(self.simu_config['name'],
+                              sn_par,
+                              simulator_par,
+                              gen_params,
+                              self.cosmology,
+                              self.zp_airmass,
+                              SNID, self.area,
+                              x0_grid=self.x0_grid,
+                              salt2Dir=self.salt2Dir,
+                              mjdCol=self.mjdCol,
+                              RACol=self.RACol,
+                              DecCol=self.DecCol,
+                              filterCol=self.filterCol,
+                              exptimeCol=self.exptimeCol,
+                              m5Col=self.m5Col)
+
+        module = import_module(self.simu_config['name'])
+        simu = module.SN(sn_object, self.simu_config,
+                         self.reference_lc, self.dustcorr)
+        # simulation - this is supposed to be a list of astropytables
+        lc_table = simu(obs, self.display_lc, self.time_display)
+
+        del simu
+        del module
+        return lc_table
+
+    def dump(self, lc_list, lc_out):
+        """
+        Method to dum lc on file
+
+        Parameters
+        ----------
+        list_lc : list(astropytable)
+            data to dump.
+        lc_out : str
+            outputfile name.
+
+        Returns
+        -------
+        None.
+
+        """
+        for lc in lc_list:
+            astropy.io.misc.hdf5.write_table_hdf5(
+                lc, lc_out, path=lc.meta['SNID'],
+                append=True, serialize_meta=True)
+
+    def write_meta(self, meta, out_meta):
+        """
+        Method to dum lc on file
+
+        Parameters
+        ----------
+        list_lc : list(astropytable)
+            data to dump.
+        lc_out : str
+            outputfile name.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        astropy.io.misc.hdf5.write_table_hdf5(
+            meta, out_meta, path='meta',
+            overwrite=True, serialize_meta=True)
+
+    def setIndex(self, healpixID, x1, color, z, daymax,
+                 season, epsilon, SNID):
+        """
+        Method to set specific index
+
+        Parameters
+        ----------
+        healpixID : int
+            healpixID.
+        x1 : float
+            SN x1.
+        color : float
+            SN color.
+        z : float
+            SN redshift.
+        daymax : float
+            SN T0.
+        season : int
+            season num.
+        epsilon : float
+            epsilon for SN simu params.
+        SNID : str
+            SNID.
+
+        Returns
+        -------
+        index_hdf5 : str
+            resulting index.
+
+        """
+
+        index_hdf5 = '{}_{}_{}_{}_{}'.format(
+            healpixID, z, daymax, season, SNID)
+
+        if x1 != 'undef':
+            index_hdf5 += '_{}_{}'.format(x1, color)
+
+        # epsilon should be last!!
+        index_hdf5 += '_{}'.format(epsilon)
+
+        return index_hdf5
+
+    def simuSeason_deprecated(self, obs, season, iproc):
         """ Generate LC for a season(multiprocessing available)
         and all simu parameters
 
@@ -874,7 +908,7 @@ class SNSimulation(SNSimu_Params):
 
         return None
 
-    def multiSeason(self, obs, season, gen_params, iproc, npp):
+    def multiSeason_deprecated(self, obs, season, gen_params, iproc, npp):
 
         nlc = len(gen_params)
         batch = np.linspace(0, nlc, npp+1, dtype='int')
@@ -929,7 +963,7 @@ class SNSimulation(SNSimu_Params):
                         self.writeLC(SNID, lc, season)
         """
 
-    def complete_meta(self, lc, meta_lc):
+    def complete_meta_deprecated(self, lc, meta_lc):
 
         epsilon = 0.
         if 'epsilon_x0' in lc.meta.keys():
@@ -953,7 +987,7 @@ class SNSimulation(SNSimu_Params):
 
         return meta_lc
 
-    def writeLC(self, SNID, lc, season, iproc, meta_lc):
+    def writeLC_deprecated(self, SNID, lc, season, iproc, meta_lc):
         """
         Method to save lc on disk
         and to update metadata
@@ -1048,20 +1082,8 @@ class SNSimulation(SNSimu_Params):
             for key in metadict.keys():
                 meta_lc[key].extend([metadict[key]])
 
-    def setIndex(self, healpixID, x1, color, z, daymax, season, epsilon, SNID):
-
-        index_hdf5 = '{}_{}_{}_{}_{}'.format(
-            healpixID, z, daymax, season, SNID)
-
-        if x1 != 'undef':
-            index_hdf5 += '_{}_{}'.format(x1, color)
-
-        # epsilon should be last!!
-        index_hdf5 += '_{}'.format(epsilon)
-
-        return index_hdf5
-
-    def simuLoop(self, obs, season, gen_params, iproc, j=0, output_q=None):
+    def simuLoop_deprecated(self, obs, season, gen_params,
+                            iproc, j=0, output_q=None):
         """
         Method to simulate LC
 
@@ -1114,49 +1136,7 @@ class SNSimulation(SNSimu_Params):
         else:
             return (meta_lc, list_lc_keep)
 
-    def dump_new(self, lc_list, lc_out):
-        """
-        Method to dum lc on file
-
-        Parameters
-        ----------
-        list_lc : list(astropytable)
-            data to dump.
-        lc_out : str
-            outputfile name.
-
-        Returns
-        -------
-        None.
-
-        """
-        for lc in lc_list:
-            astropy.io.misc.hdf5.write_table_hdf5(
-                lc, lc_out, path=lc.meta['SNID'],
-                overwrite=True, serialize_meta=True)
-
-    def write_meta(self, meta, out_meta):
-        """
-        Method to dum lc on file
-
-        Parameters
-        ----------
-        list_lc : list(astropytable)
-            data to dump.
-        lc_out : str
-            outputfile name.
-
-        Returns
-        -------
-        None.
-
-        """
-
-        astropy.io.misc.hdf5.write_table_hdf5(
-            meta, out_meta, path='meta',
-            overwrite=True, serialize_meta=True)
-
-    def dump(self, list_lc, season, j, meta_lc):
+    def dump_deprecated(self, list_lc, season, j, meta_lc):
         """
         Method to write a list of lc on disk
 
@@ -1179,65 +1159,7 @@ class SNSimulation(SNSimu_Params):
                 self.SNID[j] += 1
                 self.writeLC(self.SNID[j], lc, season, j, meta_lc)
 
-    def simuLCs(self, obs, season, gen_params):
-        """ Generate LC for one season and a set of simu parameters
-
-        Parameters
-        --------------
-        obs: array
-          array of observations
-        season: int
-          season number
-        gen_params: dict
-           generation parameters
-           ex:
-        index_hdf5: int
-          SN index in hdf5 output file
-        output_q: dict
-          output for multiprocessing
-
-        Returns
-        ----------
-        lc_table: astropy table
-          table with LC informations(flux, time, ...)
-        metadata: dict
-          metadata of the simulation
-        """
-        sn_par = self.sn_parameters.copy()
-        simulator_par = self.simulator_parameters.copy()
-
-        for name in ['z', 'x1', 'color', 'daymax']:
-            if name in gen_params.dtype.names:
-                sn_par[name] = gen_params[name]
-
-        SNID = sn_par['Id']
-        sn_object = SN_Object(self.simu_config['name'],
-                              sn_par,
-                              simulator_par,
-                              gen_params,
-                              self.cosmology,
-                              self.zp_airmass,
-                              SNID, self.area,
-                              x0_grid=self.x0_grid,
-                              salt2Dir=self.salt2Dir,
-                              mjdCol=self.mjdCol,
-                              RACol=self.RACol,
-                              DecCol=self.DecCol,
-                              filterCol=self.filterCol,
-                              exptimeCol=self.exptimeCol,
-                              m5Col=self.m5Col)
-
-        module = import_module(self.simu_config['name'])
-        simu = module.SN(sn_object, self.simu_config,
-                         self.reference_lc, self.dustcorr)
-        # simulation - this is supposed to be a list of astropytables
-        lc_table = simu(obs, self.display_lc, self.time_display)
-
-        del simu
-        del module
-        return lc_table
-
-    def save_metadata(self, isav=-1):
+    def save_metadata_deprecated(self, isav=-1):
         """ Copy metadata to disk
 
         """
@@ -1248,3 +1170,153 @@ class SNSimulation(SNSimu_Params):
                     Table(vals).write(
                         self.simu_out[key], 'summary_{}'.format(isav),
                         append=True, compression=True)
+
+    def prepareSave_deprecated(self, outdir, prodid, iproc):
+        """ Prepare output directories for data
+
+        Parameters
+        --------------
+        outdir: str
+         output directory where to copy the data
+        prodid: str
+         production id(label for input files)
+        iproc: int
+          internal tag for multiprocessing
+
+        Returns
+        ----------
+        Two output files are open:
+        - astropy table with (SNID, RA, Dec, X1, Color, z) parameters
+        -> name: Simu_prodid.hdf5
+        - astropy tables with LC
+        -> name: LC_prodid.hdf5
+
+        """
+
+        if not os.path.exists(outdir):
+            print('Creating output directory', outdir)
+            os.makedirs(outdir)
+        # Two files  to be opened - tagged by iproc
+        # One containing a summary of the simulation:
+        # astropy table with (SNID,RA,Dec,X1,Color,z) parameters
+        # -> name: Simu_prodid.hdf5
+        # A second containing the Light curves (list of astropy tables)
+        # -> name : LC_prodid.hdf5
+
+        self.simu_out[iproc] = '{}/Simu_{}_{}.hdf5'.format(
+            outdir, prodid, iproc)
+        self.lc_out[iproc] = '{}/LC_{}_{}.hdf5'.format(outdir, prodid, iproc)
+        self.check_del(self.simu_out[iproc])
+        self.check_del(self.lc_out[iproc])
+        self.SNID[iproc] = 10**iproc
+        self.sn_meta[iproc] = {}
+
+        """
+       # and these files will be removed now (before processing)
+       # if they exist (to avoid confusions)
+       if os.path.exists(self.simu_out):
+           os.remove(self.simu_out)
+       if os.path.exists(self.lc_out):
+           os.remove(self.lc_out)
+       """
+
+    def run_deprecated(self, obs, slicePoint=None, imulti=0):
+        """ LC simulations
+
+        Parameters
+        --------------
+        obs: array
+          array of observations
+
+        """
+        iproc = 1
+
+        if 'iproc' in obs.dtype.names:
+            iproc = int(np.mean(obs['iproc']))
+
+        if iproc not in self.nprocdict:
+            self.nprocdict[iproc] = iproc
+            if self.save_status:
+                self.prepareSave(self.outdir, self.prodid, iproc)
+
+        # if 'healpixID' not in obs.dtype.names:
+        if slicePoint is not None:
+            import numpy.lib.recfunctions as rf
+            healpixID = hp.ang2pix(
+                slicePoint['nside'], np.rad2deg(slicePoint['ra']),
+                np.rad2deg(slicePoint['dec']), nest=True, lonlat=True)
+            pixRA, pixDec = hp.pix2ang(
+                self.nside, healpixID, nest=True, lonlat=True)
+            obs = rf.append_fields(obs, 'healpixID', [healpixID]*len(obs))
+            obs = rf.append_fields(obs, 'pixRA', [pixRA]*len(obs))
+            obs = rf.append_fields(obs, 'pixDec', [pixDec]*len(obs))
+
+            print('processing pixel', healpixID)
+
+        # estimate seasons
+        obs = seasoncalc(obs)
+
+        # select filters
+        goodFilters = np.in1d(obs[self.filterCol], self.filterNames)
+        obs = obs[goodFilters]
+
+        # stack if necessary
+        if self.stacker is not None:
+            obs = self.stacker._run(obs)
+
+        self.fieldname = 'unknown'
+        self.fieldid = 0
+        try:
+            iter(self.season)
+        except TypeError:
+            self.season = [self.season]
+
+        if self.season == [-1]:
+            seasons = np.unique(obs[self.seasonCol])
+        else:
+            seasons = self.season
+
+        time_ref = time.time()
+        """
+        tracemalloc.start()
+        start = tracemalloc.take_snapshot()
+        """
+        list_lc = []
+
+        for seas in seasons:
+            self.index_hdf5 += 10000*(seas-1)
+
+            idxa = obs[self.seasonCol] == seas
+            obs_season = obs[idxa]
+
+            if len(obs_season) >= 5:
+                print('obs in season', len(obs_season), seas, iproc)
+                simres = self.simuSeason(obs_season, seas, iproc)
+                if simres is not None:
+                    list_lc += simres
+
+            """
+            current = tracemalloc.take_snapshot()
+            stats = current.compare_to(start, 'filename')
+            for i, stat in enumerate(stats[:5], 1):
+                print("since_start", i, str(stat))
+            """
+        # save metadata
+        if self.save_status:
+            self.save_metadata(np.unique(obs['healpixID']).item())
+        # reset metadata dict
+        self.sn_meta[iproc] = {}
+
+        """
+        top_stats = snapshot.statistics('lineno')
+
+        print("[ Top 10 ]")
+        for stat in top_stats[:10]:
+            print(stat)
+        """
+        # print('End of simulation', time.time()-time_ref)
+
+        if list_lc:
+            return list_lc
+
+        return None

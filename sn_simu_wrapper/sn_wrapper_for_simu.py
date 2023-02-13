@@ -257,6 +257,7 @@ class FitWrapper:
         from astropy.table import Table, vstack
         res = Table()
         for lc in lc_list:
+            print('fitting', j, len(lc))
             lc.convert_bytestring_to_unicode()
             resfit = self.fit(lc)
             if resfit is not None:
@@ -285,6 +286,7 @@ class InfoWrapper:
 
         """
 
+        self.nproc = confDict['nproc_sel']
         from astropy.table import Table
         selfile = confDict['selection_params']
         selpars = Table.read(selfile, format='csv', guess=False, comment='#')
@@ -336,45 +338,116 @@ class InfoWrapper:
 
         getInfos = dict(zip(conf_names, configs))
 
+        from sn_tools.sn_utils import multiproc
+        params = {}
+        params['getInfos'] = getInfos
+        lc_list = multiproc(light_curves, params, self.run_list, self.nproc)
+
+        return lc_list
+
+    def run_list(self, light_curves, params, j, output_q=None):
+
+        getInfos = params['getInfos']
+
         lc_list = []
         for lc in light_curves:
-            if len(lc) == 0:
-                continue
-            resdict = {}
             T0 = lc.meta['daymax']
             z = lc.meta['z']
-            # apply SNR selection
-            idx = self.snr_min_op(lc['snr'], self.snr_min_value)
-            lc_sel = lc[idx]
-            # add phase column
-            lc_sel['phase'] = (lc_sel['time']-T0)/(1+z)
-            if 'filter' in lc_sel.columns:
-                lc_sel.remove_columns(['filter'])
-            # self.plotLC(lc_sel)
-            for key, vals in getInfos.items():
-                resdict[key] = self.nepochs_phase(
-                    lc_sel, vals[0], vals[1], vals[2],
-                    vals[3], vals[4], vals[5])
 
-            resdict['selected'] = self.select(resdict)
-            # add snr per band
-            SNRtot = 0.
-            for b in 'ugrizy':
-                idx = lc_sel['band'] == 'lsst{}'.format(b)
-                sel = lc_sel[idx]
-                SNR = 0.
-                if len(sel) > 0:
-                    SNR = np.sum(sel['snr_m5']**2)
-                    SNRtot += SNR
-                resdict['SNR_{}'.format(b)] = np.sqrt(SNR)
-
-            resdict['SNR'] = SNRtot
+            if len(lc) == 0:
+                resdict = self.calc_dummy(getInfos)
+            else:
+                # apply SNR selection
+                idx = self.snr_min_op(lc['snr'], self.snr_min_value)
+                lc_sel = lc[idx]
+                if len(lc_sel) == 0:
+                    resdict = self.calc_dummy(getInfos)
+                else:
+                    resdict = self.calc_infos(lc_sel, T0, z, getInfos)
 
             # update meta data
             lc.meta.update(resdict)
             lc_list.append(lc)
 
-        return lc_list
+        if output_q is not None:
+            return output_q.put({j: lc_list})
+        else:
+            return lc_list
+
+    def calc_dummy(self, getInfos):
+        """
+        Method returning dummy infos
+
+        Parameters
+        ----------
+        getInfos :  dict
+            dict of selection criteria to measure.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        resdict = {}
+        for key in getInfos.keys():
+            resdict[key] = -1
+
+        for b in 'ugrizy':
+            resdict['SNR_{}'.format(b)] = -1
+
+        resdict['SNR'] = -1
+        resdict['selected'] = 0
+
+        return resdict
+
+    def calc_infos(self, lc_sel, T0, z, getInfos):
+        """
+        Method returning infos related to getInfos
+
+        Parameters
+        ----------
+        lc_sel : astropy table
+            LC.
+        T0 : float
+            SN daymax.
+        z : float
+            SN z.
+        getInfos : dict
+            dict of selection criteria to measure.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        resdict = {}
+        # add phase column
+        lc_sel['phase'] = (lc_sel['time']-T0)/(1+z)
+        if 'filter' in lc_sel.columns:
+            lc_sel.remove_columns(['filter'])
+        # self.plotLC(lc_sel)
+        for key, vals in getInfos.items():
+            resdict[key] = self.nepochs_phase(
+                lc_sel, vals[0], vals[1], vals[2],
+                vals[3], vals[4], vals[5])
+
+        resdict['selected'] = self.select(resdict)
+        # add snr per band
+        SNRtot = 0.
+        for b in 'ugrizy':
+            idx = lc_sel['band'] == 'lsst{}'.format(b)
+            sel = lc_sel[idx]
+            SNR = 0.
+            if len(sel) > 0:
+                SNR = np.sum(sel['snr_m5']**2)
+                SNRtot += SNR
+            resdict['SNR_{}'.format(b)] = np.sqrt(SNR)
+
+        resdict['SNR'] = SNRtot
+
+        return resdict
 
     def select(self, dictval):
         """
@@ -638,7 +711,7 @@ class SimuWrapper:
 
         """
 
-        light_curves = self.metric.run_new(obs, imulti=imulti)
+        light_curves = self.metric.run(obs, imulti=imulti)
         if light_curves is not None:
             print('light curves', len(light_curves))
         else:

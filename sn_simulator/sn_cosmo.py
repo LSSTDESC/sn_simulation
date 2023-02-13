@@ -560,8 +560,10 @@ class SN(SN_Object):
         lcdf.loc[lcdf.flux_old <= 0., 'flux'] = 9999.
         """
         # positive flux only
+        """
         idx = lcdf['flux'] > 0.
         lcdf = lcdf[idx]
+        """
 
         if len(lcdf) == 0:
             return []
@@ -601,9 +603,10 @@ class SN(SN_Object):
         lcdf['band'] = lcdf[band_cosmo]
 
         # remove rows with mag_inf values
-
+        """
         idf = lcdf['mag'] < self.mag_inf
         lcdf = lcdf[idf]
+        """
 
         lcdf.loc[lcdf.fluxerr_model < 0, 'flux'] = 0.
         lcdf.loc[lcdf.fluxerr_model < 0, 'fluxerr_photo'] = 10.
