@@ -176,7 +176,7 @@ class FitWrapper:
         Parameters
         ----------
         config_fit : dict
-            parameters fot fitting
+            parameters fot 
 
         Returns
         -------
@@ -257,7 +257,6 @@ class FitWrapper:
         from astropy.table import Table, vstack
         res = Table()
         for lc in lc_list:
-            print('fitting', j, len(lc))
             lc.convert_bytestring_to_unicode()
             resfit = self.fit(lc)
             if resfit is not None:
@@ -338,9 +337,16 @@ class InfoWrapper:
 
         getInfos = dict(zip(conf_names, configs))
 
+        selParams = [('n_epochs_m10_p35', operator.ge, 4),
+                     ('n_epochs_m10_p5', operator.ge, 1),
+                     ('n_epochs_p5_p20', operator.ge, 1),
+                     ('n_bands_m8_p10', operator.ge, 2)]
+
         from sn_tools.sn_utils import multiproc
         params = {}
         params['getInfos'] = getInfos
+        params['selParams'] = selParams
+
         lc_list = multiproc(light_curves, params, self.run_list, self.nproc)
 
         return lc_list
@@ -348,6 +354,7 @@ class InfoWrapper:
     def run_list(self, light_curves, params, j, output_q=None):
 
         getInfos = params['getInfos']
+        selParams = params['selParams']
 
         lc_list = []
         for lc in light_curves:
@@ -363,7 +370,8 @@ class InfoWrapper:
                 if len(lc_sel) == 0:
                     resdict = self.calc_dummy(getInfos)
                 else:
-                    resdict = self.calc_infos(lc_sel, T0, z, getInfos)
+                    resdict = self.calc_infos(lc_sel, T0, z,
+                                              getInfos, selParams)
 
             # update meta data
             lc.meta.update(resdict)
@@ -401,7 +409,7 @@ class InfoWrapper:
 
         return resdict
 
-    def calc_infos(self, lc_sel, T0, z, getInfos):
+    def calc_infos(self, lc_sel, T0, z, getInfos, selParams):
         """
         Method returning infos related to getInfos
 
@@ -433,7 +441,7 @@ class InfoWrapper:
                 lc_sel, vals[0], vals[1], vals[2],
                 vals[3], vals[4], vals[5])
 
-        resdict['selected'] = self.select(resdict)
+        resdict['selected'] = int(self.select(resdict, selParams))
         # add snr per band
         SNRtot = 0.
         for b in 'ugrizy':
@@ -449,7 +457,7 @@ class InfoWrapper:
 
         return resdict
 
-    def select(self, dictval):
+    def select(self, res, list_sel):
         """
         Method to estimate if a LC passes the cut or not
 
@@ -464,6 +472,14 @@ class InfoWrapper:
 
         """
 
+        idx = True
+        for vals in list_sel:
+            idx &= vals[1](res[vals[0]], vals[2])
+            if not idx:
+                return idx
+
+        return idx
+        """
         for key, vals in dictval.items():
             idx = self.selparams['selname'] == key
             pp = self.selparams[idx]
@@ -476,6 +492,7 @@ class InfoWrapper:
                     return False
 
         return True
+        """
 
     def nepochs_phase(self, tab, colnum='night',
                       colsel='phase', opa=operator.ge, vala=0,
