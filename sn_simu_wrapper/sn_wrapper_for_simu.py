@@ -603,6 +603,7 @@ class SimInfoFitWrapper:
         """
 
         # get Light curves from simuWrapper
+        #print('processing', np.unique(obs[['healpixID', 'pixRA', 'pixDec']]))
 
         light_curves = self.simu_wrapper(obs, imulti)
 
@@ -610,7 +611,7 @@ class SimInfoFitWrapper:
         if light_curves is None:
             return None
         light_curves_ana = self.info_wrapper(light_curves)
-        print('nlc analyzed', len(light_curves_ana))
+        # print('nlc analyzed', len(light_curves_ana))
 
         # fitting here
         fitlc = self.fit_wrapper(light_curves_ana)
@@ -729,10 +730,12 @@ class SimuWrapper:
         """
 
         light_curves = self.metric.run(obs, imulti=imulti)
+        """
         if light_curves is not None:
             print('light curves', len(light_curves))
         else:
             print('no lc on output')
+        """
         return light_curves
 
     __call__ = run
