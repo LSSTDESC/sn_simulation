@@ -82,8 +82,8 @@ Observations season -1 str #observations seasons
 
 ## Simulator
 Simulator name sn_simulator.sn_cosmo str #simulator name
-Simulator model salt2-extended str #simulator model
-Simulator version 1.0 float #simulator version
+Simulator model salt3 str #simulator model
+Simulator version 2.0 float #simulator version
 Simulator errorModel 0 int #simulator error model
 
 ## Reference_Files
