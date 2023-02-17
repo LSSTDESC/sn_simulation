@@ -516,11 +516,13 @@ class SNSimulation(SNSimu_Params):
         # get simulation parameters
         gen_params = self.get_all_gen_params(obs, seasons)
 
-        # LC simulation using multiprocessing
-        par = {}
-        par['obs'] = obs
+        list_lc = []
+        if gen_params is not None:
+            # LC simulation using multiprocessing
+            par = {}
+            par['obs'] = obs
 
-        list_lc = multiproc(gen_params, par, self.simuLoop, self.nprocs)
+            list_lc = multiproc(gen_params, par, self.simuLoop, self.nprocs)
 
         """
         top_stats = snapshot.statistics('lineno')
