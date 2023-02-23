@@ -512,8 +512,12 @@ class SNSimulation(SNSimu_Params):
         tracemalloc.start()
         start = tracemalloc.take_snapshot()
         """
+        # select obs corresponding to seasons
+        idx = np.in1d(obs['season'], seasons)
+        obs = obs[idx]
 
         # get simulation parameters
+
         gen_params = self.get_all_gen_params(obs, seasons)
 
         list_lc = []
