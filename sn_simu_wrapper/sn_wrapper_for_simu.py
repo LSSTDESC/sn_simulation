@@ -578,7 +578,7 @@ class SimInfoFitWrapper:
         self.outName = ''
 
         if self.fit_wrapper.saveData:
-            outFile = 'SN_{}.hdf5'.format(self.simu_wrapper.prodid)
+            outFile = '{}.hdf5'.format(self.simu_wrapper.prodid)
             self.outName = '{}/{}'.format(self.fit_wrapper.outDir, outFile)
             # check wether this file already exist and remove it
             import os
@@ -603,8 +603,9 @@ class SimInfoFitWrapper:
         """
 
         # get Light curves from simuWrapper
-        #print('processing', np.unique(obs[['healpixID', 'pixRA', 'pixDec']]))
-
+        # print('processing', np.unique(obs[['healpixID', 'pixRA', 'pixDec']]))
+        # import time
+        # time_ref = time.time()
         light_curves = self.simu_wrapper(obs, imulti)
 
         # analyze these LC + flag for selection
@@ -617,6 +618,11 @@ class SimInfoFitWrapper:
         fitlc = self.fit_wrapper(light_curves_ana)
 
         self.dump(fitlc)
+
+        # print('nsn', len(fitlc), time.time()-time_ref)
+        del light_curves
+        del light_curves_ana
+        del fitlc
 
         return None
         """
