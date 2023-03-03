@@ -97,6 +97,9 @@ class SNSimu_Params:
 
         save_status = config['OutputSimu']['save']
         self.save_status = save_status
+        clean_status = config['OutputSimu']['clean']
+        self.clean_status = clean_status
+
         self.outdir = config['OutputSimu']['directory']
         self.throwaway_empty = config['OutputSimu']['throwempty']
         self.throwafterdump = config['OutputSimu']['throwafterdump']
@@ -667,7 +670,8 @@ class SNSimulation(SNSimu_Params):
             if len(lc) == 0:
                 continue
             lc = lc[0]
-            sn_id = 'SN_{}_{}'.format(isn, j)
+            hpix = int(np.mean(obs['healpixID']))
+            sn_id = 'SN_{}_{}_{}'.format(hpix, isn, j)
             lc.meta['SNID'] = sn_id
             lc_list += [lc]
 
@@ -717,8 +721,10 @@ class SNSimulation(SNSimu_Params):
         simu_out = '{}/Simu_{}_{}.hdf5'.format(
             outdir, prodid, iproc)
         lc_out = '{}/LC_{}_{}.hdf5'.format(outdir, prodid, iproc)
-        self.check_del(simu_out)
-        self.check_del(lc_out)
+
+        if self.clean_status:
+            self.check_del(simu_out)
+            self.check_del(lc_out)
 
         return simu_out, lc_out
 
@@ -822,9 +828,11 @@ class SNSimulation(SNSimu_Params):
 
         """
 
+        path = 'meta_{}'.format(int(np.mean(meta['healpixID'])))
+        
         astropy.io.misc.hdf5.write_table_hdf5(
-            meta, out_meta, path='meta',
-            overwrite=True, serialize_meta=True)
+            meta, out_meta, path=path,
+            append=True, serialize_meta=False)
 
     def setIndex(self, healpixID, x1, color, z, daymax,
                  season, epsilon, SNID):
