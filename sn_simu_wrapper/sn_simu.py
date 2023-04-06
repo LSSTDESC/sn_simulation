@@ -523,6 +523,8 @@ class SNSimulation(SNSimu_Params):
 
         gen_params = self.get_all_gen_params(obs, seasons)
 
+        print('NLC to simulate:', len(gen_params))
+
         list_lc = []
         if gen_params is not None:
             # LC simulation using multiprocessing
@@ -829,7 +831,7 @@ class SNSimulation(SNSimu_Params):
         """
 
         path = 'meta_{}'.format(int(np.mean(meta['healpixID'])))
-        
+
         astropy.io.misc.hdf5.write_table_hdf5(
             meta, out_meta, path=path,
             append=True, serialize_meta=False)
