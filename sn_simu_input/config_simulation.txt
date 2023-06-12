@@ -26,15 +26,15 @@ SN z type unique str #SN z type
 SN z min 0.01 float #SN z min
 SN z max 1.0 float #SN z max
 SN z step 0.01 float #SN z step
-SN z rate Perrett str #SN z rate
+SN z rate combined str #SN z rate
 # daymax
 SN daymax type unique str #SN daymax type
 SN daymax step 1. float #SN daymax step
 #rf cuts
 SN minRFphase -20. float #SN min rf phase
 SN maxRFphase 60. float #SN max rf phase
-SN minRFphaseQual -15. float #SN min rf phase qual
-SN maxRFphaseQual 45. float #SN max rf phase qual
+SN minRFphaseQual 0. float #SN min rf phase qual
+SN maxRFphaseQual 0. float #SN max rf phase qual
 # other parameters
 SN absmag -19.0906 float #SN absmag
 SN band bessellB str #SN band
