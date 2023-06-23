@@ -337,15 +337,16 @@ class InfoWrapper:
 
         getInfos = dict(zip(conf_names, configs))
 
+        """
         selParams = [('n_epochs_m10_p35', operator.ge, 4),
                      ('n_epochs_m10_p5', operator.ge, 1),
                      ('n_epochs_p5_p20', operator.ge, 1),
                      ('n_bands_m8_p10', operator.ge, 2)]
-
+        """
         from sn_tools.sn_utils import multiproc
         params = {}
         params['getInfos'] = getInfos
-        params['selParams'] = selParams
+        # params['selParams'] = selParams
 
         lc_list = multiproc(light_curves, params, self.run_list, self.nproc)
 
@@ -354,9 +355,10 @@ class InfoWrapper:
     def run_list(self, light_curves, params, j, output_q=None):
 
         getInfos = params['getInfos']
-        selParams = params['selParams']
+        # selParams = params['selParams']
 
         lc_list = []
+        snr_max = [10, 15, 20]
         for lc in light_curves:
             T0 = lc.meta['daymax']
             z = lc.meta['z']
@@ -368,10 +370,13 @@ class InfoWrapper:
                 idx = self.snr_min_op(lc['snr'], self.snr_min_value)
                 lc_sel = lc[idx]
                 if len(lc_sel) == 0:
-                    resdict = self.calc_dummy(getInfos)
+                    resdict = self.calc_dummy(getInfos, snr_max)
                 else:
                     resdict = self.calc_infos(lc_sel, T0, z,
-                                              getInfos, selParams)
+                                              getInfos, selParams={})
+                    for vval in [10, 15, 20]:
+                        vc = 'Nfilt_{}'.format(vval)
+                        resdict[vc] = self.nfilt_snrmax(lc_sel, snr_max=vval)
 
             # update meta data
             lc.meta.update(resdict)
@@ -382,7 +387,7 @@ class InfoWrapper:
         else:
             return lc_list
 
-    def calc_dummy(self, getInfos):
+    def calc_dummy(self, getInfos, snr_max):
         """
         Method returning dummy infos
 
@@ -390,6 +395,8 @@ class InfoWrapper:
         ----------
         getInfos :  dict
             dict of selection criteria to measure.
+        snr_max: list(int).
+             snr_max values for Nfilt estimation
 
         Returns
         -------
@@ -406,10 +413,12 @@ class InfoWrapper:
 
         resdict['SNR'] = -1
         resdict['selected'] = 0
+        for vv in snr_max:
+            resdict['Nfilt_{}'.format(vv)] = 0
 
         return resdict
 
-    def calc_infos(self, lc_sel, T0, z, getInfos, selParams):
+    def calc_infos(self, lc_sel, T0, z, getInfos, selParams={}):
         """
         Method returning infos related to getInfos
 
@@ -423,6 +432,8 @@ class InfoWrapper:
             SN z.
         getInfos : dict
             dict of selection criteria to measure.
+        selParams: dict, opt.
+           selection parameters. The default is {}.
 
         Returns
         -------
@@ -441,7 +452,8 @@ class InfoWrapper:
                 lc_sel, vals[0], vals[1], vals[2],
                 vals[3], vals[4], vals[5])
 
-        resdict['selected'] = int(self.select(resdict, selParams))
+        if selParams:
+            resdict['selected'] = int(self.select(resdict, selParams))
         # add snr per band
         SNRtot = 0.
         for b in 'ugrizy':
@@ -529,6 +541,36 @@ class InfoWrapper:
         tt = tab[idx]
 
         return len(np.unique(tt[colnum]))
+
+    def nfilt_snrmax(self, lc, snr_max=10):
+        """
+        Method to estimate the number of bands with max SNR >= snr_max
+
+        Parameters
+        ----------
+        lc : astropy table
+            data to process.
+        snr_max : float, optional
+            SNR max value. The default is 10.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
+
+        bands = np.unique(lc['band'])
+
+        r = []
+        for b in bands:
+            idx = lc['band'] == b
+            sel = lc[idx]
+            lc_snr_max = np.max(sel['snr_m5'])
+            if lc_snr_max >= snr_max:
+                r.append(b)
+
+        return len(r)
 
     def plotLC(self, tab):
         """
