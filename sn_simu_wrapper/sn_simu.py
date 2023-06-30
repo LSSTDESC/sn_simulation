@@ -525,7 +525,8 @@ class SNSimulation(SNSimu_Params):
 
         list_lc = []
         if gen_params is not None:
-            print('NLC to simulate:', len(gen_params))
+            print('NLC to simulate:', len(gen_params),
+                  np.unique(obs['healpixID']))
             # LC simulation using multiprocessing
             par = {}
             par['obs'] = obs
