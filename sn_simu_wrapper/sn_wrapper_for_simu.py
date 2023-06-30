@@ -364,7 +364,7 @@ class InfoWrapper:
             z = lc.meta['z']
 
             if len(lc) == 0:
-                resdict = self.calc_dummy(getInfos)
+                resdict = self.calc_dummy(getInfos, snr_max)
             else:
                 # apply SNR selection
                 idx = self.snr_min_op(lc['snr'], self.snr_min_value)
