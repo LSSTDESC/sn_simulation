@@ -651,10 +651,12 @@ class SimInfoFitWrapper:
         # time_ref = time.time()
         light_curves = self.simu_wrapper(obs, imulti)
 
-        print('simulation', len(light_curves))
         # analyze these LC + flag for selection
         if light_curves is None:
             return None
+        else:
+            print('simulation', len(light_curves))
+
         light_curves_ana = self.info_wrapper(light_curves)
         # print('nlc analyzed', len(light_curves_ana))
 

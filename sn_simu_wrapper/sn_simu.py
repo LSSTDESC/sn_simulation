@@ -523,10 +523,9 @@ class SNSimulation(SNSimu_Params):
 
         gen_params = self.get_all_gen_params(obs, seasons)
 
-        print('NLC to simulate:', len(gen_params))
-
         list_lc = []
         if gen_params is not None:
+            print('NLC to simulate:', len(gen_params))
             # LC simulation using multiprocessing
             par = {}
             par['obs'] = obs
