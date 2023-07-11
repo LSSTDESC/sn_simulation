@@ -1,6 +1,6 @@
 import sncosmo
 import numpy as np
-from astropy.table import Table
+from astropy.table import Table, vstack
 from scipy.interpolate import griddata, interp1d
 from sn_simu_wrapper.sn_object import SN_Object
 import time
@@ -144,6 +144,7 @@ class SN(SN_Object):
         """
         source = sncosmo.get_source(model, version)
 
+        # print('allo', source.minwave(), source.maxwave())
         self.SN = sncosmo.Model(source=source,
                                 effects=[self.dustmap, self.dustmap],
                                 effect_names=['host', 'mw'],
@@ -290,7 +291,7 @@ class SN(SN_Object):
             model_min = 300.
             model_max = 180000.
             wave_min = 3000.
-            wave_max = 11501.
+            wave_max = 11000.
 
         if model == 'salt2':
             model_min = 3400.
@@ -913,6 +914,89 @@ class SN(SN_Object):
                          self.gen_parameters['epsilon_daymax']]
 
         return dict(zip(self.names_meta, val_meta))
+
+    def SN_SED(self, gen_params):
+        """
+        Method to generate SN SEDs
+
+        Parameters
+        ---------
+        gen_params : list
+            Simulation parameters.
+
+        Returns
+        -------
+        sed : astropy table
+            Generated SEDs
+
+        """
+
+        daymax = gen_params['daymax']
+
+        min_mjd = daymax-10
+        max_mjd = daymax+10
+
+        mjds = np.random.uniform(low=min_mjd, high=max_mjd, size=3)
+
+        sed = Table()
+        for io, mjd in enumerate(mjds):
+            diff = mjd-daymax
+            sedm = self.SN_SED_mjd(mjd)
+            sedm['SED_id'] = 'SED_{}'.format(io)
+            sedm['time'] = int(diff)
+            sed = vstack([sed, Table(sedm)])
+
+        # self.plot_SED(sed)
+
+        return sed
+
+    def plot_SED(self, sed):
+        """
+        Method to plot generated SEDs
+
+        Parameters
+        ----------
+        sed : astropy table
+            generated seds.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        import matplotlib.pyplot as plt
+        fig, ax = plt.subplots()
+        # this is to plot SEDs
+        for sedid in np.unique(sed['SED_id']):
+            idx = sed['SED_id'] == sedid
+            sel = sed[idx]
+            ax.plot(sel['wave'], sel['flux'], marker='.',
+                    label='{}'.format(np.mean(sel['time'])))
+        ax.legend()
+        plt.show()
+
+    def SN_SED_mjd(self, mjd):
+        """
+        Method to generate SED flux
+
+        Parameters
+        ----------
+        mjd : float
+            MJD for the flux generation.
+
+        Returns
+        -------
+        sed : astropy table
+            generated fluxes.
+
+        """
+
+        fluxes = 10.*self.SN.flux(mjd, self.wave)
+        sed = Table([fluxes], names=['flux'])
+        sed['wave'] = self.wave
+
+        return sed
 
     def fluxSED(self, obs):
         """
