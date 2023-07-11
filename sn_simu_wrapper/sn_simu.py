@@ -661,6 +661,7 @@ class SNSimulation(SNSimu_Params):
 
         lc_list = []
         lc_list_keep = []
+        sed_list = []
         isn = 0
         tab_meta = Table()
         for genpar in gen_params:
@@ -668,7 +669,7 @@ class SNSimulation(SNSimu_Params):
             season = genpar['season']
             idx = obs['season'] == season
             obs_season = obs[idx]
-            lc = self.simuLCs(obs_season, genpar)
+            lc, sed = self.simuLCs(obs_season, genpar)
             if len(lc) == 0:
                 continue
             lc = lc[0]
@@ -676,6 +677,9 @@ class SNSimulation(SNSimu_Params):
             sn_id = 'SN_{}_{}_{}'.format(hpix, isn, j)
             lc.meta['SNID'] = sn_id
             lc_list += [lc]
+
+            if sed is not None:
+                sed['sn_id'] = sn_id
 
             if not self.throwafterdump:
                 lc_list_keep += [lc]
@@ -787,10 +791,11 @@ class SNSimulation(SNSimu_Params):
                          self.reference_lc, self.dustcorr)
         # simulation - this is supposed to be a list of astropytables
         lc_table = simu(obs, self.display_lc, self.time_display)
+        seds = simu.SN_SED(obs, gen_params)
 
         del simu
         del module
-        return lc_table
+        return lc_table, seds
 
     def dump(self, lc_list, lc_out):
         """
