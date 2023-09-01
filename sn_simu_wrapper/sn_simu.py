@@ -524,9 +524,11 @@ class SNSimulation(SNSimu_Params):
         gen_params = self.get_all_gen_params(obs, seasons)
 
         list_lc = []
+
         if gen_params is not None:
             print('NLC to simulate:', len(gen_params),
                   np.unique(obs['healpixID']))
+
             # LC simulation using multiprocessing
             par = {}
             par['obs'] = obs
@@ -791,11 +793,12 @@ class SNSimulation(SNSimu_Params):
                          self.reference_lc, self.dustcorr)
         # simulation - this is supposed to be a list of astropytables
         lc_table = simu(obs, self.display_lc, self.time_display)
-        seds = simu.SN_SED(obs, gen_params)
-
+        # seds = simu.SN_SED(gen_params)
+        seds = None
         del simu
         del module
         return lc_table, seds
+        # return lc_table, seds
 
     def dump(self, lc_list, lc_out):
         """
