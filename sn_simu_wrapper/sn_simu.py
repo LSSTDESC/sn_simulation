@@ -532,7 +532,13 @@ class SNSimulation(SNSimu_Params):
             # LC simulation using multiprocessing
             par = {}
             par['obs'] = obs
-
+            """
+            import matplotlib.pyplot as plt
+            fig, ax = plt.subplots()
+            ax.plot(obs['observationStartMJD'], obs['filter'], 'ko')
+            print(np.max(np.diff(obs['observationStartMJD'])))
+            plt.show()
+            """
             list_lc = multiproc(gen_params, par, self.simuLoop, self.nprocs)
 
         """
