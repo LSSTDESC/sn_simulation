@@ -515,6 +515,15 @@ class SNSimulation(SNSimu_Params):
         tracemalloc.start()
         start = tracemalloc.take_snapshot()
         """
+
+        """
+        print('before hhh', len(obs), obs.dtype.names,
+              np.unique(obs['season']))
+        import matplotlib.pyplot as plt
+        fig, ax = plt.subplots()
+        ax.plot(obs['observationStartMJD'], obs['airmass'], 'ko')
+        plt.show()
+        """
         # select obs corresponding to seasons
         idx = np.in1d(obs['season'], seasons)
         obs = obs[idx]
