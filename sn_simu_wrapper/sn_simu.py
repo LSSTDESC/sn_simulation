@@ -287,14 +287,14 @@ class SNSimu_Params:
                                             'visitExposureTime'],
                                    col_mean=[self.mjdCol,
                                              self.RACol, self.DecCol,
-                                             self.m5Col, 'pixRA',
+                                             'pixRA',
                                              'pixDec', 'healpixID',
                                              'season', 'airmass'],
                                    col_median=['sky', 'moonPhase'],
                                    col_group=[
                                        self.filterCol, self.nightCol],
-                                   col_coadd=[self.m5Col,
-                                              'visitExposureTime'])
+                                   col_coadd=self.m5Col,
+                                   col_visit='visitExposureTime')
         return stacker
 
     def load_cosmology(self, cosmo_par):
