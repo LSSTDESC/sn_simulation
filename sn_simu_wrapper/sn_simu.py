@@ -494,6 +494,9 @@ class SNSimulation(SNSimu_Params):
         goodFilters = np.in1d(obs[self.filterCol], self.filterNames)
         obs = obs[goodFilters]
 
+        if len(obs) == 0:
+            return None
+
         # stack if necessary
         if self.stacker is not None:
             obs = self.stacker._run(obs)
