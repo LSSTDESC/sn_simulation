@@ -488,7 +488,10 @@ class SNSimulation(SNSimu_Params):
         iproc = 1
 
         # estimate seasons
-        obs = seasoncalc(obs)
+        obs = seasoncalc(obs, season_gap=80., force_calc=True)
+
+        # plot seasons
+        # self.plot_seasons(obs)
 
         # select filters
         goodFilters = np.in1d(obs[self.filterCol], self.filterNames)
@@ -565,6 +568,33 @@ class SNSimulation(SNSimu_Params):
             return list_lc
 
         return None
+
+    def plot_seasons(self, obs):
+        """
+        Method to plot seasons
+
+        Parameters
+        ----------
+        obs : array
+            Data to process.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        print('seasons', np.unique(obs['season']))
+        import matplotlib.pyplot as plt
+        plt.plot(obs['observationStartMJD'],
+                 obs['fiveSigmaDepth'], 'ko', mfc='None')
+        for seas in np.unique(obs['season']):
+            idx = obs['season'] == seas
+            sel = obs[idx]
+            plt.plot(sel['observationStartMJD'],
+                     sel['fiveSigmaDepth'], marker='*', linestyle='None')
+
+        plt.show()
 
     def get_all_gen_params(self, obs, seasons):
         """
