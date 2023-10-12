@@ -564,6 +564,11 @@ class SNSimulation(SNSimu_Params):
             print(stat)
         """
 
+        print('result', type(list_lc))
+
+        print(len(list_lc[0]))
+        print(test)
+
         if list_lc:
             return list_lc
 
@@ -662,7 +667,7 @@ class SNSimulation(SNSimu_Params):
                 self.outdir, self.prodid, j)
 
         if 'sn_fast' not in self.simu_config['name']:
-            lc_list, lc_list_keep, tab_meta = \
+            lc_list, lc_list_keep, tab_meta, sed = \
                 self.loop_gen(obs, gen_params, j, lc_out)
         else:
             lc_list = self.simuLCs(obs, gen_params)
@@ -679,9 +684,10 @@ class SNSimulation(SNSimu_Params):
             self.write_meta(tab_meta, simu_out)
 
         if output_q is not None:
-            return output_q.put({j: lc_list_keep})
+            print('there man', j, len(lc_list_keep), len(sed))
+            return output_q.put({j: (lc_list_keep, sed)})
         else:
-            return lc_list_keep
+            return (lc_list_keep, sed)
 
     def loop_gen(self, obs, gen_params, j, lc_out):
         """
@@ -722,11 +728,14 @@ class SNSimulation(SNSimu_Params):
             lc, sed = self.simuLCs(obs_season, genpar)
             if len(lc) == 0:
                 continue
+
             lc = lc[0]
+            sed = sed[0]
             hpix = int(np.mean(obs['healpixID']))
             sn_id = 'SN_{}_{}_{}'.format(hpix, isn, j)
             lc.meta['SNID'] = sn_id
             lc_list += [lc]
+            sed_list += [sed]
 
             if sed is not None:
                 sed['sn_id'] = sn_id
@@ -740,7 +749,7 @@ class SNSimulation(SNSimu_Params):
                     lc_list = []
                 tab_meta = vstack([tab_meta, Table(rows=[lc.meta])])
 
-        return lc_list, lc_list_keep, tab_meta
+        return lc_list, lc_list_keep, tab_meta, sed_list
 
     def prepareSave(self, outdir, prodid, iproc):
         """ Prepare output directories for data
@@ -841,8 +850,8 @@ class SNSimulation(SNSimu_Params):
                          self.reference_lc, self.dustcorr)
         # simulation - this is supposed to be a list of astropytables
         lc_table = simu(obs, self.display_lc, self.time_display)
-        # seds = simu.SN_SED(gen_params)
-        seds = None
+        seds = simu.SN_SED(gen_params)
+        # seds = None
         del simu
         del module
         return lc_table, seds
