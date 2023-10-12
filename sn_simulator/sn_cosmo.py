@@ -108,6 +108,7 @@ class SN(SN_Object):
 
         self.mag_inf = 100.  # mag values to replace infs
 
+        self.nspectra = self.sn_parameters['nspectra']
         """
         bands = self.zp_airmass['band'].tolist()
         slope = self.zp_airmass['slope'].tolist()
@@ -290,7 +291,7 @@ class SN(SN_Object):
         if model == 'salt2-extended' or model == 'salt3':
             model_min = 300.
             model_max = 180000.
-            wave_min = 3000.
+            wave_min = 2000.
             wave_max = 11000.
 
         if model == 'salt2':
@@ -300,6 +301,7 @@ class SN(SN_Object):
             wave_max = model_max
 
         self.wave = np.arange(wave_min, wave_max, 1.)
+        self.wave *= (1.+self.sn_parameters['z'])
 
         """
         if not self.error_model:
@@ -936,19 +938,23 @@ class SN(SN_Object):
         min_mjd = daymax-10
         max_mjd = daymax+10
 
-        mjds = np.random.uniform(low=min_mjd, high=max_mjd, size=3)
+        mjds = np.random.uniform(low=min_mjd, high=max_mjd, size=self.nspectra)
 
         sed = Table()
         for io, mjd in enumerate(mjds):
             diff = mjd-daymax
             sedm = self.SN_SED_mjd(mjd)
-            sedm['SED_id'] = 'SED_{}'.format(io)
-            sedm['time'] = int(diff)
+            sedm['spec'] = 'spec_{}'.format(io)
+            #sedm['time'] = int(diff)
+            sedm['mjd'] = mjd
+            sedm['exptime'] = 0.0
+            sedm['valid'] = 1
+
             sed = vstack([sed, Table(sedm)])
 
         # self.plot_SED(sed)
 
-        return sed
+        return [sed]
 
     def plot_SED(self, sed):
         """
@@ -994,7 +1000,8 @@ class SN(SN_Object):
 
         fluxes = 10.*self.SN.flux(mjd, self.wave)
         sed = Table([fluxes], names=['flux'])
-        sed['wave'] = self.wave
+        sed['wavelength'] = self.wave
+        sed['fluxerr'] = 0.0
 
         return sed
 
