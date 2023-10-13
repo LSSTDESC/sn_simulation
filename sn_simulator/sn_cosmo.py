@@ -108,7 +108,6 @@ class SN(SN_Object):
 
         self.mag_inf = 100.  # mag values to replace infs
 
-        self.nspectra = self.sn_parameters['nspectra']
         """
         bands = self.zp_airmass['band'].tolist()
         slope = self.zp_airmass['slope'].tolist()
@@ -917,7 +916,7 @@ class SN(SN_Object):
 
         return dict(zip(self.names_meta, val_meta))
 
-    def SN_SED(self, gen_params):
+    def SN_SED(self, gen_params, nspectra=3):
         """
         Method to generate SN SEDs
 
@@ -938,7 +937,7 @@ class SN(SN_Object):
         min_mjd = daymax-10
         max_mjd = daymax+10
 
-        mjds = np.random.uniform(low=min_mjd, high=max_mjd, size=self.nspectra)
+        mjds = np.random.uniform(low=min_mjd, high=max_mjd, size=nspectra)
 
         sed = Table()
         for io, mjd in enumerate(mjds):
