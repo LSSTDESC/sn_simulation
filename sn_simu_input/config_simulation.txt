@@ -57,7 +57,7 @@ SN ebvofMW -1. float #SN E(B-V)
 SN NSNfactor 1 int #NSN*factor for simulation
 SN NSNabsolute -1 int #absolute number of SN to produce
 SN sigmaInt 0.0 float # SN intrinsic dispersion
-SN nspectra 3 int # Number of spectra to generate
+SN nspectra 0 int # Number of spectra to generate
 ## Cosmology parameters
 Cosmology Model w0waCDM str #cosmology model
 Cosmology Om 0.30 float #cosmology Omegam
