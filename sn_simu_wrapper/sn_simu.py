@@ -290,7 +290,8 @@ class SNSimu_Params:
                                              'pixRA',
                                              'pixDec', 'healpixID',
                                              'season', 'airmass'],
-                                   col_median=['sky', 'moonPhase'],
+                                   col_median=[
+                                       'sky', 'moonPhase', 'seeingFwhmEff'],
                                    col_group=[
                                        self.filterCol, self.nightCol],
                                    col_coadd=self.m5Col,
@@ -547,6 +548,7 @@ class SNSimulation(SNSimu_Params):
             # LC simulation using multiprocessing
             par = {}
             par['obs'] = obs
+            par['nspectra'] = self.sn_parameters['nspectra']
             """
             import matplotlib.pyplot as plt
             fig, ax = plt.subplots()
@@ -563,11 +565,6 @@ class SNSimulation(SNSimu_Params):
         for stat in top_stats[:10]:
             print(stat)
         """
-
-        print('result', type(list_lc))
-
-        print(len(list_lc[0]))
-        print(test)
 
         if list_lc:
             return list_lc
@@ -660,14 +657,15 @@ class SNSimulation(SNSimu_Params):
         """
 
         obs = params['obs']
+        nspectra = params['nspectra']
         simu_out, lc_out = None, None
 
         if self.save_status:
-            simu_out, lc_out = self.prepareSave(
+            simu_out, lc_out, sed_out = self.prepareSave(
                 self.outdir, self.prodid, j)
 
         if 'sn_fast' not in self.simu_config['name']:
-            lc_list, lc_list_keep, tab_meta, sed = \
+            lc_list, lc_list_keep, tab_meta, sed_list = \
                 self.loop_gen(obs, gen_params, j, lc_out)
         else:
             lc_list = self.simuLCs(obs, gen_params)
@@ -676,18 +674,89 @@ class SNSimulation(SNSimu_Params):
                 lc_list_keep = copy.deepcopy(lc_list)
 
         if self.save_status:
-            if len(lc_list) > 0:
-                self.dump(lc_list, lc_out)
-                lc_list = []
-            tab_meta.meta['lc_dir'] = self.outdir
-            tab_meta.meta['lc_fileName'] = lc_out.split('/')[-1]
-            self.write_meta(tab_meta, simu_out)
+            if nspectra <= 0:
+                if len(lc_list) > 0:
+                    self.dump(lc_list, lc_out)
+                    lc_list = []
+                tab_meta.meta['lc_dir'] = self.outdir
+                tab_meta.meta['lc_fileName'] = lc_out.split('/')[-1]
+                self.write_meta(tab_meta, simu_out)
+            else:
+                self.dump_df(tab_meta, simu_out, lc_list,
+                             lc_out, sed_list, sed_out)
 
         if output_q is not None:
-            print('there man', j, len(lc_list_keep), len(sed))
-            return output_q.put({j: (lc_list_keep, sed)})
+            return output_q.put({j: lc_list_keep})
         else:
-            return (lc_list_keep, sed)
+            return lc_list_keep
+
+    def dump_df(self, tab_meta, simu_out, lc_list, lc_out, sed_list, sed_out):
+        """
+        Method to dump output data in pandas df
+        using format defined by N. Regnault
+        to account for Spectra production
+
+        Parameters
+        ----------
+        tab_meta : astropy table
+            Metadata.
+        simu_out : str
+            output path (full) for metadata.
+        lc_list : list(astropy table)
+            list of light curves.
+        lc_out : str
+            output path (full) for lc.
+        sed_list : list(astropy table)
+            list of spectra.
+        sed_out : str
+            output path (full) for spectra.
+
+        Returns
+        -------
+        None.
+
+        """
+        import pandas as pd
+
+        # meta data or Sn_data
+        df_meta = tab_meta.to_pandas()
+        rename_dict = dict(zip(['SNID', 'daymax', 'color', 'ebvofMW'], [
+                           'sn', 'tmax', 'col', 'ebv']))
+        df_meta = df_meta.rename(columns=rename_dict)
+        df_meta['valid'] = 1
+        df_meta['IAU'] = 0
+        cols = ['sn', 'z', 'tmax', 'x0', 'x1', 'col', 'ebv', 'valid', 'IAU']
+        df_meta[cols].to_hdf(simu_out, key='sn_data')
+        # print(df_meta[cols])
+
+        # light curves
+        df_lc = pd.DataFrame()
+        for io, lc in enumerate(lc_list):
+            lca = lc.to_pandas()
+            snid = lc.meta['SNID']
+            lca['sn'] = snid
+            lca['lc'] = 'lc_{}'.format(io)
+            df_lc = pd.concat((df_lc, lca))
+
+        df_lc['magsys'] = 'AB'
+        df_lc['valid'] = 1
+        rename_dict = dict(zip(['time', 'sky', 'seeingFwhmEff'],
+                               ['mjd', 'mag_sky', 'seeing']))
+
+        df_lc = df_lc.rename(columns=rename_dict)
+        cols = ['sn', 'mjd', 'flux', 'fluxerr', 'band', 'magsys', 'exptime',
+                'valid', 'lc', 'zp', 'mag_sky', 'seeing']
+        df_lc[cols].to_hdf(lc_out, key='lc_data')
+
+        # spectra
+        df_spectra = pd.DataFrame()
+        for sed in sed_list:
+            df_spectra = pd.concat((df_spectra, sed.to_pandas()))
+
+        cols = ['sn', 'mjd', 'wavelength', 'flux',
+                'fluxerr', 'valid', 'spec', 'exptime']
+
+        df_spectra.to_hdf(sed_out, key='spec_data')
 
     def loop_gen(self, obs, gen_params, j, lc_out):
         """
@@ -730,15 +799,15 @@ class SNSimulation(SNSimu_Params):
                 continue
 
             lc = lc[0]
-            sed = sed[0]
+
             hpix = int(np.mean(obs['healpixID']))
             sn_id = 'SN_{}_{}_{}'.format(hpix, isn, j)
             lc.meta['SNID'] = sn_id
             lc_list += [lc]
-            sed_list += [sed]
-
-            if sed is not None:
+            if sed:
+                sed = sed[0]
                 sed['sn_id'] = sn_id
+                sed_list += [sed]
 
             if not self.throwafterdump:
                 lc_list_keep += [lc]
@@ -786,12 +855,14 @@ class SNSimulation(SNSimu_Params):
         simu_out = '{}/Simu_{}_{}.hdf5'.format(
             outdir, prodid, iproc)
         lc_out = '{}/LC_{}_{}.hdf5'.format(outdir, prodid, iproc)
+        sed_out = '{}/Spectra_{}_{}.hdf5'.format(outdir, prodid, iproc)
 
         if self.clean_status:
             self.check_del(simu_out)
             self.check_del(lc_out)
+            self.check_del(sed_out)
 
-        return simu_out, lc_out
+        return simu_out, lc_out, sed_out
 
     def check_del(self, fileName):
         """
@@ -850,12 +921,14 @@ class SNSimulation(SNSimu_Params):
                          self.reference_lc, self.dustcorr)
         # simulation - this is supposed to be a list of astropytables
         lc_table = simu(obs, self.display_lc, self.time_display)
-        seds = simu.SN_SED(gen_params)
-        # seds = None
+
+        seds = []
+        nspectra = self.sn_parameters['nspectra']
+        if nspectra > 0:
+            seds = simu.SN_SED(gen_params, nspectra=nspectra)
         del simu
         del module
         return lc_table, seds
-        # return lc_table, seds
 
     def dump(self, lc_list, lc_out):
         """
