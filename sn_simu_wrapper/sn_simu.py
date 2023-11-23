@@ -167,7 +167,7 @@ class SNSimu_Params:
         self.sn_meta = {}
 
         # load the instrument(telescope)
-        self.telescope = self.load_telescope(config['Instrument'])
+        self.telescope = self.load_telescope(config['InstrumentSimu'])
 
     def load_telescope(self, config):
         """
