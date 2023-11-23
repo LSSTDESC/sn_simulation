@@ -118,7 +118,6 @@ class SN(SN_Object):
         """
         # band registery in sncosmo
         from astropy import units as u
-        print('telescope', self.telescope.name)
         for band in 'grizy':
             name = '{}::{}'.format(self.telescope.name, band)
             throughput = self.telescope.lsst_atmos_aerosol[band]
