@@ -6,14 +6,16 @@ import astropy.units as u
 
 class SN_Object:
     def __init__(self, name, sn_parameters, simulator_parameters,
-                 gen_parameters, cosmology, zp_airmass, snid, area, x0_grid,
+                 gen_parameters, cosmology, zp_airmass,
+                 snid, area, x0_grid,
                  salt2Dir='SALT2_Files',
                  mjdCol='mjd', RACol='pixRa', DecCol='pixDec',
                  filterCol='band', exptimeCol='exptime',
                  nexpCol='numExposures',
                  nightCol='night', m5Col='fiveSigmaDepth', seasonCol='season',
                  seeingEffCol='seeingFwhmEff', seeingGeomCol='seeingFwhmGeom',
-                 airmassCol='airmass', skyCol='sky', moonCol='moonPhase'):
+                 airmassCol='airmass', skyCol='sky', moonCol='moonPhase',
+                 telescope=None):
         """ class SN object
         handles sn name, parameters,
         cosmology, snid, telescope...
@@ -71,6 +73,7 @@ class SN_Object:
         self._gen_parameters = gen_parameters
         self._cosmology = cosmology
         self.zp_airmass = zp_airmass
+        self.telescope = telescope
         self._SNID = snid
         self.mjdCol = mjdCol
         self.RACol = RACol

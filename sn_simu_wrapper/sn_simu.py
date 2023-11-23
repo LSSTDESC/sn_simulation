@@ -166,6 +166,41 @@ class SNSimu_Params:
         self.SNID = {}
         self.sn_meta = {}
 
+        # load the instrument(telescope)
+        self.telescope = self.load_telescope(config['Instrument'])
+
+    def load_telescope(self, config):
+        """
+        Method to load telescope model
+
+        Parameters
+        ----------
+        config : dict
+            configuration parameters.
+
+        Returns
+        -------
+        tel : Telescope class (sn_telmodel.sn_telescope)
+            Telescope model.
+
+        """
+
+        name = config['name']
+        tel_dir = config['telescope']['dir']
+        tel_tag = config['telescope']['tag']
+        through_dir = config['throughputDir']
+        atmos_dir = config['atmosDir']
+        airmass = config['airmass']
+        aerosol = config['aerosol']
+
+        from sn_telmodel.sn_telescope import get_telescope
+        tel = get_telescope(name=name, tel_dir=tel_dir,
+                            through_dir=through_dir,
+                            atmos_dir=atmos_dir, airmass=airmass,
+                            aerosol=aerosol, tag=tel_tag)
+
+        return tel
+
     def load_for_snfast(self, web_path):
         """
         Method to load reference files for sn_fast
@@ -914,7 +949,8 @@ class SNSimulation(SNSimu_Params):
                               DecCol=self.DecCol,
                               filterCol=self.filterCol,
                               exptimeCol=self.exptimeCol,
-                              m5Col=self.m5Col)
+                              m5Col=self.m5Col,
+                              telescope=self.telescope)
 
         module = import_module(self.simu_config['name'])
         simu = module.SN(sn_object, self.simu_config,

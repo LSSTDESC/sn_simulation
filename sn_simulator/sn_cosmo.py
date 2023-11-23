@@ -32,7 +32,8 @@ class SN(SN_Object):
                          seeingGeomCol=param.seeingGeomCol,
                          airmassCol=param.airmassCol,
                          skyCol=param.skyCol, moonCol=param.moonCol,
-                         salt2Dir=param.salt2Dir)
+                         salt2Dir=param.salt2Dir,
+                         telescope=param.telescope)
         """ SN class - inherits from SN_Object
 
         Parameters
@@ -115,7 +116,17 @@ class SN(SN_Object):
         self.zp_slope = dict(zip(bands, slope))
         self.zp_intercept = dict(zip(bands, intercept))
         """
-        # band registery in sncosmo - deprecated
+        # band registery in sncosmo
+        from astropy import units as u
+        print('telescope', self.telescope.name)
+        for band in 'grizy':
+            name = '{}::{}'.format(self.telescope.name, band)
+            throughput = self.telescope.lsst_atmos_aerosol[band]
+            bandcosmo = sncosmo.Bandpass(
+                throughput.wavelen,
+                throughput.sb, name=name,
+                wave_unit=u.nm)
+            sncosmo.registry.register(bandcosmo, force=True)
         """
         for band in 'grizy':
             name = 'LSST::'+band
