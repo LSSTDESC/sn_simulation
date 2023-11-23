@@ -167,39 +167,16 @@ class SNSimu_Params:
         self.sn_meta = {}
 
         # load the instrument(telescope)
-        self.telescope = self.load_telescope(config['InstrumentSimu'])
+        from sn_telmodel.sn_telescope import load_telescope_from_config
+        self.telescope = load_telescope_from_config(config['InstrumentSimu'])
+        # estimate zp vs airmass
+        from sn_telmodel.sn_telescope import Zeropoint_airmass
+        zp = Zeropoint_airmass(tel_dir=telescope.tel_dir,
+                               through_dir=telescope.throughputsDir,
+                               atmos_dir=telescope.atmosDir,
+                               tag=telescope.tag, aerosol=telescope.aerosol)
 
-    def load_telescope(self, config):
-        """
-        Method to load telescope model
-
-        Parameters
-        ----------
-        config : dict
-            configuration parameters.
-
-        Returns
-        -------
-        tel : Telescope class (sn_telmodel.sn_telescope)
-            Telescope model.
-
-        """
-
-        name = config['name']
-        tel_dir = config['telescope']['dir']
-        tel_tag = config['telescope']['tag']
-        through_dir = config['throughputDir']
-        atmos_dir = config['atmosDir']
-        airmass = config['airmass']
-        aerosol = config['aerosol']
-
-        from sn_telmodel.sn_telescope import get_telescope
-        tel = get_telescope(name=name, tel_dir=tel_dir,
-                            through_dir=through_dir,
-                            atmos_dir=atmos_dir, airmass=airmass,
-                            aerosol=aerosol, tag=tel_tag)
-
-        return tel
+        print('hhh', zp.get_fit_params())
 
     def load_for_snfast(self, web_path):
         """

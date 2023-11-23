@@ -100,10 +100,13 @@ class SN_Object:
                                          623.00583188, 754.10402246,
                                          869.01326737, 973.60607034]))
         """
+
         bands = zp_airmass['band'].tolist()
         mean_waves = zp_airmass['mean_wavelength'].tolist()
         slope = zp_airmass['slope'].tolist()
         intercept = zp_airmass['intercept'].tolist()
+
+        print(slope, intercept)
 
         self.mean_wavelength = dict(zip(bands, mean_waves))
         self.zp_slope = dict(zip(bands, slope))

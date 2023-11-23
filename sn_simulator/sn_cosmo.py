@@ -542,6 +542,8 @@ class SN(SN_Object):
         lcdf['zp_intercept'] = np.array([*map(self.zp_intercept.get, lst)])
         lcdf['zp'] = lcdf['zp_slope']*lcdf['airmass']+lcdf['zp_intercept']
 
+        print(self.telescope.name, lst, lcdf['zp'])
+
         lcdf['zpsys'] = 'ab'
 
         # get band flux
