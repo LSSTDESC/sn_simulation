@@ -113,10 +113,11 @@ class SNSimu_Params:
         self.reffiles = config['ReferenceFiles']
 
         # load zp vs airmass
+        """
         self.zp_airmass = self.load_zp(config['WebPathSimu'],
                                        self.reffiles['zpDir'],
                                        self.reffiles['zpFile'])
-
+        """
         # LC display in "real-time"
 
         self.display_lc = config['Display']['LC']['display']
@@ -171,12 +172,13 @@ class SNSimu_Params:
         self.telescope = load_telescope_from_config(config['InstrumentSimu'])
         # estimate zp vs airmass
         from sn_telmodel.sn_telescope import Zeropoint_airmass
-        zp = Zeropoint_airmass(tel_dir=telescope.tel_dir,
-                               through_dir=telescope.throughputsDir,
-                               atmos_dir=telescope.atmosDir,
-                               tag=telescope.tag, aerosol=telescope.aerosol)
+        zp = Zeropoint_airmass(tel_dir=self.telescope.tel_dir,
+                               through_dir=self.telescope.throughputsDir,
+                               atmos_dir=self.telescope.atmosDir,
+                               tag=self.telescope.tag,
+                               aerosol=self.telescope.aerosol)
 
-        print('hhh', zp.get_fit_params())
+        self.zp_airmass = zp.get_fit_params()
 
     def load_for_snfast(self, web_path):
         """
@@ -917,6 +919,7 @@ class SNSimulation(SNSimu_Params):
                               simulator_par,
                               gen_params,
                               self.cosmology,
+                              self.telescope,
                               self.zp_airmass,
                               SNID, self.area,
                               x0_grid=self.x0_grid,
@@ -926,8 +929,7 @@ class SNSimulation(SNSimu_Params):
                               DecCol=self.DecCol,
                               filterCol=self.filterCol,
                               exptimeCol=self.exptimeCol,
-                              m5Col=self.m5Col,
-                              telescope=self.telescope)
+                              m5Col=self.m5Col)
 
         module = import_module(self.simu_config['name'])
         simu = module.SN(sn_object, self.simu_config,

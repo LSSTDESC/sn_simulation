@@ -6,7 +6,7 @@ import astropy.units as u
 
 class SN_Object:
     def __init__(self, name, sn_parameters, simulator_parameters,
-                 gen_parameters, cosmology, zp_airmass,
+                 gen_parameters, cosmology, telescope, zp_airmass,
                  snid, area, x0_grid,
                  salt2Dir='SALT2_Files',
                  mjdCol='mjd', RACol='pixRa', DecCol='pixDec',
@@ -14,8 +14,7 @@ class SN_Object:
                  nexpCol='numExposures',
                  nightCol='night', m5Col='fiveSigmaDepth', seasonCol='season',
                  seeingEffCol='seeingFwhmEff', seeingGeomCol='seeingFwhmGeom',
-                 airmassCol='airmass', skyCol='sky', moonCol='moonPhase',
-                 telescope=None):
+                 airmassCol='airmass', skyCol='sky', moonCol='moonPhase'):
         """ class SN object
         handles sn name, parameters,
         cosmology, snid, telescope...
@@ -105,8 +104,6 @@ class SN_Object:
         mean_waves = zp_airmass['mean_wavelength'].tolist()
         slope = zp_airmass['slope'].tolist()
         intercept = zp_airmass['intercept'].tolist()
-
-        print(slope, intercept)
 
         self.mean_wavelength = dict(zip(bands, mean_waves))
         self.zp_slope = dict(zip(bands, slope))

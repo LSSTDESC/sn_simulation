@@ -16,6 +16,7 @@ class SN(SN_Object):
                          param.simulator_parameters,
                          param.gen_parameters,
                          param.cosmology,
+                         param.telescope,
                          param.zp_airmass,
                          param.SNID,
                          param.area, param.x0_grid,
@@ -32,8 +33,7 @@ class SN(SN_Object):
                          seeingGeomCol=param.seeingGeomCol,
                          airmassCol=param.airmassCol,
                          skyCol=param.skyCol, moonCol=param.moonCol,
-                         salt2Dir=param.salt2Dir,
-                         telescope=param.telescope)
+                         salt2Dir=param.salt2Dir)
         """ SN class - inherits from SN_Object
 
         Parameters
@@ -541,8 +541,6 @@ class SN(SN_Object):
         lcdf['zp_slope'] = np.array([*map(self.zp_slope.get, lst)])
         lcdf['zp_intercept'] = np.array([*map(self.zp_intercept.get, lst)])
         lcdf['zp'] = lcdf['zp_slope']*lcdf['airmass']+lcdf['zp_intercept']
-
-        print(self.telescope.name, lst, lcdf['zp'])
 
         lcdf['zpsys'] = 'ab'
 

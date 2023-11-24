@@ -94,8 +94,8 @@ ReferenceFiles TemplateDir Template_LC str #dir for templates ref files
 ReferenceFiles GammaDir reference_files str #dir for gamma ref files
 ReferenceFiles GammaFile gamma.hdf5 str #gamma ref file name
 ReferenceFiles DustCorrDir Template_Dust str #dir for template dust files
-ReferenceFiles zpDir reference_files str #dir for zp_airmass ref file
-ReferenceFiles zpFile zp_airmass_v1.9.npy str #zp_airmass ref file
+# ReferenceFiles zpDir reference_files str #dir for zp_airmass ref file
+# ReferenceFiles zpFile zp_airmass_v1.9.npy str #zp_airmass ref file
 
 ## Host
 Host 0 int #Host
