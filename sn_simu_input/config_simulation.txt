@@ -70,8 +70,8 @@ Cosmology wa 0.0 float #cosmology wa
 InstrumentSimu name LSST str #instrument name
 InstrumentSimu telescope_dir throughputs str #main telescope dir
 InstrumentSimu telescope_tag 1.9 str #throughputs tag version
-InstrumentSimu throughputDir throughputs/baseline str #instrument throughput dir
-InstrumentSimu atmosDir throughputs/atmos str #instrument atmos dir
+InstrumentSimu throughputDir baseline str #instrument throughput dir
+InstrumentSimu atmosDir atmos str #instrument atmos dir
 InstrumentSimu airmass 1.2 float #instrument airmass
 #Instrument atmos 1 int #instrument atmos
 InstrumentSimu aerosol 1 int #instrument aerosol

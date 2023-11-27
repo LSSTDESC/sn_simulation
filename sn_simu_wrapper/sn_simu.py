@@ -171,12 +171,35 @@ class SNSimu_Params:
         from sn_telmodel.sn_telescope import load_telescope_from_config
         self.telescope = load_telescope_from_config(config['InstrumentSimu'])
         # estimate zp vs airmass
+        self.zp_from_config(config['InstrumentSimu'])
+
+    def zp_from_config(self, config):
+        """
+        Method to estimate zp vs airmass
+
+        Parameters
+        ----------
+        config : dict
+            Telescope config.
+
+        Returns
+        -------
+        None.
+
+        """
+
         from sn_telmodel.sn_telescope import Zeropoint_airmass
-        zp = Zeropoint_airmass(tel_dir=self.telescope.tel_dir,
-                               through_dir=self.telescope.throughputsDir,
-                               atmos_dir=self.telescope.atmosDir,
-                               tag=self.telescope.tag,
-                               aerosol=self.telescope.aerosol)
+        tel_dir = config['telescope']['dir']
+        tel_tag = config['telescope']['tag']
+        through_dir = config['throughputDir']
+        atmos_dir = config['atmosDir']
+        airmass = config['airmass']
+        aerosol = config['aerosol']
+        zp = Zeropoint_airmass(tel_dir=tel_dir,
+                               through_dir=through_dir,
+                               atmos_dir=atmos_dir,
+                               tag=tel_tag,
+                               aerosol=aerosol)
 
         self.zp_airmass = zp.get_fit_params()
 
