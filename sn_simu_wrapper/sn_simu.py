@@ -528,6 +528,9 @@ class SNSimulation(SNSimu_Params):
         # estimate seasons
         obs = seasoncalc(obs, season_gap=80., force_calc=True)
 
+        # save these obs.
+        # np.save('obs_pixel.npy', obs)
+
         # plot seasons
         # self.plot_seasons(obs)
 
@@ -572,6 +575,8 @@ class SNSimulation(SNSimu_Params):
         idx = np.in1d(obs['season'], seasons)
         obs = obs[idx]
 
+        if len(obs) == 0:
+            return None
         # get simulation parameters
 
         gen_params = self.get_all_gen_params(obs, seasons)
@@ -826,6 +831,7 @@ class SNSimulation(SNSimu_Params):
         sed_list = []
         isn = 0
         tab_meta = Table()
+
         for genpar in gen_params:
             isn += 1
             season = genpar['season']
