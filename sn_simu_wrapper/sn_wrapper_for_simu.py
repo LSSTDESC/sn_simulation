@@ -664,8 +664,8 @@ class SimInfoFitWrapper:
         # fitting here
         fitlc = self.fit_wrapper(light_curves_ana)
 
-        # self.dump(fitlc)
-        ccol = ['RA', 'Dec', 'sn_type']
+        self.dump(fitlc)
+        #ccol = ['RA', 'Dec', 'sn_type']
 
         # print('nsn', len(fitlc), time.time()-time_ref)
         del light_curves
