@@ -844,7 +844,8 @@ class SNSimulation(SNSimu_Params):
             lc = lc[0]
 
             hpix = int(np.mean(obs['healpixID']))
-            sn_id = 'SN_{}_{}_{}'.format(hpix, isn, j)
+            isn_str = str(isn)
+            sn_id = 'SN_{}_{}_{}'.format(hpix, isn_str.zfill(5), j)
             lc.meta['SNID'] = sn_id
             lc_list += [lc]
             if sed:

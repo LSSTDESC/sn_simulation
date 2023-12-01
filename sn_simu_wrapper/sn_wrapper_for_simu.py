@@ -718,6 +718,12 @@ class SimInfoFitWrapper:
             for vv in self.ccolref:
                 print(vv, df[vv].dtype)
             """
+            """
+            cols = ['sn_type', 'sn_model', 'sn_version', 'fitstatus']
+
+            print(df['fitstatus'].unique(), df['SNID'].unique())
+            """
+
             df.to_hdf(self.outName, key='SN', append=True)
 
 
