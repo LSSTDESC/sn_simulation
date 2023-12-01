@@ -3,6 +3,7 @@ import numpy as np
 import yaml
 import os
 from sn_tools.sn_io import check_get_file
+import pandas as pd
 import operator
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -410,9 +411,9 @@ class InfoWrapper:
             resdict[key] = -1
 
         for b in 'ugrizy':
-            resdict['SNR_{}'.format(b)] = -1
+            resdict['SNR_{}'.format(b)] = -1.0
 
-        resdict['SNR'] = -1
+        resdict['SNR'] = -1.0
         resdict['selected'] = 0
         for vv in snr_max:
             resdict['Nfilt_{}'.format(vv)] = 0
@@ -620,11 +621,12 @@ class SimInfoFitWrapper:
 
         self.outName = ''
 
+        self.ccolref = []
         if self.fit_wrapper.saveData:
             outFile = 'SN_{}.hdf5'.format(self.simu_wrapper.prodid)
             self.outName = '{}/{}'.format(self.fit_wrapper.outDir, outFile)
             # check wether this file already exist and remove it
-            import os
+            # import os
             if os.path.isfile(self.outName):
                 os.system('rm {}'.format(self.outName))
 
@@ -662,7 +664,8 @@ class SimInfoFitWrapper:
         # fitting here
         fitlc = self.fit_wrapper(light_curves_ana)
 
-        self.dump(fitlc)
+        # self.dump(fitlc)
+        ccol = ['RA', 'Dec', 'sn_type']
 
         # print('nsn', len(fitlc), time.time()-time_ref)
         del light_curves
@@ -680,13 +683,13 @@ class SimInfoFitWrapper:
                                                   serialize_meta=True)
         """
 
-    def dump(self, sn):
+    def dump(self, fitlc):
         """
 
 
         Parameters
         ----------
-        sn : astropyTable
+        fitlc : astropyTable
             data to dump
 
         Returns
@@ -694,9 +697,28 @@ class SimInfoFitWrapper:
         None.
 
         """
+        """
         if self.outName != '':
             keyhdf = '{}'.format(int(sn['healpixID'].mean()))
             sn.write(self.outName, keyhdf, append=True, compression=True)
+        """
+        if self.fit_wrapper.saveData:
+            fitlc.convert_bytestring_to_unicode()
+            df = pd.DataFrame(fitlc.to_pandas())
+
+            if 'selected' in df.columns:
+                df = df.drop(columns=['selected'])
+
+            if not self.ccolref:
+                self.ccolref = df.columns.to_list()
+            else:
+                df = df.reindex(columns=self.ccolref)
+
+            """
+            for vv in self.ccolref:
+                print(vv, df[vv].dtype)
+            """
+            df.to_hdf(self.outName, key='SN', append=True)
 
 
 class SimuWrapper:
