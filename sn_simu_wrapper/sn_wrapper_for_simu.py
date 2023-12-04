@@ -261,12 +261,44 @@ class FitWrapper:
             lc.convert_bytestring_to_unicode()
             resfit = self.fit(lc)
             if resfit is not None:
+                resfit = self.check_correct(resfit)
                 res = vstack([res, resfit])
 
         if output_q is not None:
             return output_q.put({j: res})
         else:
             return res
+
+    def check_correct(self, sn):
+        """
+        Method to correct for Cov_xy col names
+
+        Parameters
+        ----------
+        sn : astropy Table
+            Data to process.
+
+        Returns
+        -------
+        sn : astropy Table
+            Processed data
+
+        """
+
+        varlist = ['z', 't0', 'x0', 'x1', 'color']
+
+        if 'Cov_zz' not in sn.columns:
+            varlist = ['t0', 'x0', 'x1', 'color']
+
+        for i, namea in enumerate(varlist):
+            for j, nameb in enumerate(varlist):
+                if j >= i:
+                    vva = 'Cov_{}{}'.format(namea, nameb)
+                    vvb = 'Cov_{}{}'.format(nameb, namea)
+                    if vva not in sn.columns:
+                        sn.rename_column(vvb, vva)
+
+        return sn
 
 
 class InfoWrapper:
