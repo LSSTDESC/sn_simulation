@@ -715,6 +715,11 @@ class SimInfoFitWrapper:
                 df = df.reindex(columns=self.ccolref)
 
             """
+            print('chisq', df['chisq'])
+            for vv in df.columns:
+                print(vv, df[vv].dtype)
+            """
+            """
             for vv in self.ccolref:
                 print(vv, df[vv].dtype)
             """
