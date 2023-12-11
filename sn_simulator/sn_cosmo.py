@@ -100,7 +100,7 @@ class SN(SN_Object):
                            'z', 'survey_area',
                            'healpixID', 'pixRA', 'pixDec',
                            'season', 'season_length', 'dL', 'ptime',
-                           'status', 'ebvofMW']
+                           'status', 'ebvofMW', 'lsst_start', 'mjd_max']
 
         if self.sn_type == 'SN_Ia':
             self.names_meta += ['x0', 'epsilon_x0', 'x1',
@@ -518,9 +518,11 @@ class SN(SN_Object):
                                         season_length,
                                         ti, ebvofMW)
 
+        lsst_start = -1
+        mjd_max = -1.0
         if len(obs) == 0:
             return [self.nosim(ra, dec, pix, area, season, season_length,
-                               ti, -1, ebvofMW)]
+                               ti, -1, ebvofMW, lsst_start, mjd_max)]
 
         # preparing the results : stored in lcdf pandas DataFrame
         outvals = [self.m5Col, self.mjdCol,
@@ -646,9 +648,14 @@ class SN(SN_Object):
         # transform pandas df to astropy Table
         table_lc = Table.from_pandas(lcdf)
         # set metadata
+        if 'lsst_start' in obs.dtype.names:
+            lsst_start = np.median(obs['lsst_start'])
+
+        mjd_max = np.max(table_lc['time'])
+
         table_lc.meta = self.metadata(
             ra, dec, pix, area, season, season_length, ptime,
-            1, ebvofMW)
+            1, ebvofMW, lsst_start, mjd_max)
 
         # if the user chooses to display the results...
         if display:
@@ -721,7 +728,7 @@ class SN(SN_Object):
 
         if len(obs[goodFilters]) == 0:
             return [self.nosim(ra, dec, pix, area, season, season_length,
-                               ti, -1, ebvofMW)]
+                               ti, -1, ebvofMW, -1.0, -1.0)]
 
         # Select obs depending on min and max phases
         # blue and red cutoffs applied
@@ -846,7 +853,7 @@ class SN(SN_Object):
         return grp
 
     def nosim(self, ra, dec, pix, area, season, season_length,
-              ti, status, ebvofMW):
+              ti, status, ebvofMW, lsst_start=-1.0, mjd_max=-1):
         """
         Method to construct an empty table when no simulation was not possible
 
@@ -876,11 +883,11 @@ class SN(SN_Object):
         # set metadata
         table_lc.meta = self.metadata(
             ra, dec, pix, area, season, season_length, ptime,
-            status, ebvofMW)
+            status, ebvofMW, lsst_start, mjd_max)
         return table_lc
 
     def metadata(self, ra, dec, pix, area, season, season_length,
-                 ptime, status, ebvofMW):
+                 ptime, status, ebvofMW, lsst_start, mjd_max):
         """
         Method to fill metadata
 
@@ -914,7 +921,7 @@ class SN(SN_Object):
                     self.sn_parameters['z'], area,
                     pix['healpixID'], pix['pixRA'], pix['pixDec'],
                     season, season_length, self.dL, ptime,
-                    status, ebvofMW]
+                    status, ebvofMW, lsst_start, mjd_max]
 
         if self.sn_type == 'SN_Ia':
             val_meta += [self.X0, self.gen_parameters['epsilon_x0'],
