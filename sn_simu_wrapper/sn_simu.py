@@ -328,7 +328,8 @@ class SNSimu_Params:
                                              'pixDec', 'healpixID',
                                              'season', 'airmass'],
                                    col_median=[
-                                       'sky', 'moonPhase', 'seeingFwhmEff'],
+                                       'sky', 'moonPhase', 'seeingFwhmEff',
+                                       'lsst_start'],
                                    col_group=[
                                        self.filterCol, self.nightCol],
                                    col_coadd=self.m5Col,
@@ -699,6 +700,11 @@ class SNSimulation(SNSimu_Params):
         """
 
         obs = params['obs']
+
+        lsst_start = -1
+        if 'lsst_start' in obs.dtype.names:
+            lsst_start = np.median(obs['lsst_start'])
+
         nspectra = params['nspectra']
         simu_out, lc_out = None, None
 
@@ -722,6 +728,7 @@ class SNSimulation(SNSimu_Params):
                     lc_list = []
                 tab_meta.meta['lc_dir'] = self.outdir
                 tab_meta.meta['lc_fileName'] = lc_out.split('/')[-1]
+                tab_meta.meta['lsst_start'] = lsst_start
                 self.write_meta(tab_meta, simu_out)
             else:
                 self.dump_df(tab_meta, simu_out, lc_list,
