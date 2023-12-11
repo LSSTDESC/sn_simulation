@@ -662,6 +662,8 @@ class SimInfoFitWrapper:
             if os.path.isfile(self.outName):
                 os.system('rm {}'.format(self.outName))
 
+        self.outdf = pd.DataFrame()
+
     def run(self, obs, imulti=0):
         """
 
@@ -696,7 +698,11 @@ class SimInfoFitWrapper:
         # fitting here
         fitlc = self.fit_wrapper(light_curves_ana)
 
-        self.dump(fitlc)
+        if len(self.outdf) < 10000:
+            self.myconcat(fitlc)
+        else:
+            self.dump_df(self.outdf)
+            self.outdf = pd.DataFrame()
         #ccol = ['RA', 'Dec', 'sn_type']
 
         # print('nsn', len(fitlc), time.time()-time_ref)
@@ -761,7 +767,63 @@ class SimInfoFitWrapper:
             print(df['fitstatus'].unique(), df['SNID'].unique())
             """
 
+            print('dumping', len(df))
             df.to_hdf(self.outName, key='SN', append=True)
+
+    def dump_df(self):
+        """
+        Method to dum a pandaf df to a file
+
+        Returns
+        -------
+        None.
+
+        """
+
+        print('dumping df', len(self.outdf))
+        self.outdf.to_hdf(self.outName, key='SN', append=True)
+
+    def myconcat(self, fitlc):
+        """
+        Method to concat a set of astropy tables with a pandas df
+
+        Parameters
+        ----------
+        fitlc : astropy table
+            Data to concat.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        fitlc.convert_bytestring_to_unicode()
+        df = pd.DataFrame(fitlc.to_pandas())
+
+        if 'selected' in df.columns:
+            df = df.drop(columns=['selected'])
+
+        if not self.ccolref:
+            self.ccolref = df.columns.to_list()
+        else:
+            df = df.reindex(columns=self.ccolref)
+
+        self.outdf = pd.concat((self.outdf, df))
+
+    def finish(self):
+        """
+        Method to use at the end of the run
+
+        Returns
+        -------
+        None.
+
+        """
+
+        print('finishing')
+        if len(self.outdf) > 0:
+            self.dump_df()
 
 
 class SimuWrapper:
