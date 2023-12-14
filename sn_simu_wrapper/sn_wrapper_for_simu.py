@@ -701,7 +701,7 @@ class SimInfoFitWrapper:
         if len(self.outdf) < 10000:
             self.myconcat(fitlc)
         else:
-            self.dump_df(self.outdf)
+            self.dump_df()
             self.outdf = pd.DataFrame()
         #ccol = ['RA', 'Dec', 'sn_type']
 
