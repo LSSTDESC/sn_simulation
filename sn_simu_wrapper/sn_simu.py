@@ -550,7 +550,7 @@ class SNSimulation(SNSimu_Params):
         # np.save('obs_pixel.npy', obs)
 
         # plot seasons
-        self.plot_seasons(obs)
+        # self.plot_seasons(obs)
 
         if len(obs) == 0:
             return None
