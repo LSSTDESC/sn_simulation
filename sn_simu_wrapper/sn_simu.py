@@ -526,18 +526,31 @@ class SNSimulation(SNSimu_Params):
         """
         iproc = 1
 
+        # select filters
+        goodFilters = np.in1d(obs[self.filterCol], self.filterNames)
+        obs = obs[goodFilters]
+
         # estimate seasons
         obs = seasoncalc(obs, season_gap=80., force_calc=True)
 
+        # check the number of seasons
+        # if too low get seasons using clusters
+
+        nseasons = len(np.unique(obs['season']))
+        if nseasons <= 8:
+            obs = self.get_season_from_cluster(obs)
+
+            """
+                delta_max = self.get_delta_per_season(obs)
+                # obs = rf.drop_fields(obs, 'season')
+                print('delta_max', delta_max)
+                obs = seasoncalc(obs, season_gap=65., force_calc=True)
+                """
         # save these obs.
         # np.save('obs_pixel.npy', obs)
 
         # plot seasons
-        # self.plot_seasons(obs)
-
-        # select filters
-        goodFilters = np.in1d(obs[self.filterCol], self.filterNames)
-        obs = obs[goodFilters]
+        self.plot_seasons(obs)
 
         if len(obs) == 0:
             return None
@@ -599,6 +612,7 @@ class SNSimulation(SNSimu_Params):
             print(np.max(np.diff(obs['observationStartMJD'])))
             plt.show()
             """
+
             list_lc = multiproc(gen_params, par, self.simuLoop, self.nprocs)
 
         """
@@ -613,6 +627,77 @@ class SNSimulation(SNSimu_Params):
             return list_lc
 
         return None
+
+    def get_season_from_cluster(self, obs):
+        """
+        Method to estimate seasons from clusters
+
+        Parameters
+        ----------
+        obs : numpy array
+            Data to process.
+
+        Returns
+        -------
+        obs : numpy array
+            Original data plus season col.
+
+        """
+
+        from sn_tools.sn_clusters import makeClusters, anaClusters
+        nclusters = 10
+        obs.sort(order=self.mjdCol)
+        points, clus, labels = makeClusters(
+            nclusters, obs, 'pixRA', self.mjdCol)
+
+        dfcluster = anaClusters(
+            nclusters, obs, points, clus, labels, 'pixRA', self.mjdCol)
+
+        dfcluster = dfcluster.sort_values(by=['pixRA', self.mjdCol])
+        dfclmean = dfcluster.groupby(
+            'clusId')[self.mjdCol].mean().reset_index()
+        dfclmean = dfclmean.sort_values(by=[self.mjdCol]).reset_index()
+        dfclmean['season'] = dfclmean.index+1
+
+        dfcluster = dfcluster.merge(dfclmean[['clusId', 'season']],
+                                    left_on=['clusId'],
+                                    right_on=['clusId'],
+                                    suffixes=('', ''))
+        seasons = dfcluster['season'].to_list()
+        obs.sort(order=['pixRA', self.mjdCol])
+        obs = rf.drop_fields(obs, 'season')
+        obs = rf.append_fields(obs, 'season', seasons)
+
+        return obs
+
+    def get_delta_per_season(self, obs, vara='observationStartMJD'):
+        """
+        Method to get info on data/season
+
+        Parameters
+        ----------
+        obs : numpy array
+            Data to process.
+        vara : str, optional
+            col to get info from. The default is 'observationStartMJD'.
+
+        Returns
+        -------
+        float
+            Max delta_MJD (over seasons)
+
+        """
+
+        delta_max = []
+        for seas in np.unique(obs['season']):
+            idx = obs['season'] == seas
+            sel = obs[idx]
+            season_length = np.max(sel[vara])-np.min(sel[vara])
+            if len(sel) >= 2:
+                delta_max.append(np.max(np.diff(sel[vara])))
+                print(seas, np.max(np.diff(sel[vara])), season_length)
+
+        return np.max(delta_max)
 
     def plot_seasons(self, obs):
         """
@@ -630,14 +715,22 @@ class SNSimulation(SNSimu_Params):
         """
 
         print('seasons', np.unique(obs['season']))
+        vara = 'observationStartMJD'
+        varb = 'fiveSigmaDepth'
         import matplotlib.pyplot as plt
-        plt.plot(obs['observationStartMJD'],
-                 obs['fiveSigmaDepth'], 'ko', mfc='None')
+        plt.plot(obs[vara],
+                 obs[varb], 'ko', mfc='None')
         for seas in np.unique(obs['season']):
             idx = obs['season'] == seas
             sel = obs[idx]
-            plt.plot(sel['observationStartMJD'],
-                     sel['fiveSigmaDepth'], marker='*', linestyle='None')
+            season_length = np.max(sel[vara])-np.min(sel[vara])
+            if len(sel) >= 2:
+                # print(sel[[vara, self.filterCol, 'fieldRA', 'fieldDec']])
+                print(seas, np.max(np.diff(sel[vara])), season_length,
+                      np.min(sel[vara]), np.max(sel[vara]))
+
+            plt.plot(sel[vara],
+                     sel[varb], marker='*', linestyle='None')
 
         plt.show()
 
@@ -770,7 +863,7 @@ class SNSimulation(SNSimu_Params):
         # meta data or Sn_data
         df_meta = tab_meta.to_pandas()
         rename_dict = dict(zip(['SNID', 'daymax', 'color', 'ebvofMW'], [
-                           'sn', 'tmax', 'col', 'ebv']))
+            'sn', 'tmax', 'col', 'ebv']))
         df_meta = df_meta.rename(columns=rename_dict)
         df_meta['valid'] = 1
         df_meta['IAU'] = 0
