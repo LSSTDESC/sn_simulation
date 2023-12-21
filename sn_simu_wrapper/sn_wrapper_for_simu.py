@@ -821,7 +821,6 @@ class SimInfoFitWrapper:
 
         """
 
-        print('finishing')
         if len(self.outdf) > 0:
             self.dump_df()
 
