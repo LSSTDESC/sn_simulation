@@ -647,6 +647,10 @@ class SNSimulation(SNSimu_Params):
         from sn_tools.sn_clusters import makeClusters, anaClusters
         nclusters = 10
         obs.sort(order=self.mjdCol)
+
+        nobs = len(obs)
+        if nobs < nclusters:
+            nclusters = nobs
         points, clus, labels = makeClusters(
             nclusters, obs, 'pixRA', self.mjdCol)
 
