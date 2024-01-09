@@ -13,7 +13,7 @@ from sn_tools.sn_obs import season as seasoncalc
 from sn_tools.sn_calcFast import GetReference, LoadDust
 from sn_tools.sn_stacker import CoaddStacker
 import numpy.lib.recfunctions as rf
-
+import pandas as pd
 # import tracemalloc
 
 
@@ -92,6 +92,10 @@ class SNSimu_Params:
 
         # simulator parameters
         self.simulator_parameters = config['Simulator']
+
+        # simu params from file
+        self.simuParamsFile = self.simu_params_from_file(
+            self.sn_parameters['simuFile'])
 
         # this is for output
 
@@ -172,6 +176,40 @@ class SNSimu_Params:
         self.telescope = load_telescope_from_config(config['InstrumentSimu'])
         # estimate zp vs airmass
         self.zp_from_config(config['InstrumentSimu'])
+
+    def simu_params_from_file(self, simuFile):
+        """
+        Method to grab simu parameters from file
+
+        Parameters
+        ----------
+        simuFile : str
+            simu file Name.
+
+        Returns
+        -------
+        numpy array 
+            array with simu parameters
+
+        """
+        # sn simu parameters from file
+        df = pd.DataFrame()
+        simuFile = self.sn_parameters['simuFile']
+        if simuFile != 'None':
+            df = pd.read_hdf(simuFile)
+
+        # complete df with other simulation parameters
+
+        ccols = ['healpixID', 'season', 'z', 'daymax', 'x1', 'color',
+                 'epsilon_x0', 'epsilon_x1',
+                 'epsilon_color', 'epsilon_daymax']
+        ccolsb = ['minRFphase', 'maxRFphase',
+                  'minRFphaseQual', 'maxRFphaseQual']
+
+        for vv in ccolsb:
+            df[vv] = self.sn_parameters[vv]
+
+        return df[ccols+ccolsb].to_records(index=False)
 
     def zp_from_config(self, config):
         """
@@ -759,20 +797,81 @@ class SNSimulation(SNSimu_Params):
         gp = None
         for seas in seasons:
 
-            idxa = obs[self.seasonCol] == seas
-            obs_season = obs[idxa]
-            gen_pars = self.gen_par.simuparams(obs_season)
+            if len(self.simuParamsFile) == 0:
+                gen_pars = self.gen_params_from_season(obs, seas)
+            else:
+                gen_pars = self.gen_params_from_file(obs, seas)
+
             if gen_pars is None:
                 continue
-            gen_pars = rf.append_fields(gen_pars,
-                                        'season',
-                                        [seas]*len(gen_pars))
+
             if gp is None:
                 gp = gen_pars
             else:
                 gp = np.concatenate((gp, gen_pars))
 
         return gp
+
+    def gen_params_from_file(self, obs, seas):
+        """
+        Method to grab simu parameters from input file
+
+        Parameters
+        ----------
+        obs : numpy array
+            array of observations.
+        seas : int
+            season to process.
+
+        Returns
+        -------
+        sel : numpy array
+            array of simu parameters.
+
+        """
+
+        healpixID = np.unique(obs['healpixID'])
+
+        idx = self.simuParamsFile['healpixID'] == healpixID
+        idx &= self.simuParamsFile['season'] == seas
+
+        sel = self.simuParamsFile[idx]
+
+        return sel
+
+    def gen_params_from_season(self, obs, seas):
+        """
+        Method to grab simu params (estimated from obs) for a season 
+
+        Parameters
+        ----------
+        obs : numpy array
+            Observations
+        seas : int
+            season of observation.
+
+        Returns
+        -------
+        gen_pars : numpy array
+            simulation parameters.
+
+        """
+
+        idxa = obs[self.seasonCol] == seas
+        obs_season = obs[idxa]
+        gen_pars = self.gen_par.simuparams(obs_season)
+
+        if gen_pars is None:
+            return gen_pars
+
+        print('hello gen_pars', gen_pars)
+        print('hello gen_pars', gen_pars.dtype.names)
+
+        gen_pars = rf.append_fields(gen_pars,
+                                    'season',
+                                    [seas]*len(gen_pars))
+
+        return gen_pars
 
     def simuLoop(self, gen_params, params, j=0, output_q=None):
         """
