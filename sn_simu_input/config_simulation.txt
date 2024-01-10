@@ -56,8 +56,9 @@ SN redCutoffy 800. float #SN red cutoff y-band
 SN ebvofMW -1. float #SN E(B-V)
 SN NSNfactor 1 int #NSN*factor for simulation
 SN NSNabsolute -1 int #absolute number of SN to produce
-SN sigmaInt 0.0 float # SN intrinsic dispersion
-SN nspectra 0 int # Number of spectra to generate
+SN sigmaInt 0.0 float #SN intrinsic dispersion
+SN nspectra 0 int #Number of spectra to generate
+SN smearFlux 0 int #LC flux smearing
 
 ##Simulation parameters(from file)
 SN simuFile None str # simulation parameter file
