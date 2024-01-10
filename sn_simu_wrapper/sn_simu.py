@@ -197,6 +197,8 @@ class SNSimu_Params:
         simuFile = self.sn_parameters['simuFile']
         if simuFile != 'None':
             df = pd.read_hdf(simuFile)
+        else:
+            return df
 
         # complete df with other simulation parameters
 
@@ -863,9 +865,6 @@ class SNSimulation(SNSimu_Params):
 
         if gen_pars is None:
             return gen_pars
-
-        print('hello gen_pars', gen_pars)
-        print('hello gen_pars', gen_pars.dtype.names)
 
         gen_pars = rf.append_fields(gen_pars,
                                     'season',
