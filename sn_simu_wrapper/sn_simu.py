@@ -202,7 +202,7 @@ class SNSimu_Params:
 
         ccols = ['healpixID', 'season', 'z', 'daymax', 'x1', 'color',
                  'epsilon_x0', 'epsilon_x1',
-                 'epsilon_color', 'epsilon_daymax']
+                 'epsilon_color', 'epsilon_daymax', 'SNID']
         ccolsb = ['minRFphase', 'maxRFphase',
                   'minRFphaseQual', 'maxRFphaseQual']
 
@@ -1048,8 +1048,13 @@ class SNSimulation(SNSimu_Params):
 
             hpix = int(np.mean(obs['healpixID']))
             isn_str = str(isn)
-            sn_id = 'SN_{}_{}_{}'.format(
-                str(hpix).zfill(7), isn_str.zfill(5), j)
+
+            if 'SNID' in genpar.dtype.names:
+                sn_id = genpar['SNID']
+            else:
+                sn_id = 'SN_{}_{}_{}_{}'.format(
+                    str(hpix).zfill(7), str(season).zfill(2), isn_str.zfill(5), j)
+
             lc.meta['SNID'] = sn_id
             lc_list += [lc]
             if sed:
