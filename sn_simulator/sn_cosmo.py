@@ -75,6 +75,8 @@ class SN(SN_Object):
             self.sn_parameters['z']).value*1.e3  # in kpc
 
         self.sn_type = self.sn_parameters['type']
+        self.sn_smearFlux = self.sn_parameters['smearFlux']
+
         if self.sn_type == 'SN_Ia':
             self.source(model, version)
         else:
@@ -629,6 +631,10 @@ class SN(SN_Object):
         lcdf.loc[lcdf.fluxerr_model < 0, 'fluxerr'] = 10.
         lcdf.loc[lcdf.fluxerr_model < 0, 'snr_m5'] = 0.
         lcdf.loc[lcdf.fluxerr_model < 0, 'fluxerr_model'] = 10.
+
+        # smear lc fluxes
+        if self.sn_smearFlux:
+            lcdf['flux'] = lcdf['flux']+np.random.normal(0., lcdf['fluxerr'])
 
         filters = np.array(lcdf['filter'])
         filters = filters.reshape((len(filters), 1))
