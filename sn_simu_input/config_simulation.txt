@@ -27,6 +27,8 @@ SN z min 0.01 float #SN z min
 SN z max 1.0 float #SN z max
 SN z step 0.01 float #SN z step
 SN z rate combined str #SN z rate
+SN z maxsimu 1.1 float # SN max z for rate
+SN z minsimu 0.01 float # SN max z for rate
 # daymax
 SN daymax type unique str #SN daymax type
 SN daymax step 1. float #SN daymax step
