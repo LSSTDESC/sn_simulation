@@ -698,9 +698,8 @@ class SimInfoFitWrapper:
         # fitting here
         fitlc = self.fit_wrapper(light_curves_ana)
 
-        if len(self.outdf) < 10000:
-            self.myconcat(fitlc)
-        else:
+        self.myconcat(fitlc)
+        if len(self.outdf) > 10000:
             self.dump_df()
             self.outdf = pd.DataFrame()
         #ccol = ['RA', 'Dec', 'sn_type']
