@@ -1,0 +1,130 @@
+## production Id
+ProductionIDSimu prodid str #Production Id
+
+## SN parameters
+SN Id 100 int #SN Id
+SN type SN_Ia str #SN type
+# parameter dist
+SN modelPar nameFile x1_color_G10.csv str #SN dist filename
+SN modelPar dirFile reference_files str #SN dist model ref dir
+SN modelPar x1sigma 0 int #shift for x1 distrib parameter
+SN modelPar colorsigma 0 int #shift for color distrib parameter
+SN modelPar mbsigma 0 int #shift for mb SN parameter
+SN modelPar mbsigmafile sigma_mb_from_simu_Ny_40.hdf5 str #file for mbsigma application
+#x1
+SN x1 type unique str #SN x1 type
+SN x1 min -2.0 float #SN x1 min
+SN x1 max 0.2 float #SN x1 max
+SN x1 step 0.1 float #SN x1 step
+# color
+SN color type unique str #SN color type
+SN color min 0.2 float #SN color min
+SN color max 1.0 float #SN color max
+SN color step 0.1 float #SN color step
+# redshift
+SN z type unique str #SN z type
+SN z min 0.01 float #SN z min
+SN z max 1.0 float #SN z max
+SN z step 0.01 float #SN z step
+SN z rate combined str #SN z rate
+SN z maxsimu 1.1 float # SN max z for rate
+SN z minsimu 0.01 float # SN max z for rate
+# daymax
+SN daymax type unique str #SN daymax type
+SN daymax step 1. float #SN daymax step
+#rf cuts
+SN minRFphase -20. float #SN min rf phase
+SN maxRFphase 60. float #SN max rf phase
+SN minRFphaseQual 0. float #SN min rf phase qual
+SN maxRFphaseQual 0. float #SN max rf phase qual
+# other parameters
+SN absmag -19.0906 float #SN absmag
+SN band bessellB str #SN band
+SN magsys vega str #SN magsys
+SN differentialFlux 0 int #SN diff flux
+SN salt2Dir SALT2_Files str #SN SALT2 dir
+SN blueCutoffu 380. float #SN blue cutoff u-band
+SN redCutoffu 800. float #SN red cutoff u-band
+SN blueCutoffg 380. float #SN blue cutoff g-band
+SN redCutoffg 800. float #SN red cutoff g-band
+SN blueCutoffr 380. float #SN blue cutoff r-band
+SN redCutoffr 800. float #SN red cutoff	 r-band
+SN blueCutoffi 360. float #SN blue cutoff i-band
+SN redCutoffi 800. float #SN red cutoff	 i-band
+SN blueCutoffz 380. float #SN blue cutoff z-band
+SN redCutoffz 800. float #SN red cutoff z-band
+SN blueCutoffy 380. float #SN blue cutoff y-band
+SN redCutoffy 800. float #SN red cutoff y-band
+SN ebvofMW -1. float #SN E(B-V)
+SN NSNfactor 1 int #NSN*factor for simulation
+SN NSNabsolute -1 int #absolute number of SN to produce
+SN sigmaInt 0.0 float #SN intrinsic dispersion
+SN nspectra 0 int #Number of spectra to generate
+SN smearFlux 0 int #LC flux smearing
+
+##Simulation parameters(from file)
+SN simuFile None str # simulation parameter file
+
+## Cosmology parameters
+Cosmology Model w0waCDM str #cosmology model
+Cosmology Om 0.30 float #cosmology Omegam
+Cosmology Ol 0.70 float #cosmology Omegall
+Cosmology H0 70.0 float #cosmology H0
+Cosmology w0 -1.0 float #cosmology w0
+Cosmology wa 0.0 float #cosmology wa
+
+## Instrument
+InstrumentSimu name LSST str #instrument name
+InstrumentSimu telescope_dir throughputs str #main telescope dir
+InstrumentSimu telescope_tag 1.9 str #throughputs tag version
+InstrumentSimu throughputDir baseline str #instrument throughput dir
+InstrumentSimu atmosDir atmos str #instrument atmos dir
+InstrumentSimu airmass 1.2 float #instrument airmass
+#Instrument atmos 1 int #instrument atmos
+InstrumentSimu aerosol 1 int #instrument aerosol
+
+##Observations
+Observations filename fullDbName str #observation file name
+Observations fieldtype WFD str #observations field type
+Observations fieldname all  str #observations field name (DD only)
+Observations coadd 1 int #observations coaddition per night
+Observations season -1 str #observations seasons
+
+## Simulator
+Simulator name sn_simulator.sn_cosmo str #simulator name
+Simulator model salt3 str #simulator model
+Simulator version 2.0 float #simulator version
+Simulator errorModel 0 int #simulator error model
+
+## Reference_Files
+ReferenceFiles TemplateDir Template_LC str #dir for templates ref files 
+ReferenceFiles GammaDir reference_files str #dir for gamma ref files
+ReferenceFiles GammaFile gamma.hdf5 str #gamma ref file name
+ReferenceFiles DustCorrDir Template_Dust str #dir for template dust files
+# ReferenceFiles zpDir reference_files str #dir for zp_airmass ref file
+# ReferenceFiles zpFile zp_airmass_v1.9.npy str #zp_airmass ref file
+
+## Host
+Host 0 int #Host
+
+# Display LC
+Display LC display 0 int #display LC
+Display LC time 5. float #display LC persistency time
+
+##Output:
+OutputSimu directory Output_Simu str #Output directory
+OutputSimu save 1 int #output save file
+OutputSimu throwempty 1 int #do not save empty LC
+OutputSimu throwafterdump 1 int #remove LC after dumping on file
+OutputSimu clean 1 int #to clean output dir before processing
+
+#Multiprocessing
+MultiprocessingSimu nproc 1 int #multiprocessing number of procs
+
+# Pixelisation
+Pixelisation nside 64 int #pixelisation nside Healpix
+
+#Web path
+WebPathSimu https://me.lsst.eu/gris/DESC_SN_pipeline str #web path for reference files
+
+
