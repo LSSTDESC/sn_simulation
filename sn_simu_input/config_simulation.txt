@@ -81,7 +81,7 @@ InstrumentSimu throughputDir baseline str #instrument throughput dir
 InstrumentSimu atmosDir atmos str #instrument atmos dir
 InstrumentSimu airmass 1.2 float #instrument airmass
 #Instrument atmos 1 int #instrument atmos
-InstrumentSimu aerosol 1 int #instrument aerosol
+InstrumentSimu aerosol aerosol str #instrument aerosol
 
 ##Observations
 Observations filename fullDbName str #observation file name

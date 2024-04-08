@@ -12,6 +12,7 @@ from sn_tools.sn_utils import SimuParameters, multiproc
 from sn_tools.sn_obs import season as seasoncalc
 from sn_tools.sn_calcFast import GetReference, LoadDust
 from sn_tools.sn_stacker import CoaddStacker
+from sn_telmodel.sn_telescope import load_telescope_from_config
 import numpy.lib.recfunctions as rf
 import pandas as pd
 # import tracemalloc
@@ -172,7 +173,7 @@ class SNSimu_Params:
         self.sn_meta = {}
 
         # load the instrument(telescope)
-        from sn_telmodel.sn_telescope import load_telescope_from_config
+
         self.telescope = load_telescope_from_config(config['InstrumentSimu'])
         # estimate zp vs airmass
         self.zp_from_config(config['InstrumentSimu'])

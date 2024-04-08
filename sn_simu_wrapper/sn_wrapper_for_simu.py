@@ -702,7 +702,7 @@ class SimInfoFitWrapper:
         if len(self.outdf) > 10000:
             self.dump_df()
             self.outdf = pd.DataFrame()
-        #ccol = ['RA', 'Dec', 'sn_type']
+        # ccol = ['RA', 'Dec', 'sn_type']
 
         # print('nsn', len(fitlc), time.time()-time_ref)
         del light_curves
@@ -922,7 +922,7 @@ class SimuWrapper:
         Method to save metadata to disk
 
         """
-        self.metric.save_metadata()
+        # self.metric.save_metadata()
 
 
 def load_config(yaml_config):
