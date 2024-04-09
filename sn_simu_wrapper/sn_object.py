@@ -14,7 +14,8 @@ class SN_Object:
                  nexpCol='numExposures',
                  nightCol='night', m5Col='fiveSigmaDepth', seasonCol='season',
                  seeingEffCol='seeingFwhmEff', seeingGeomCol='seeingFwhmGeom',
-                 airmassCol='airmass', skyCol='sky', moonCol='moonPhase'):
+                 airmassCol='airmass', skyCol='sky', moonCol='moonPhase',
+                 airmassType='const'):
         """ class SN object
         handles sn name, parameters,
         cosmology, snid, telescope...
@@ -92,6 +93,8 @@ class SN_Object:
         self.area = area
         self.salt2Dir = salt2Dir
         self.x0_grid = x0_grid
+
+        self.airmassType = airmassType
 
         """
         self.mean_wavelength = dict(zip('ugrizy',

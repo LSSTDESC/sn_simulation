@@ -80,6 +80,7 @@ InstrumentSimu telescope_tag 1.9 str #throughputs tag version
 InstrumentSimu throughputDir baseline str #instrument throughput dir
 InstrumentSimu atmosDir atmos str #instrument atmos dir
 InstrumentSimu airmass 1.2 float #instrument airmass
+InstrumentSimu airmassType const str #instrument airmass/const/dep
 #Instrument atmos 1 int #instrument atmos
 InstrumentSimu aerosol aerosol str #instrument aerosol
 

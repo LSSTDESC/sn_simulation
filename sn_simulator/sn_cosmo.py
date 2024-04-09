@@ -33,7 +33,8 @@ class SN(SN_Object):
                          seeingGeomCol=param.seeingGeomCol,
                          airmassCol=param.airmassCol,
                          skyCol=param.skyCol, moonCol=param.moonCol,
-                         salt2Dir=param.salt2Dir)
+                         salt2Dir=param.salt2Dir,
+                         airmassType=param.airmassType)
         """ SN class - inherits from SN_Object
 
         Parameters
@@ -120,16 +121,8 @@ class SN(SN_Object):
         self.zp_slope = dict(zip(bands, slope))
         self.zp_intercept = dict(zip(bands, intercept))
         """
-        # band registery in sncosmo
-        from astropy import units as u
-        for band in 'grizy':
-            name = '{}::{}'.format(self.telescope.name, band)
-            throughput = self.telescope.lsst_atmos_aerosol[band]
-            bandcosmo = sncosmo.Bandpass(
-                throughput.wavelen,
-                throughput.sb, name=name,
-                wave_unit=u.nm)
-            sncosmo.registry.register(bandcosmo, force=True)
+        self.register_bands()
+
         """
         for band in 'grizy':
             name = 'LSST::'+band
@@ -143,6 +136,42 @@ class SN(SN_Object):
                     wave_unit=u.nm)
                 sncosmo.registry.register(bandcosmo)
         """
+
+    def register_bands(self):
+        """
+        Method to register bands in sncosmo
+
+        Returns
+        -------
+        None.
+
+        """
+        # band registery in sncosmo
+        from astropy import units as u
+        if self.airmassType != 'const':
+            # for various airmass
+            for airmass in range(10, 31, 1):
+                for band in 'grizy':
+                    name = '{}::{}_{}'.format(
+                        self.telescope.name, band, airmass)
+                    self.telescope.load_atmosphere(airmass/10, 'aerosol')
+                    throughput = self.telescope.lsst_atmos_aerosol[band]
+                    bandcosmo = sncosmo.Bandpass(
+                        throughput.wavelen,
+                        throughput.sb, name=name,
+                        wave_unit=u.nm)
+                    sncosmo.registry.register(bandcosmo, force=True)
+
+        else:
+            for band in 'grizy':
+                name = '{}::{}'.format(self.telescope.name, band)
+                self.telescope.load_atmosphere(1.2, 'aerosol')
+                throughput = self.telescope.lsst_atmos_aerosol[band]
+                bandcosmo = sncosmo.Bandpass(
+                    throughput.wavelen,
+                    throughput.sb, name=name,
+                    wave_unit=u.nm)
+                sncosmo.registry.register(bandcosmo, force=True)
 
     def source(self, model, version):
         """
@@ -292,7 +321,7 @@ class SN(SN_Object):
 
     def SN_SALT(self, model):
         """
-        Method to set SALT2 parameters for SN
+        Method to set SALT parameters for SN
 
         Parameters
         --------------
@@ -538,10 +567,6 @@ class SN(SN_Object):
                 outvals.append(bb)
 
         lcdf = pd.DataFrame(np.copy(obs[outvals]))
-
-        band_cosmo = '{}_cosmo'.format(self.filterCol)
-        lcdf[band_cosmo] = 'lsst'+lcdf[self.filterCol]
-
         # zp variation vs airmass
         lst = lcdf[self.filterCol].tolist()
         lcdf['zp_slope'] = np.array([*map(self.zp_slope.get, lst)])
@@ -551,6 +576,20 @@ class SN(SN_Object):
         lcdf['zpsys'] = 'ab'
 
         # get band flux
+        if self.airmassType != 'const':
+            airm_vv = '{}_10'.format(self.airmassCol)
+            band_cosmo = '{}_cosmo'.format(self.filterCol)
+            lcdf[airm_vv] = 10 * \
+                lcdf[self.airmassCol]
+            lcdf[airm_vv] = lcdf[airm_vv].astype(int)
+            lcdf[band_cosmo] = self.telescope.name+'::' + \
+                lcdf[self.filterCol]+'_' + \
+                lcdf[airm_vv].astype(str)
+        else:
+            band_cosmo = '{}_cosmo'.format(self.filterCol)
+            lcdf[band_cosmo] = self.telescope.name+'::' + \
+                lcdf[self.filterCol]
+
         lcdf['flux'] = self.SN.bandflux(
             lcdf[band_cosmo], lcdf[self.mjdCol], zpsys=lcdf['zpsys'],
             zp=lcdf['zp'])
@@ -973,7 +1012,7 @@ class SN(SN_Object):
             diff = mjd-daymax
             sedm = self.SN_SED_mjd(mjd)
             sedm['spec'] = 'spec_{}'.format(io)
-            #sedm['time'] = int(diff)
+            # sedm['time'] = int(diff)
             sedm['mjd'] = mjd
             sedm['exptime'] = 0.0
             sedm['valid'] = 1

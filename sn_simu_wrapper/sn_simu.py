@@ -175,6 +175,8 @@ class SNSimu_Params:
         # load the instrument(telescope)
 
         self.telescope = load_telescope_from_config(config['InstrumentSimu'])
+
+        self.airmassType = config['InstrumentSimu']['airmassType']
         # estimate zp vs airmass
         self.zp_from_config(config['InstrumentSimu'])
 
@@ -1168,7 +1170,8 @@ class SNSimulation(SNSimu_Params):
                               DecCol=self.DecCol,
                               filterCol=self.filterCol,
                               exptimeCol=self.exptimeCol,
-                              m5Col=self.m5Col)
+                              m5Col=self.m5Col,
+                              airmassType=self.airmassType)
 
         module = import_module(self.simu_config['name'])
         simu = module.SN(sn_object, self.simu_config,
