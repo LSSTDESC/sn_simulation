@@ -585,6 +585,7 @@ class SN(SN_Object):
             lcdf[band_cosmo] = self.telescope.name+'::' + \
                 lcdf[self.filterCol]+'_' + \
                 lcdf[airm_vv].astype(str)
+            del lcdf[airm_vv]
         else:
             band_cosmo = '{}_cosmo'.format(self.filterCol)
             lcdf[band_cosmo] = self.telescope.name+'::' + \
