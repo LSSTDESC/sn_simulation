@@ -188,6 +188,7 @@ class FitWrapper:
 
         # Fit instance
         config = load_config(yaml_config_fit)
+
         self.fit = Fitting(config)
         self.nproc = config['MultiprocessingFit']['nproc']
 
