@@ -5,6 +5,7 @@ import os
 from sn_tools.sn_io import check_get_file
 import pandas as pd
 import operator
+from astropy.table import Table, vstack
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -857,6 +858,7 @@ class SimuWrapper:
             config=config, x0_norm=x0_tab)
 
         self.prodid = config['ProductionIDSimu']
+        self.outlc = []
 
     def x0(self, config):
         """
@@ -906,24 +908,52 @@ class SimuWrapper:
 
         """
 
+        print('run simuwrapper')
         light_curves = self.metric.run(obs, imulti=imulti)
 
-        """
-        if light_curves is not None:
-            print('light curves', len(light_curves))
-        else:
-            print('no lc on output')
-        """
+        print('allo', len(light_curves), type(light_curves))
+
+        if light_curves is None:
+            return None
+
+        self.outlc += light_curves
+
+        if len(self.outlc) > 100:
+            self.dump_lc()
+            self.outlc = []
+
         return light_curves
 
     __call__ = run
 
-    def finish(self):
+    def dump_lc(self):
         """
-        Method to save metadata to disk
+        Method to dum a pandaf df to a file
+
+        Returns
+        -------
+        None.
 
         """
-        # self.metric.save_metadata()
+        import astropy
+        lc_out = 'test_lc.hdf5'
+        for lc in self.outlc:
+            astropy.io.misc.hdf5.write_table_hdf5(
+                lc, lc_out, path=lc.meta['SNID'],
+                append=True, serialize_meta=True)
+
+    def finish(self):
+        """
+        Method to use at the end of the run
+
+        Returns
+        -------
+        None.
+
+        """
+
+        if len(self.outlc) > 0:
+            self.dump_lc()
 
 
 def load_config(yaml_config):
