@@ -580,10 +580,12 @@ class SNSimulation(SNSimu_Params):
         # if too low get seasons using clusters
 
         nseasons = len(np.unique(obs['season']))
+        """
         if nseasons <= 8:
+            print('seasons from cluster')
             obs = self.get_season_from_cluster(obs)
-
-            """
+        """
+        """
                 delta_max = self.get_delta_per_season(obs)
                 # obs = rf.drop_fields(obs, 'season')
                 print('delta_max', delta_max)
