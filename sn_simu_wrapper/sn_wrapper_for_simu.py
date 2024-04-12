@@ -930,7 +930,10 @@ class SimuWrapper:
 
         light_curves = self.metric.run(obs, imulti=imulti)
 
-        if len(light_curves) == 0 or light_curves is None:
+        if light_curves is None:
+            return None
+
+        if len(light_curves) == 0:
             return None
 
         if self.saveData_simu:
