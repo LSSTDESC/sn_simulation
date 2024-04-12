@@ -841,6 +841,26 @@ class SimuWrapper:
 
         config = load_config(yaml_config)
 
+        self.saveData_simu = config['OutputSimu']['savefromwrapper']
+        self.lc_out = None
+        self.meta_table = Table()
+        self.meta_out = None
+        if self.saveData_simu:
+            from sn_tools.sn_io import checkDir
+            outDir = config['OutputSimu']['directory']
+            checkDir(outDir)
+            prodid = config['ProductionIDSimu']
+            lcpath = '{}/{}.hdf5'.format(outDir, prodid)
+            metapath = '{}/{}.hdf5'.format(outDir,
+                                           prodid.replace('LC', 'Simu'))
+            self.lc_out = lcpath
+            self.meta_out = metapath
+            self.outDir = outDir
+
+            if os.path.isfile(lcpath):
+                os.system('rm {}'.format(lcpath))
+            if os.path.isfile(metapath):
+                os.system('rm {}'.format(metapath))
         self.name = 'simulation'
 
         # get X0 for SNIa normalization
@@ -908,23 +928,44 @@ class SimuWrapper:
 
         """
 
-        print('run simuwrapper')
         light_curves = self.metric.run(obs, imulti=imulti)
 
-        print('allo', len(light_curves), type(light_curves))
-
-        if light_curves is None:
+        if len(light_curves) == 0 or light_curves is None:
             return None
 
-        self.outlc += light_curves
+        if self.saveData_simu:
+            self.increment_data(light_curves)
+            if len(self.outlc) > 100:
+                self.dump_lc()
+                self.outlc = []
 
-        if len(self.outlc) > 100:
-            self.dump_lc()
-            self.outlc = []
+            return None
 
         return light_curves
 
     __call__ = run
+
+    def increment_data(self, light_curves):
+        """
+        Method to build metadata table
+
+        Parameters
+        ----------
+        light_curves : Table
+            light curves.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.outlc += light_curves
+        for ll in light_curves:
+            tt = Table(rows=[list(ll.meta.values())],
+                       names=list(ll.meta.keys()))
+            tt.meta['lc_dir'] = self.outDir
+            tt.meta['lc_fileName'] = self.lc_out.split('/')[-1]
+            self.meta_table = vstack([self.meta_table, tt])
 
     def dump_lc(self):
         """
@@ -936,10 +977,10 @@ class SimuWrapper:
 
         """
         import astropy
-        lc_out = 'test_lc.hdf5'
+
         for lc in self.outlc:
             astropy.io.misc.hdf5.write_table_hdf5(
-                lc, lc_out, path=lc.meta['SNID'],
+                lc, self.lc_out, path=lc.meta['SNID'],
                 append=True, serialize_meta=True)
 
     def finish(self):
@@ -951,9 +992,16 @@ class SimuWrapper:
         None.
 
         """
-
+        import astropy
         if len(self.outlc) > 0:
             self.dump_lc()
+
+        if len(self.meta_table) > 0:
+            self.meta_table.meta['lc_dir'] = self.outDir
+            self.meta_table.meta['lc_fileName'] = self.lc_out.split('/')[-1]
+            astropy.io.misc.hdf5.write_table_hdf5(
+                self.meta_table, self.meta_out, path='metadata',
+                append=True, serialize_meta=True)
 
 
 def load_config(yaml_config):
