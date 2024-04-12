@@ -114,7 +114,8 @@ Display LC time 5. float #display LC persistency time
 
 ##Output:
 OutputSimu directory Output_Simu str #Output directory
-OutputSimu save 1 int #output save file
+OutputSimu save 1 int #output save file in sn_simulator
+OutputSimu savefromwrapper 0 int #output save file in simuwrapper
 OutputSimu throwempty 1 int #do not save empty LC
 OutputSimu throwafterdump 1 int #remove LC after dumping on file
 OutputSimu clean 1 int #to clean output dir before processing
