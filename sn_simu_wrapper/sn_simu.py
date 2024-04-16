@@ -191,7 +191,7 @@ class SNSimu_Params:
 
         Returns
         -------
-        numpy array 
+        numpy array
             array with simu parameters
 
         """
@@ -848,7 +848,7 @@ class SNSimulation(SNSimu_Params):
 
     def gen_params_from_season(self, obs, seas):
         """
-        Method to grab simu params (estimated from obs) for a season 
+        Method to grab simu params (estimated from obs) for a season
 
         Parameters
         ----------
@@ -913,8 +913,8 @@ class SNSimulation(SNSimu_Params):
                 self.outdir, self.prodid, j)
 
         if 'sn_fast' not in self.simu_config['name']:
-            lc_list, lc_list_keep, tab_meta, sed_list = \
-                self.loop_gen(obs, gen_params, j, lc_out)
+            lc_list, lc_list_keep, tab_meta, sed_list = self.loop_gen(
+                obs, gen_params, j, lc_out)
         else:
             lc_list = self.simuLCs(obs, gen_params)
             if not self.throwafterdump:
