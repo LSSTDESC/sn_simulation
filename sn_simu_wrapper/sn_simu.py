@@ -123,6 +123,18 @@ class SNSimu_Params:
                                        self.reffiles['zpDir'],
                                        self.reffiles['zpFile'])
         """
+        # load flux_pixel if necessary for saturation effects
+        self.frac_flux_seeing = None
+        self.ccd_full_well = -1.
+        saturation_effect = config['saturation']['effect']
+        if saturation_effect:
+            psf = config['saturation']['psf']
+            fName = 'psf_pixel_{}_summary.npy'.format(psf)
+            dira = config['WebPathSimu']
+            dirb = self.reffiles['fluxpixelDir']
+            self.frac_flux_seeing = self.load_flux_to_pixel(dira,
+                                                            dirb, fName)
+            self.ccd_full_well = config['saturation']['ccdfullwell']
         # LC display in "real-time"
 
         self.display_lc = config['Display']['LC']['display']
@@ -493,6 +505,38 @@ class SNSimu_Params:
         res = np.load(fullName)
 
         return res
+
+    def load_flux_to_pixel(self, web_path, templateDir, fName):
+        """
+        Method to load the frac flux distrib (for saturation effects)
+
+        Parameters
+        ----------
+        web_path : str
+            web path of original file.
+        templateDir : str
+            location dir of the file.
+        fName : str
+            Name of the file to load.
+
+        Returns
+        -------
+        myinterp : scipy.interpolate.interp1d
+            interpolator (seeing, frac_flux_median)
+
+        """
+
+        from sn_tools.sn_io import check_get_file
+        check_get_file(web_path, templateDir, fName)
+        fullName = '{}/{}'.format(templateDir, fName)
+
+        res = np.load(fullName)
+
+        from scipy.interpolate import interp1d
+        myinterp = interp1d(res['seeing'], res['pixel_frac_med'],
+                            bounds_error=False, fill_value=0.)
+
+        return myinterp
 
 
 class SNSimulation(SNSimu_Params):
@@ -1173,7 +1217,9 @@ class SNSimulation(SNSimu_Params):
                               filterCol=self.filterCol,
                               exptimeCol=self.exptimeCol,
                               m5Col=self.m5Col,
-                              airmassType=self.airmassType)
+                              airmassType=self.airmassType,
+                              frac_flux_seeing=self.frac_flux_seeing,
+                              ccd_full_well=self.ccd_full_well)
 
         module = import_module(self.simu_config['name'])
         simu = module.SN(sn_object, self.simu_config,

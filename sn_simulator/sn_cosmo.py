@@ -34,7 +34,9 @@ class SN(SN_Object):
                          airmassCol=param.airmassCol,
                          skyCol=param.skyCol, moonCol=param.moonCol,
                          salt2Dir=param.salt2Dir,
-                         airmassType=param.airmassType)
+                         airmassType=param.airmassType,
+                         frac_flux_seeing=param.frac_flux_seeing,
+                         ccd_full_well=param.ccd_full_well)
         """ SN class - inherits from SN_Object
 
         Parameters
@@ -693,7 +695,10 @@ class SN(SN_Object):
                'flux_old', 'snr_m5', 'm5', 'band', 'filter']], len(lcdf))
         """
 
-        # transform pandas df to astropy Table
+        # include saturation effects here
+        if self.frac_flux_seeing is not None:
+            lcdf = self.remove_satured_flux(lcdf)
+            # transform pandas df to astropy Table
         table_lc = Table.from_pandas(lcdf)
         # set metadata
         if 'lsst_start' in obs.dtype.names:
@@ -735,6 +740,32 @@ class SN(SN_Object):
         # table_lc.remove_columns(toremove)
 
         return [table_lc]
+
+    def remove_satured_flux(self, lcdf):
+        """
+        Method to remove saturating LC points
+
+        Parameters
+        ----------
+        lcdf : pandas df
+            Data to process.
+
+        Returns
+        -------
+        lcdf : pandas df
+            Original data with saturated LC points removed..
+
+        """
+
+        vvar = 'single_exposure_flux'
+        lcdf[vvar] = lcdf['flux'] * \
+            self.frac_flux_seeing(lcdf['seeingFwhmEff'])
+        lcdf[vvar] *= lcdf['exptime']/lcdf['numExposures']
+        lcdf[vvar] -= self.ccd_full_well
+        idx = lcdf[vvar] < 0
+        lcdf = pd.DataFrame(lcdf[idx])
+
+        return lcdf
 
     def select_filter_cutoff(self, obs, ra, dec, pix, area, season,
                              season_length,

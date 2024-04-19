@@ -102,6 +102,7 @@ ReferenceFiles TemplateDir Template_LC str #dir for templates ref files
 ReferenceFiles GammaDir reference_files str #dir for gamma ref files
 ReferenceFiles GammaFile gamma.hdf5 str #gamma ref file name
 ReferenceFiles DustCorrDir Template_Dust str #dir for template dust files
+ReferenceFiles fluxpixelDir reference_files str #dir for template dust files
 # ReferenceFiles zpDir reference_files str #dir for zp_airmass ref file
 # ReferenceFiles zpFile zp_airmass_v1.9.npy str #zp_airmass ref file
 
@@ -129,4 +130,7 @@ Pixelisation nside 64 int #pixelisation nside Healpix
 #Web path
 WebPathSimu https://me.lsst.eu/gris/DESC_SN_pipeline str #web path for reference files
 
-
+#include saturation effects
+saturation effect 0 int #to include saturation effects
+saturation psf single_gauss str #PSF for saturation effects
+saturation ccdfullwell 90.e3 float #ccd full well value 
