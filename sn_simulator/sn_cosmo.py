@@ -700,6 +700,8 @@ class SN(SN_Object):
             lcdf = self.remove_satured_flux(lcdf)
             # transform pandas df to astropy Table
         table_lc = Table.from_pandas(lcdf)
+        if len(table_lc) == 0:
+            return [table_lc]
         # set metadata
         if 'lsst_start' in obs.dtype.names:
             lsst_start = np.median(obs['lsst_start'])
