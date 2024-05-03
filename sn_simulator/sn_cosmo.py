@@ -524,10 +524,18 @@ class SN(SN_Object):
           time: time(days)(float)
           phase: phase(float)
         """
+        # start timer
+        ti = SNTimer(time.time())
+        if len(obs) == 0:
+            pix = {}
+            for vv in ['healpixID', 'pixRA', 'pixDec']:
+                pix[vv] = -1
+            return [self.nosim(-1., -1., pix, -1., -1., -1., ti, -1, -1.)]
 
         ra = np.mean(obs[self.RACol])
         dec = np.mean(obs[self.DecCol])
         area = self.area
+
         season = np.unique(obs['season'])[0]
         season_length = np.max(obs[self.mjdCol])-np.min(obs[self.mjdCol])
 
@@ -545,9 +553,6 @@ class SN(SN_Object):
             ebvofMW = self.ebvofMW_calc(pix['pixRA'], pix['pixDec'])
 
         self.SN.set(mwebv=ebvofMW)
-
-        # start timer
-        ti = SNTimer(time.time())
 
         obs = self.select_filter_cutoff(obs, ra, dec, pix, area, season,
                                         season_length,
@@ -626,7 +631,8 @@ class SN(SN_Object):
         """
 
         if len(lcdf) == 0:
-            return []
+            return [self.nosim(ra, dec, pix, area, season, season_length,
+                               ti, -1, ebvofMW)]
         # ti(time.time(), 'fluxes_b')
 
         # magnitudes - fluxes are in ADU/s
@@ -700,17 +706,21 @@ class SN(SN_Object):
             lcdf = self.remove_satured_flux(lcdf)
             # transform pandas df to astropy Table
         table_lc = Table.from_pandas(lcdf)
-        if len(table_lc) == 0:
-            return [table_lc]
+
         # set metadata
         if 'lsst_start' in obs.dtype.names:
             lsst_start = np.median(obs['lsst_start'])
 
-        mjd_max = np.max(table_lc['time'])
+        mjd_max = -1
+        if len(table_lc) > 0:
+            mjd_max = np.max(table_lc['time'])
 
         table_lc.meta = self.metadata(
             ra, dec, pix, area, season, season_length, ptime,
             1, ebvofMW, lsst_start, mjd_max)
+
+        if len(table_lc) == 0:
+            return [table_lc]
 
         # if the user chooses to display the results...
         if display:
@@ -1140,7 +1150,7 @@ class SN(SN_Object):
         seds = [Sed(wavelen=SED_time.wavelen[i], flambda=SED_time.flambda[i])
                 for i in nvals]
         transes = np.asarray([self.telescope.atmosphere[obs[self.filterCol][i]]
-                              for i in nvals])
+                             for i in nvals])
         int_fluxes = np.asarray(
             [seds[i].calcFlux(bandpass=transes[i]) for i in nvals])
 
