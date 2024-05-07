@@ -35,6 +35,7 @@ class SN(SN_Object):
                          skyCol=param.skyCol, moonCol=param.moonCol,
                          salt2Dir=param.salt2Dir,
                          airmassType=param.airmassType,
+                         psf_flux=param.psf_flux,
                          frac_flux_seeing=param.frac_flux_seeing,
                          ccd_full_well=param.ccd_full_well)
         """ SN class - inherits from SN_Object
@@ -105,7 +106,8 @@ class SN(SN_Object):
                            'z', 'survey_area',
                            'healpixID', 'pixRA', 'pixDec',
                            'season', 'season_length', 'dL', 'ptime',
-                           'status', 'ebvofMW', 'lsst_start', 'mjd_max']
+                           'status', 'ebvofMW', 'lsst_start', 'mjd_max',
+                           'psf_flux', 'ccdfullwell']
 
         if self.sn_type == 'SN_Ia':
             self.names_meta += ['x0', 'epsilon_x0', 'x1',
@@ -530,7 +532,8 @@ class SN(SN_Object):
             pix = {}
             for vv in ['healpixID', 'pixRA', 'pixDec']:
                 pix[vv] = -1
-            return [self.nosim(-1., -1., pix, -1., -1., -1., ti, -1, -1.)]
+            return [self.nosim(-1., -1., pix, -1., -1., -1., ti, -1, -1., -1., -1.,
+                               self.psf_flux, self.ccd_full_well)]
 
         ra = np.mean(obs[self.RACol])
         dec = np.mean(obs[self.DecCol])
@@ -562,7 +565,8 @@ class SN(SN_Object):
         mjd_max = -1.0
         if len(obs) == 0:
             return [self.nosim(ra, dec, pix, area, season, season_length,
-                               ti, -1, ebvofMW, lsst_start, mjd_max)]
+                               ti, -1, ebvofMW, lsst_start, mjd_max,
+                               self.psf_flux, self.ccd_full_well)]
 
         # preparing the results : stored in lcdf pandas DataFrame
         outvals = [self.m5Col, self.mjdCol,
@@ -632,7 +636,8 @@ class SN(SN_Object):
 
         if len(lcdf) == 0:
             return [self.nosim(ra, dec, pix, area, season, season_length,
-                               ti, -1, ebvofMW)]
+                               ti, -1, ebvofMW, -1., -1.,
+                               self.psf_flux, self.ccd_full_well)]
         # ti(time.time(), 'fluxes_b')
 
         # magnitudes - fluxes are in ADU/s
@@ -691,7 +696,8 @@ class SN(SN_Object):
 
         if len(lcdf) == 0:
             return [self.nosim(ra, dec, pix, area, season, season_length,
-                               ti, -1, ebvofMW)]
+                               ti, -1, ebvofMW, -1., -1.,
+                               self.psf_flux, self.ccd_full_well)]
 
         # get the processing time
         ptime = ti.finish(time.time())['ptime'].item()
@@ -703,7 +709,9 @@ class SN(SN_Object):
 
         # include saturation effects here
         if self.frac_flux_seeing is not None:
-            lcdf = self.remove_satured_flux(lcdf)
+            lcdf = self.estimate_satured_flux(lcdf)
+        else:
+            lcdf['sat'] = 0
             # transform pandas df to astropy Table
         table_lc = Table.from_pandas(lcdf)
 
@@ -717,7 +725,7 @@ class SN(SN_Object):
 
         table_lc.meta = self.metadata(
             ra, dec, pix, area, season, season_length, ptime,
-            1, ebvofMW, lsst_start, mjd_max)
+            1, ebvofMW, lsst_start, mjd_max, self.psf_flux, self.ccd_full_well)
 
         if len(table_lc) == 0:
             return [table_lc]
@@ -753,7 +761,7 @@ class SN(SN_Object):
 
         return [table_lc]
 
-    def remove_satured_flux(self, lcdf):
+    def estimate_satured_flux(self, lcdf):
         """
         Method to remove saturating LC points
 
@@ -769,14 +777,16 @@ class SN(SN_Object):
 
         """
 
+        lcdf['sat'] = 0
         vvar = 'single_exposure_flux'
         lcdf[vvar] = lcdf['flux'] * \
             self.frac_flux_seeing(lcdf['seeingFwhmEff'])
         lcdf[vvar] *= lcdf['exptime']/lcdf['numExposures']
         lcdf[vvar] -= self.ccd_full_well
         idx = lcdf[vvar] < 0
-        lcdf = pd.DataFrame(lcdf[idx])
-
+        lcdf.loc[idx, 'sat'] = 1
+        # lcdf = pd.DataFrame(lcdf[idx])
+        lcdf = lcdf.drop(columns=[vvar])
         return lcdf
 
     def select_filter_cutoff(self, obs, ra, dec, pix, area, season,
@@ -819,7 +829,8 @@ class SN(SN_Object):
 
         if len(obs[goodFilters]) == 0:
             return [self.nosim(ra, dec, pix, area, season, season_length,
-                               ti, -1, ebvofMW, -1.0, -1.0)]
+                               ti, -1, ebvofMW, -1.0, -1.0,
+                               self.psf_flux, self.ccd_full_well)]
 
         # Select obs depending on min and max phases
         # blue and red cutoffs applied
@@ -944,7 +955,8 @@ class SN(SN_Object):
         return grp
 
     def nosim(self, ra, dec, pix, area, season, season_length,
-              ti, status, ebvofMW, lsst_start=-1.0, mjd_max=-1):
+              ti, status, ebvofMW, lsst_start=-1.0, mjd_max=-1,
+              psf_flux='', ccd_full_well=133000):
         """
         Method to construct an empty table when no simulation was not possible
 
@@ -974,11 +986,11 @@ class SN(SN_Object):
         # set metadata
         table_lc.meta = self.metadata(
             ra, dec, pix, area, season, season_length, ptime,
-            status, ebvofMW, lsst_start, mjd_max)
+            status, ebvofMW, lsst_start, mjd_max, psf_flux, ccd_full_well)
         return table_lc
 
     def metadata(self, ra, dec, pix, area, season, season_length,
-                 ptime, status, ebvofMW, lsst_start, mjd_max):
+                 ptime, status, ebvofMW, lsst_start, mjd_max, psf_flux='', ccd_full_well=133000):
         """
         Method to fill metadata
 
@@ -1012,7 +1024,7 @@ class SN(SN_Object):
                     self.sn_parameters['z'], area,
                     pix['healpixID'], pix['pixRA'], pix['pixDec'],
                     season, season_length, self.dL, ptime,
-                    status, ebvofMW, lsst_start, mjd_max]
+                    status, ebvofMW, lsst_start, mjd_max, psf_flux, ccd_full_well]
 
         if self.sn_type == 'SN_Ia':
             val_meta += [self.X0, self.gen_parameters['epsilon_x0'],

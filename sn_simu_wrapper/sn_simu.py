@@ -135,6 +135,7 @@ class SNSimu_Params:
             self.frac_flux_seeing = self.load_flux_to_pixel(dira,
                                                             dirb, fName)
             self.ccd_full_well = config['saturation']['ccdfullwell']
+            self.psf_flux = psf
         # LC display in "real-time"
 
         self.display_lc = config['Display']['LC']['display']
@@ -701,7 +702,6 @@ class SNSimulation(SNSimu_Params):
             print(np.max(np.diff(obs['observationStartMJD'])))
             plt.show()
             """
-
             list_lc = multiproc(gen_params, par, self.simuLoop, self.nprocs)
 
         """
@@ -1201,6 +1201,7 @@ class SNSimulation(SNSimu_Params):
                 sn_par[name] = gen_params[name]
 
         SNID = sn_par['Id']
+
         sn_object = SN_Object(self.simu_config['name'],
                               sn_par,
                               simulator_par,
@@ -1218,6 +1219,7 @@ class SNSimulation(SNSimu_Params):
                               exptimeCol=self.exptimeCol,
                               m5Col=self.m5Col,
                               airmassType=self.airmassType,
+                              psf_flux=self.psf_flux,
                               frac_flux_seeing=self.frac_flux_seeing,
                               ccd_full_well=self.ccd_full_well)
 
