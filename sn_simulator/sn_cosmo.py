@@ -107,7 +107,7 @@ class SN(SN_Object):
                            'healpixID', 'pixRA', 'pixDec',
                            'season', 'season_length', 'dL', 'ptime',
                            'status', 'ebvofMW', 'lsst_start', 'mjd_max',
-                           'psf_flux', 'ccdfullwell']
+                           'psf_flux', 'ccdfullwell', 'zmeas']
 
         if self.sn_type == 'SN_Ia':
             self.names_meta += ['x0', 'epsilon_x0', 'x1',
@@ -140,6 +140,11 @@ class SN(SN_Object):
                     wave_unit=u.nm)
                 sncosmo.registry.register(bandcosmo)
         """
+        # get sigma_z
+        z = self.sn_parameters['z']
+        sigmaz = self.sn_parameters['sigmaz']
+        from random import gauss
+        self.zmeas = z+gauss(0, sigmaz*(1.+z))
 
     def register_bands(self):
         """
@@ -399,6 +404,7 @@ class SN(SN_Object):
         """
         # set X0
         self.SN.set(x0=self.X0)
+
         # print('after',self.SN.get('x0'),self.SN.get('x1'),self.SN.get('c'))
 
     def x0(self, lumidist):
@@ -532,8 +538,9 @@ class SN(SN_Object):
             pix = {}
             for vv in ['healpixID', 'pixRA', 'pixDec']:
                 pix[vv] = -1
-            return [self.nosim(-1., -1., pix, -1., -1., -1., ti, -1, -1., -1., -1.,
-                               self.psf_flux, self.ccd_full_well)]
+            return [self.nosim(-1., -1., pix, -1., -1., -1.,
+                               ti, -1, -1., -1., -1.,
+                               self.psf_flux, self.ccd_full_well, -1.)]
 
         ra = np.mean(obs[self.RACol])
         dec = np.mean(obs[self.DecCol])
@@ -566,7 +573,7 @@ class SN(SN_Object):
         if len(obs) == 0:
             return [self.nosim(ra, dec, pix, area, season, season_length,
                                ti, -1, ebvofMW, lsst_start, mjd_max,
-                               self.psf_flux, self.ccd_full_well)]
+                               self.psf_flux, self.ccd_full_well, -1.)]
 
         # preparing the results : stored in lcdf pandas DataFrame
         outvals = [self.m5Col, self.mjdCol,
@@ -637,7 +644,7 @@ class SN(SN_Object):
         if len(lcdf) == 0:
             return [self.nosim(ra, dec, pix, area, season, season_length,
                                ti, -1, ebvofMW, -1., -1.,
-                               self.psf_flux, self.ccd_full_well)]
+                               self.psf_flux, self.ccd_full_well, -1.)]
         # ti(time.time(), 'fluxes_b')
 
         # magnitudes - fluxes are in ADU/s
@@ -697,7 +704,7 @@ class SN(SN_Object):
         if len(lcdf) == 0:
             return [self.nosim(ra, dec, pix, area, season, season_length,
                                ti, -1, ebvofMW, -1., -1.,
-                               self.psf_flux, self.ccd_full_well)]
+                               self.psf_flux, self.ccd_full_well, -1.)]
 
         # get the processing time
         ptime = ti.finish(time.time())['ptime'].item()
@@ -725,7 +732,8 @@ class SN(SN_Object):
 
         table_lc.meta = self.metadata(
             ra, dec, pix, area, season, season_length, ptime,
-            1, ebvofMW, lsst_start, mjd_max, self.psf_flux, self.ccd_full_well)
+            1, ebvofMW, lsst_start, mjd_max,
+            self.psf_flux, self.ccd_full_well, self.zmeas)
 
         if len(table_lc) == 0:
             return [table_lc]
@@ -830,7 +838,7 @@ class SN(SN_Object):
         if len(obs[goodFilters]) == 0:
             return [self.nosim(ra, dec, pix, area, season, season_length,
                                ti, -1, ebvofMW, -1.0, -1.0,
-                               self.psf_flux, self.ccd_full_well)]
+                               self.psf_flux, self.ccd_full_well, -1.)]
 
         # Select obs depending on min and max phases
         # blue and red cutoffs applied
@@ -956,7 +964,7 @@ class SN(SN_Object):
 
     def nosim(self, ra, dec, pix, area, season, season_length,
               ti, status, ebvofMW, lsst_start=-1.0, mjd_max=-1,
-              psf_flux='', ccd_full_well=133000):
+              psf_flux='', ccd_full_well=133000, zmeas=-1.):
         """
         Method to construct an empty table when no simulation was not possible
 
@@ -986,11 +994,12 @@ class SN(SN_Object):
         # set metadata
         table_lc.meta = self.metadata(
             ra, dec, pix, area, season, season_length, ptime,
-            status, ebvofMW, lsst_start, mjd_max, psf_flux, ccd_full_well)
+            status, ebvofMW, lsst_start, mjd_max, psf_flux, ccd_full_well, zmeas)
         return table_lc
 
     def metadata(self, ra, dec, pix, area, season, season_length,
-                 ptime, status, ebvofMW, lsst_start, mjd_max, psf_flux='', ccd_full_well=133000):
+                 ptime, status, ebvofMW, lsst_start, mjd_max, psf_flux='',
+                 ccd_full_well=133000, zmeas=-1.):
         """
         Method to fill metadata
 
@@ -1024,7 +1033,8 @@ class SN(SN_Object):
                     self.sn_parameters['z'], area,
                     pix['healpixID'], pix['pixRA'], pix['pixDec'],
                     season, season_length, self.dL, ptime,
-                    status, ebvofMW, lsst_start, mjd_max, psf_flux, ccd_full_well]
+                    status, ebvofMW, lsst_start, mjd_max,
+                    psf_flux, ccd_full_well, zmeas]
 
         if self.sn_type == 'SN_Ia':
             val_meta += [self.X0, self.gen_parameters['epsilon_x0'],

@@ -1196,6 +1196,7 @@ class SNSimulation(SNSimu_Params):
         sn_par = self.sn_parameters.copy()
         simulator_par = self.simulator_parameters.copy()
 
+        sn_par['sigmaz'] = sn_par['z']['sigmaz']
         for name in ['z', 'x1', 'color', 'daymax']:
             if name in gen_params.dtype.names:
                 sn_par[name] = gen_params[name]

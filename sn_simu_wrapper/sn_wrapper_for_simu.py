@@ -203,7 +203,7 @@ class FitWrapper:
             from sn_tools.sn_io import checkDir
             checkDir(self.outDir)
 
-    def __call__(self, lc_list):
+    def __call__(self, lc_list, remove_sat=False):
         """
         Method to fit light curves
 
@@ -211,6 +211,8 @@ class FitWrapper:
         ----------
         lc_list : list(astropy table)
             LC to fit
+        remove_sat : bool, optional
+            To remove saturated fluxes. The default is False.
 
         Returns
         -------
@@ -230,6 +232,7 @@ class FitWrapper:
         """
         from sn_tools.sn_utils import multiproc
         params = {}
+        params['remove_sat'] = remove_sat
 
         res = multiproc(lc_list, params, self.fit_lcs, self.nproc)
 
@@ -259,6 +262,7 @@ class FitWrapper:
 
         from astropy.table import Table, vstack
         res = Table()
+        self.fit.remove_sat = params['remove_sat']
         for lc in lc_list:
             lc.convert_bytestring_to_unicode()
             resfit = self.fit(lc)
@@ -698,9 +702,11 @@ class SimInfoFitWrapper:
         # print('nlc analyzed', len(light_curves_ana))
 
         # fitting here
-        fitlc = self.fit_wrapper(light_curves_ana)
+        for rr in [0, 1]:
+            fitlc = self.fit_wrapper(light_curves_ana, remove_sat=rr)
+            fitlc['remove_sat'] = rr
+            self.myconcat(fitlc)
 
-        self.myconcat(fitlc)
         if len(self.outdf) > 10000:
             self.dump_df()
             self.outdf = pd.DataFrame()
