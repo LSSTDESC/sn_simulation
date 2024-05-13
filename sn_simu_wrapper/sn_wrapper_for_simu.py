@@ -636,7 +636,10 @@ class InfoWrapper:
 
 
 class SimInfoFitWrapper:
-    def __init__(self, yaml_config_simu, infoDict, yaml_config_fit):
+    def __init__(self, yaml_config_simu,
+                 infoDict,
+                 yaml_config_fit,
+                 fit_remove_sat):
         """
 
 
@@ -656,6 +659,7 @@ class SimInfoFitWrapper:
         self.simu_wrapper = SimuWrapper(yaml_config_simu)
         self.info_wrapper = InfoWrapper(infoDict)
         self.fit_wrapper = FitWrapper(yaml_config_fit)
+        self.fit_remove_sat = list(map(int, fit_remove_sat.split(',')))
 
         self.outName = ''
 
@@ -702,7 +706,7 @@ class SimInfoFitWrapper:
         # print('nlc analyzed', len(light_curves_ana))
 
         # fitting here
-        for rr in [0, 1]:
+        for rr in self.fit_remove_sat:
             fitlc = self.fit_wrapper(light_curves_ana, remove_sat=rr)
             fitlc['remove_sat'] = rr
             self.myconcat(fitlc)
