@@ -196,7 +196,10 @@ class SN(SN_Object):
         """
         source = sncosmo.get_source(model, version)
 
-        # print('allo', source.minwave(), source.maxwave())
+        if model == 'salt3':
+            source._wave[0] = 1700.
+            source._wave[-1] = 24990.
+
         self.SN = sncosmo.Model(source=source,
                                 effects=[self.dustmap, self.dustmap],
                                 effect_names=['host', 'mw'],
@@ -339,11 +342,17 @@ class SN(SN_Object):
 
         """
 
-        if model == 'salt2-extended' or model == 'salt3':
+        if model == 'salt2-extended':
             model_min = 300.
             model_max = 180000.
             wave_min = 2000.
             wave_max = 11000.
+
+        if model == 'salt3':
+            model_min = 300.
+            model_max = 180000.
+            wave_min = model_min
+            wave_max = model_max
 
         if model == 'salt2':
             model_min = 3400.
@@ -791,7 +800,7 @@ class SN(SN_Object):
             self.frac_flux_seeing(lcdf['seeingFwhmEff'])
         lcdf[vvar] *= lcdf['exptime']/lcdf['numExposures']
         lcdf[vvar] -= self.ccd_full_well
-        idx = lcdf[vvar] < 0
+        idx = lcdf[vvar] <= 0
         lcdf.loc[idx, 'sat'] = 1
         # lcdf = pd.DataFrame(lcdf[idx])
         lcdf = lcdf.drop(columns=[vvar])
