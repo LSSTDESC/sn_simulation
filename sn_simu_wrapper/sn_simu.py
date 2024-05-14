@@ -126,6 +126,7 @@ class SNSimu_Params:
         # load flux_pixel if necessary for saturation effects
         self.frac_flux_seeing = None
         self.ccd_full_well = -1.
+        self.psf_flux = 'None'
         saturation_effect = config['saturation']['effect']
         if saturation_effect:
             psf = config['saturation']['psf']
