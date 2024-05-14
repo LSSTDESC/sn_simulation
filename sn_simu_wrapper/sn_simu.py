@@ -187,12 +187,12 @@ class SNSimu_Params:
         self.sn_meta = {}
 
         # load the instrument(telescope)
+        # estimate zp vs airmass
+        self.zp_from_config(config['InstrumentSimu'])
 
         self.telescope = load_telescope_from_config(config['InstrumentSimu'])
 
         self.airmassType = config['InstrumentSimu']['airmassType']
-        # estimate zp vs airmass
-        self.zp_from_config(config['InstrumentSimu'])
 
     def simu_params_from_file(self, simuFile):
         """
