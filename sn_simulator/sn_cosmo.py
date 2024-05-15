@@ -730,7 +730,6 @@ class SN(SN_Object):
             lcdf['sat'] = 0
             # transform pandas df to astropy Table
 
-        print('lc sat', lcdf['sat'].unique())
         table_lc = Table.from_pandas(lcdf)
 
         # set metadata
