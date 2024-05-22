@@ -163,6 +163,7 @@ class SN(SN_Object):
                 for band in 'grizy':
                     name = '{}::{}_{}'.format(
                         self.telescope.name, band, airmass)
+                    print('booking star', name)
                     self.telescope.load_atmosphere(airmass/10, 'aerosol')
                     throughput = self.telescope.lsst_atmos_aerosol[band]
                     bandcosmo = sncosmo.Bandpass(
@@ -598,7 +599,8 @@ class SN(SN_Object):
         lst = lcdf[self.filterCol].tolist()
         lcdf['zp_slope'] = np.array([*map(self.zp_slope.get, lst)])
         lcdf['zp_intercept'] = np.array([*map(self.zp_intercept.get, lst)])
-        lcdf['zp'] = lcdf['zp_slope']*lcdf['airmass']+lcdf['zp_intercept']
+        lcdf['zp'] = lcdf['zp_slope'] * \
+            lcdf['airmass']+lcdf['zp_intercept']
 
         lcdf['zpsys'] = 'ab'
 
@@ -617,10 +619,19 @@ class SN(SN_Object):
             band_cosmo = '{}_cosmo'.format(self.filterCol)
             lcdf[band_cosmo] = self.telescope.name+'::' + \
                 lcdf[self.filterCol]
+            # lcdf[band_cosmo] = 'lsst'+lcdf[self.filterCol]
 
+        # lcdf['zp'] = lcdf['zp_e_sec']
         lcdf['flux'] = self.SN.bandflux(
             lcdf[band_cosmo], lcdf[self.mjdCol], zpsys=lcdf['zpsys'],
             zp=lcdf['zp'])
+
+        """
+        lcdf['flux'] = self.SN.bandflux(
+            lcdf[band_cosmo], lcdf[self.mjdCol], zpsys='ab',
+            zp=2.5*np.log10(3631))
+        lcdf['zp'] = 2.5*np.log10(3631)
+        """
 
         """
         # flux in JY
@@ -666,8 +677,10 @@ class SN(SN_Object):
         flux5 = 10**(-0.4*(lcdf[self.m5Col]-lcdf['zp']))
         sigma_5 = flux5/5.
         shot_noise = np.sqrt(lcdf['flux']/lcdf[self.exptimeCol])
+        # shot_noise = 0.0
         lcdf['fluxerr'] = np.sqrt(sigma_5**2+shot_noise**2)
         lcdf['snr_m5'] = lcdf['flux']/lcdf['fluxerr']
+        # lcdf['fluxerr'] = lcdf['flux']/lcdf['snr_m5']
 
         # complete the LC
         lcdf['magerr_phot'] = (2.5/np.log(10.))/lcdf['snr_m5']  # mag error
