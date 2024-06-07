@@ -816,6 +816,7 @@ class SN(SN_Object):
         lcdf[vvar] -= self.ccd_full_well
         idx = lcdf[vvar] >= 0
         lcdf.loc[idx, 'sat'] = 1
+
         # lcdf = pd.DataFrame(lcdf[idx])
         lcdf = lcdf.drop(columns=[vvar])
         return lcdf
@@ -1195,7 +1196,7 @@ class SN(SN_Object):
         seds = [Sed(wavelen=SED_time.wavelen[i], flambda=SED_time.flambda[i])
                 for i in nvals]
         transes = np.asarray([self.telescope.atmosphere[obs[self.filterCol][i]]
-                             for i in nvals])
+                              for i in nvals])
         int_fluxes = np.asarray(
             [seds[i].calcFlux(bandpass=transes[i]) for i in nvals])
 
