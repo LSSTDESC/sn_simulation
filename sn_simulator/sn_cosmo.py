@@ -163,7 +163,6 @@ class SN(SN_Object):
                 for band in 'grizy':
                     name = '{}::{}_{}'.format(
                         self.telescope.name, band, airmass)
-                    print('booking star', name)
                     self.telescope.load_atmosphere(airmass/10, 'aerosol')
                     throughput = self.telescope.lsst_atmos_aerosol[band]
                     bandcosmo = sncosmo.Bandpass(
