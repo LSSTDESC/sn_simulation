@@ -114,7 +114,7 @@ class SN(SN_Object):
                                 'epsilon_x1', 'color', 'epsilon_color',
                                 'epsilon_daymax']
             self.names_meta += ['minRFphase', 'maxRFphase',
-                                'minRFphaseQual', 'maxRFphaseQual']
+                                'minRFphaseQual', 'maxRFphaseQual', 'weight']
 
         self.mag_inf = 100.  # mag values to replace infs
 
@@ -1069,7 +1069,8 @@ class SN(SN_Object):
                          self.gen_parameters['minRFphase'],
                          self.gen_parameters['maxRFphase'],
                          self.gen_parameters['minRFphaseQual'],
-                         self.gen_parameters['maxRFphaseQual']]
+                         self.gen_parameters['maxRFphaseQual'],
+                         self.gen_parameters['weight']]
 
         return dict(zip(self.names_meta, val_meta))
 
