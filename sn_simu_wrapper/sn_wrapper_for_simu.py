@@ -178,7 +178,7 @@ class FitWrapper:
         Parameters
         ----------
         config_fit : dict
-            parameters fot 
+            parameters fot
 
         Returns
         -------
@@ -367,8 +367,8 @@ class InfoWrapper:
 
         configs = [('night', 'phase', operator.ge, -20, operator.le, 0),
                    ('night', 'phase', operator.gt, 0, operator.le, 60),
-                   ('night', 'phase', operator.ge, -20, operator.le, -10.),
-                   ('night', 'phase', operator.gt, 20., operator.le, 60.),
+                   ('night', 'phase', operator.ge, -100, operator.le, -10.),
+                   ('night', 'phase', operator.gt, 20., operator.le, 100.),
                    ('night', 'phase', operator.ge, -10., operator.le, 35.),
                    ('night', 'phase', operator.ge, -10., operator.le, 5.),
                    ('night', 'phase', operator.ge, 5., operator.le, 20.),
@@ -568,7 +568,7 @@ class InfoWrapper:
         opb: operator, optional
             operator to apply. The default is operator.le.
         valb : float, optional
-            selection value. The default is 10.  
+            selection value. The default is 10.
 
         Returns
         -------
@@ -580,7 +580,9 @@ class InfoWrapper:
         idx &= opb(tab[colsel], valb)
         tt = tab[idx]
 
-        return len(np.unique(tt[colnum]))
+        res = len(np.unique(tt[colnum]))
+
+        return res
 
     def nfilt_snrmax(self, lc, snr_max=10):
         """
@@ -702,7 +704,23 @@ class SimInfoFitWrapper:
         if light_curves is None:
             return None
 
+        # light_curves = self.myanatest(light_curves)
+
         light_curves_ana = self.info_wrapper(light_curves)
+
+        """
+        ccols = ['n_epochs_phase_minus_10', 'n_epochs_phase_plus_20',
+                 'n_epochs_m10_p35', 'n_epochs_m10_p5',
+                 'n_epochs_p5_p20', 'n_bands_m8_p10']
+
+        for gg in light_curves_ana:
+            for col in ccols:
+                diff = gg.meta[col]-gg.meta['{}_n'.format(col)]
+                diff = int(diff)
+                if diff != 0:
+                    print(col, diff, gg.meta[col], gg.meta['{}_n'.format(col)])
+            print('---')
+        """
         # print('nlc analyzed', len(light_curves_ana))
 
         # fitting here
@@ -731,6 +749,62 @@ class SimInfoFitWrapper:
                                                   path='SN', overwrite=True,
                                                   serialize_meta=True)
         """
+
+    def myanatest(self, lightcurves):
+        """
+        Method to estimate some values as cross-check
+
+        Parameters
+        ----------
+        lightcurves : list(astropytables)
+            LC list.
+
+        Returns
+        -------
+        rr : list(astropytables)
+            LC list (metadata updated).
+
+        """
+
+        rr = []
+        for lc in lightcurves:
+            dd = {}
+            daymax = lc.meta['daymax']
+            z = lc.meta['z']
+            lc['phase'] = (lc['time']-daymax)/(1.+z)
+            idx = lc['snr'] >= 1.
+            lc = Table(lc[idx])
+
+            idx = lc['phase'] <= -10
+            sel = lc[idx]
+            dd['n_epochs_phase_minus_10_n'] = len(np.unique(sel['night']))
+            idx = lc['phase'] >= 20
+            sel = lc[idx]
+            dd['n_epochs_phase_plus_20_n'] = len(np.unique(sel['night']))
+            idx = lc['phase'] >= -10
+            idx &= lc['phase'] <= 35
+            sel = lc[idx]
+            dd['n_epochs_m10_p35_n'] = len(np.unique(sel['night']))
+            idx = lc['phase'] >= -10
+            idx &= lc['phase'] <= 5
+            sel = lc[idx]
+            dd['n_epochs_m10_p5_n'] = len(np.unique(sel['night']))
+            idx = lc['phase'] >= 5
+            idx &= lc['phase'] <= 20
+            sel = lc[idx]
+            dd['n_epochs_p5_p20_n'] = len(np.unique(sel['night']))
+            idx = lc['phase'] >= -8
+            idx &= lc['phase'] <= 10
+            sel = lc[idx]
+            nnb = 0
+            if len(sel) > 0:
+                nnb = len(np.unique(sel['filter']))
+            dd['n_bands_m8_p10_n'] = nnb
+            for key, vals in dd.items():
+                lc.meta[key] = vals
+
+            rr.append(lc)
+        return rr
 
     def dump(self, fitlc):
         """
