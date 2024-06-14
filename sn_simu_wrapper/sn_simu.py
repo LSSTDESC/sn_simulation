@@ -212,6 +212,7 @@ class SNSimu_Params:
         # sn simu parameters from file
         df = pd.DataFrame()
         simuFile = self.sn_parameters['simuFile']
+
         if simuFile != 'None':
             df = pd.read_hdf(simuFile)
         else:
@@ -221,7 +222,7 @@ class SNSimu_Params:
 
         ccols = ['healpixID', 'season', 'z', 'daymax', 'x1', 'color',
                  'epsilon_x0', 'epsilon_x1',
-                 'epsilon_color', 'epsilon_daymax', 'SNID']
+                 'epsilon_color', 'epsilon_daymax', 'SNID', 'weight']
         ccolsb = ['minRFphase', 'maxRFphase',
                   'minRFphaseQual', 'maxRFphaseQual']
 
