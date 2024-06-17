@@ -1072,8 +1072,8 @@ class SN(SN_Object):
                          self.gen_parameters['minRFphase'],
                          self.gen_parameters['maxRFphase'],
                          self.gen_parameters['minRFphaseQual'],
-                         self.gen_parameters['maxRFphaseQual'],
-                         self.gen_parameters['weight']]
+                         self.gen_parameters['maxRFphaseQual']]
+            # self.gen_parameters['weight']]
 
         return dict(zip(self.names_meta, val_meta))
 
