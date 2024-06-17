@@ -219,10 +219,11 @@ class SNSimu_Params:
             return df
 
         # complete df with other simulation parameters
-
         ccols = ['healpixID', 'season', 'z', 'daymax', 'x1', 'color',
                  'epsilon_x0', 'epsilon_x1',
-                 'epsilon_color', 'epsilon_daymax', 'SNID', 'weight']
+                 'epsilon_color', 'epsilon_daymax', 'SNID']
+        if 'weight' in df.columns:
+            ccols += ['weight']
         ccolsb = ['minRFphase', 'maxRFphase',
                   'minRFphaseQual', 'maxRFphaseQual']
 
