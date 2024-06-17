@@ -113,9 +113,12 @@ class SN(SN_Object):
             self.names_meta += ['x0', 'epsilon_x0', 'x1',
                                 'epsilon_x1', 'color', 'epsilon_color',
                                 'epsilon_daymax']
+            """
             self.names_meta += ['minRFphase', 'maxRFphase',
                                 'minRFphaseQual', 'maxRFphaseQual', 'weight']
-
+            """
+            self.names_meta += ['minRFphase', 'maxRFphase',
+                                'minRFphaseQual', 'maxRFphaseQual']
         self.mag_inf = 100.  # mag values to replace infs
 
         """
