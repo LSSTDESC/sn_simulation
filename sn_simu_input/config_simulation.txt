@@ -36,8 +36,8 @@ SN daymax step 1. float #SN daymax step
 #rf cuts
 SN minRFphase -20. float #SN min rf phase
 SN maxRFphase 60. float #SN max rf phase
-SN minRFphaseQual 0. float #SN min rf phase qual
-SN maxRFphaseQual 0. float #SN max rf phase qual
+SN minRFphaseQual -10. float #SN min rf phase qual
+SN maxRFphaseQual  35. float #SN max rf phase qual
 # other parameters
 SN absmag -19.0906 float #SN absmag
 SN band bessellB str #SN band
