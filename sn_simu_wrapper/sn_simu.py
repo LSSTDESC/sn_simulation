@@ -254,11 +254,18 @@ class SNSimu_Params:
         atmos_dir = config['atmosDir']
         airmass = config['airmass']
         aerosol = config['aerosol']
+        pwv = config['pwv']
+        oz = config['oz']
+
+        pwv = float(pwv)
+        oz = float(oz)
+        aerosol = float(aerosol)
+
         zp = Zeropoint_airmass(tel_dir=tel_dir,
                                through_dir=through_dir,
                                atmos_dir=atmos_dir,
                                tag=tel_tag,
-                               aerosol=aerosol)
+                               aerosol=aerosol, pwv=pwv, oz=oz)
 
         self.zp_airmass = zp.get_fit_params()
 

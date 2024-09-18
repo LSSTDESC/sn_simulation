@@ -160,6 +160,8 @@ class SN(SN_Object):
         """
         # band registery in sncosmo
         from astropy import units as u
+        print('boooo', self.telescope.atmosDir)
+
         if self.airmassType != 'const':
             # for various airmass
             for airmass in range(10, 31, 1):
