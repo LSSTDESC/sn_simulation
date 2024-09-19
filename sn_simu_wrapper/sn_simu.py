@@ -717,6 +717,7 @@ class SNSimulation(SNSimu_Params):
             print(np.max(np.diff(obs['observationStartMJD'])))
             plt.show()
             """
+            print('running', self.nprocs)
             list_lc = multiproc(gen_params, par, self.simuLoop, self.nprocs)
 
         """
@@ -957,7 +958,9 @@ class SNSimulation(SNSimu_Params):
             list of simulated LC.
 
         """
-
+        import time
+        time_ref = time.time()
+        print('multiproc simu', j, len(gen_params))
         obs = params['obs']
 
         lsst_start = -1
@@ -993,6 +996,7 @@ class SNSimulation(SNSimu_Params):
                 self.dump_df(tab_meta, simu_out, lc_list,
                              lc_out, sed_list, sed_out)
 
+        print('done', j, time.time()-time_ref)
         if output_q is not None:
             return output_q.put({j: lc_list_keep})
         else:

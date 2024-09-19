@@ -238,7 +238,7 @@ class FitWrapper:
 
         return res
 
-    def fit_lcs(self, lc_list, params, j=-1, output_q=None):
+    def fit_lcs(self, lc_list, params, j=0, output_q=None):
         """
         Method to fit LCs
 
@@ -263,6 +263,7 @@ class FitWrapper:
         from astropy.table import Table, vstack
         res = Table()
         self.fit.remove_sat = params['remove_sat']
+        print('processing fit', j)
         for lc in lc_list:
             lc.convert_bytestring_to_unicode()
             resfit = self.fit(lc)
@@ -698,14 +699,16 @@ class SimInfoFitWrapper:
         #    obs[['healpixID', 'pixRA', 'pixDec']]))
         # import time
         # time_ref = time.time()
+        print('simulation')
         light_curves = self.simu_wrapper(obs, imulti)
-
+        print('nlc simulated', len(light_curves))
         # analyze these LC + flag for selection
         if light_curves is None:
             return None
 
         # light_curves = self.myanatest(light_curves)
 
+        print('LC analysis')
         light_curves_ana = self.info_wrapper(light_curves)
 
         """
@@ -721,10 +724,11 @@ class SimInfoFitWrapper:
                     print(col, diff, gg.meta[col], gg.meta['{}_n'.format(col)])
             print('---')
         """
-        # print('nlc analyzed', len(light_curves_ana))
+        print('nlc analyzed', len(light_curves_ana))
 
         # fitting here
         for rr in self.fit_remove_sat:
+            print('there man', rr)
             fitlc = self.fit_wrapper(light_curves_ana, remove_sat=rr)
             fitlc['remove_sat'] = rr
             self.myconcat(fitlc)
@@ -1135,7 +1139,6 @@ class InfoFitWrapper:
         """
         self.name = 'info_fit'
         self.info_wrapper = InfoWrapper(infoDict)
-        self.fit_wrapper = FitWrapper(yaml_config_fit)
 
         self.outName = ''
 
@@ -1146,6 +1149,8 @@ class InfoFitWrapper:
             import os
             if os.path.isfile(self.outName):
                 os.system('rm {}'.format(self.outName))
+
+        self.yaml_config_fit = yaml_config_fit
 
     def run(self, light_curves):
         """
@@ -1164,9 +1169,10 @@ class InfoFitWrapper:
 
         # analyze these LC + flag for selection
         light_curves_ana = self.info_wrapper(light_curves)
-        # print('nlc analyzed', len(light_curves_ana))
+        print('nlc analyzed bis', len(light_curves_ana))
 
         # fitting here
+        self.fit_wrapper = FitWrapper(self.yaml_config_fit)
         fitlc = self.fit_wrapper(light_curves_ana)
 
         self.dump(fitlc)
