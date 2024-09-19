@@ -35,6 +35,10 @@ class SN(SN_Object):
                          skyCol=param.skyCol, moonCol=param.moonCol,
                          salt2Dir=param.salt2Dir,
                          airmassType=param.airmassType,
+                         airmass=param.airmass,
+                         pwv=param.pwv,
+                         oz=param.oz,
+                         aerosol=param.aerosol,
                          psf_flux=param.psf_flux,
                          frac_flux_seeing=param.frac_flux_seeing,
                          ccd_full_well=param.ccd_full_well)
@@ -160,7 +164,39 @@ class SN(SN_Object):
         """
         # band registery in sncosmo
         from astropy import units as u
-        print('boooo', self.telescope.atmosDir)
+
+        airmass = [self.airmass]
+        pwvs = [self.pwv]
+        ozs = [self.oz]
+        aerosols = [self.aerosol]
+
+        for am in airmass:
+            for pwv in pwvs:
+                for oz in ozs:
+                    for aero in aerosols:
+                        for band in 'grizy':
+                            name = '{}::{}_{}'.format(
+                                self.telescope.name, band, int(10*am))
+                            self.telescope.load_atmosphere(
+                                am, aero, pwv, oz)
+                            throughput = self.telescope.lsst_atmos_aerosol[band]
+                            bandcosmo = sncosmo.Bandpass(throughput.wavelen,
+                                                         throughput.sb,
+                                                         name=name,
+                                                         wave_unit=u.nm)
+                            sncosmo.registry.register(bandcosmo, force=True)
+
+    def register_bands_deprecated(self):
+        """
+        Method to register bands in sncosmo
+
+        Returns
+        -------
+        None.
+
+        """
+        # band registery in sncosmo
+        from astropy import units as u
 
         if self.airmassType != 'const':
             # for various airmass
@@ -622,7 +658,7 @@ class SN(SN_Object):
         else:
             band_cosmo = '{}_cosmo'.format(self.filterCol)
             lcdf[band_cosmo] = self.telescope.name+'::' + \
-                lcdf[self.filterCol]
+                lcdf[self.filterCol]+'_{}'.format(int(10*self.airmass))
             # lcdf[band_cosmo] = 'lsst'+lcdf[self.filterCol]
 
         # lcdf['zp'] = lcdf['zp_e_sec']

@@ -192,7 +192,12 @@ class SNSimu_Params:
 
         self.telescope = load_telescope_from_config(config['InstrumentSimu'])
 
-        self.airmassType = config['InstrumentSimu']['airmassType']
+        config_instr = config['InstrumentSimu']
+        self.airmassType = config_instr['airmassType']
+        self.airmass = config_instr['airmass']
+        self.pwv = config_instr['pwv']
+        self.oz = config_instr['oz']
+        self.aerosol = config_instr['aerosol']
 
     def simu_params_from_file(self, simuFile):
         """
@@ -1230,6 +1235,10 @@ class SNSimulation(SNSimu_Params):
                               exptimeCol=self.exptimeCol,
                               m5Col=self.m5Col,
                               airmassType=self.airmassType,
+                              airmass=self.airmass,
+                              pwv=self.pwv,
+                              oz=self.oz,
+                              aerosol=self.aerosol,
                               psf_flux=self.psf_flux,
                               frac_flux_seeing=self.frac_flux_seeing,
                               ccd_full_well=self.ccd_full_well)
