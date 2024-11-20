@@ -263,7 +263,7 @@ class FitWrapper:
         from astropy.table import Table, vstack
         res = Table()
         self.fit.remove_sat = params['remove_sat']
-        print('processing fit', j)
+        #print('processing fit', j)
         for lc in lc_list:
             lc.convert_bytestring_to_unicode()
             resfit = self.fit(lc)
@@ -699,16 +699,16 @@ class SimInfoFitWrapper:
         #    obs[['healpixID', 'pixRA', 'pixDec']]))
         # import time
         # time_ref = time.time()
-        print('simulation')
+        # print('simulation')
         light_curves = self.simu_wrapper(obs, imulti)
-        print('nlc simulated', len(light_curves))
+        #print('nlc simulated', len(light_curves))
         # analyze these LC + flag for selection
         if light_curves is None:
             return None
 
         # light_curves = self.myanatest(light_curves)
 
-        print('LC analysis')
+        #print('LC analysis')
         light_curves_ana = self.info_wrapper(light_curves)
 
         """
@@ -724,11 +724,10 @@ class SimInfoFitWrapper:
                     print(col, diff, gg.meta[col], gg.meta['{}_n'.format(col)])
             print('---')
         """
-        print('nlc analyzed', len(light_curves_ana))
+        #print('nlc analyzed', len(light_curves_ana))
 
         # fitting here
         for rr in self.fit_remove_sat:
-            print('there man', rr)
             fitlc = self.fit_wrapper(light_curves_ana, remove_sat=rr)
             fitlc['remove_sat'] = rr
             self.myconcat(fitlc)
@@ -869,7 +868,7 @@ class SimInfoFitWrapper:
 
         """
 
-        print('dumping df', len(self.outdf))
+        #print('dumping df', len(self.outdf))
         self.outdf.to_hdf(self.outName, key='SN', append=True)
 
     def myconcat(self, fitlc):
