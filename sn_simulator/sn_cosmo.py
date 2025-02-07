@@ -4,7 +4,7 @@ from astropy.table import Table, vstack
 from scipy.interpolate import griddata, interp1d
 from sn_simu_wrapper.sn_object import SN_Object
 import time
-from sn_tools.sn_utils import SNTimer
+from sn_tools.sn_utils import SNTimer, register_bands_sncosmo
 import pandas as pd
 import os
 
@@ -162,6 +162,42 @@ class SN(SN_Object):
         None.
 
         """
+
+        airmass = [self.airmass]
+        pwvs = [self.pwv]
+        ozs = [self.oz]
+        aerosols = [self.aerosol]
+
+        # values in pandas df
+        cols = ['airmass', 'pwv', 'ozone', 'aerosol']
+        vals = [airmass, pwvs, ozs, aerosols]
+        df = pd.DataFrame.from_dict(dict(zip(cols, vals)))
+
+        """
+        print(df_dict)
+
+        df = df_dict['airmass']
+        for col in cols[1:]:
+            df = df.merge(df_dict[col], how='cross')
+        """
+        for i, row in df.iterrows():
+            airmass = row['airmass']
+            aerosol = row['aerosol']
+            pwv = row['pwv']
+            ozone = row['ozone']
+            register_bands_sncosmo(sncosmo,
+                                   self.telescope,
+                                   airmass, aerosol, pwv, ozone)
+
+    def register_bands_old(self):
+        """
+        Method to register bands in sncosmo
+
+        Returns
+        -------
+        None.
+
+        """
         # band registery in sncosmo
         from astropy import units as u
 
@@ -189,8 +225,7 @@ class SN(SN_Object):
                 ozone = row['ozone']
                 name = '{}::{}_{}'.format(
                     self.telescope.name, band, int(10*am))
-                self.telescope.load_atmosphere(airmass=am, aerosol=aerosol,
-                                               pwv=pwv, oz=ozone)
+                self.telescope.load_atmosphere(am, aerosol, pwv, ozone)
                 throughput = self.telescope.lsst_atmos_aerosol[band]
                 bandcosmo = sncosmo.Bandpass(throughput.wavelen,
                                              throughput.sb,
@@ -669,7 +704,7 @@ class SN(SN_Object):
             del lcdf[airm_vv]
         else:
             band_cosmo = '{}_cosmo'.format(self.filterCol)
-            lcdf[band_cosmo] = self.telescope.name+'::' + \
+            lcdf[band_cosmo] = self.telescope.site_name+'::' + \
                 lcdf[self.filterCol]+'_{}'.format(int(10*self.airmass))
             # lcdf[band_cosmo] = 'lsst'+lcdf[self.filterCol]
 

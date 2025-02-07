@@ -12,7 +12,7 @@ from sn_tools.sn_utils import SimuParameters, multiproc
 from sn_tools.sn_obs import season as seasoncalc
 from sn_tools.sn_calcFast import GetReference, LoadDust
 from sn_tools.sn_stacker import CoaddStacker
-from sn_telmodel.sn_telescope import load_telescope_from_config
+from sn_telmodel.sn_throughputs import load_throughputs_from_config
 import numpy.lib.recfunctions as rf
 import pandas as pd
 # import tracemalloc
@@ -187,10 +187,10 @@ class SNSimu_Params:
         self.sn_meta = {}
 
         # load the instrument(telescope)
+        self.telescope = load_throughputs_from_config(config['InstrumentSimu'])
+
         # estimate zp vs airmass
         self.zp_from_config(config['InstrumentSimu'])
-
-        self.telescope = load_telescope_from_config(config['InstrumentSimu'])
 
         config_instr = config['InstrumentSimu']
         self.airmassType = config_instr['airmassType']
@@ -252,7 +252,9 @@ class SNSimu_Params:
 
         """
 
-        from sn_telmodel.sn_telescope import Zeropoint_airmass
+        from sn_telmodel.sn_transtools import Zeropoint_airmass
+
+        """
         tel_dir = config['telescope']['dir']
         tel_tag = config['telescope']['tag']
         through_dir = config['throughputDir']
@@ -265,12 +267,8 @@ class SNSimu_Params:
         pwv = float(pwv)
         oz = float(oz)
         aerosol = float(aerosol)
-
-        zp = Zeropoint_airmass(tel_dir=tel_dir,
-                               through_dir=through_dir,
-                               atmos_dir=atmos_dir,
-                               tag=tel_tag,
-                               aerosol=aerosol, pwv=pwv, oz=oz)
+        """
+        zp = Zeropoint_airmass(self.telescope)
 
         self.zp_airmass = zp.get_fit_params()
 
@@ -640,6 +638,7 @@ class SNSimulation(SNSimu_Params):
         # if too low get seasons using clusters
 
         nseasons = len(np.unique(obs['season']))
+
         """
         if nseasons <= 8:
             print('seasons from cluster')
@@ -700,6 +699,9 @@ class SNSimulation(SNSimu_Params):
 
         gen_params = self.get_all_gen_params(obs, seasons)
 
+        if gen_params is None:
+            return None
+
         list_lc = []
 
         if gen_params is not None:
@@ -717,7 +719,7 @@ class SNSimulation(SNSimu_Params):
             print(np.max(np.diff(obs['observationStartMJD'])))
             plt.show()
             """
-            #print('running', self.nprocs)
+            # print('running', self.nprocs)
             list_lc = multiproc(gen_params, par, self.simuLoop, self.nprocs)
 
         """
@@ -960,7 +962,7 @@ class SNSimulation(SNSimu_Params):
         """
         import time
         time_ref = time.time()
-        #print('multiproc simu', j, len(gen_params))
+        # print('multiproc simu', j, len(gen_params))
         obs = params['obs']
 
         lsst_start = -1
@@ -996,7 +998,7 @@ class SNSimulation(SNSimu_Params):
                 self.dump_df(tab_meta, simu_out, lc_list,
                              lc_out, sed_list, sed_out)
 
-        #print('done', j, time.time()-time_ref)
+        # print('done', j, time.time()-time_ref)
         if output_q is not None:
             return output_q.put({j: lc_list_keep})
         else:
