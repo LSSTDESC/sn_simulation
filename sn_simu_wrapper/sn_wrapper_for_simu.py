@@ -262,11 +262,11 @@ class FitWrapper:
 
         from astropy.table import Table, vstack
         res = Table()
-        self.fit.remove_sat = params['remove_sat']
-        #print('processing fit', j)
+        # print('processing fit', j)
+
         for lc in lc_list:
             lc.convert_bytestring_to_unicode()
-            resfit = self.fit(lc)
+            resfit = self.fit(lc, params)
             if resfit is not None:
                 resfit = self.check_correct(resfit)
                 res = vstack([res, resfit])
@@ -677,16 +677,18 @@ class SimInfoFitWrapper:
 
         self.outdf = pd.DataFrame()
 
-    def run(self, obs, imulti=0):
+    def run(self, obs, imulti=0, verbose=True):
         """
 
 
         Parameters
         ----------
         obs : array
-            array of observations
+            array of observations       
         imulti : int, optional
-            Internal parameter. The default is 0.
+            internal tag. The default is 0.
+        verbose : bool, optional
+            To print infos. The default is False.
 
         Returns
         -------
@@ -697,18 +699,22 @@ class SimInfoFitWrapper:
         # get Light curves from simuWrapper
         # print('processing pixel', np.unique(
         #    obs[['healpixID', 'pixRA', 'pixDec']]))
-        # import time
-        # time_ref = time.time()
-        # print('simulation')
+        if verbose:
+            import time
+            time_ref = time.time()
+            print('simulation')
+
         light_curves = self.simu_wrapper(obs, imulti)
-        #print('nlc simulated', len(light_curves))
+        # print('nlc simulated', len(light_curves))
         # analyze these LC + flag for selection
         if light_curves is None:
             return None
 
         # light_curves = self.myanatest(light_curves)
 
-        #print('LC analysis')
+        if verbose:
+            print('LC analysis')
+
         light_curves_ana = self.info_wrapper(light_curves)
 
         """
@@ -724,13 +730,19 @@ class SimInfoFitWrapper:
                     print(col, diff, gg.meta[col], gg.meta['{}_n'.format(col)])
             print('---')
         """
-        #print('nlc analyzed', len(light_curves_ana))
+        # print('nlc analyzed', len(light_curves_ana))
 
         # fitting here
+        if verbose:
+            print('lc fitting', len(light_curves_ana))
+
         for rr in self.fit_remove_sat:
             fitlc = self.fit_wrapper(light_curves_ana, remove_sat=rr)
             fitlc['remove_sat'] = rr
             self.myconcat(fitlc)
+
+        if verbose:
+            print('end of fitting', time.time()-time_ref)
 
         if len(self.outdf) > 10000:
             self.dump_df()
@@ -868,7 +880,7 @@ class SimInfoFitWrapper:
 
         """
 
-        #print('dumping df', len(self.outdf))
+        # print('dumping df', len(self.outdf))
         self.outdf.to_hdf(self.outName, key='SN', append=True)
 
     def myconcat(self, fitlc):
