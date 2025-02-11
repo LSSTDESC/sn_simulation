@@ -21,6 +21,7 @@ setup(
     zip_safe=False,
     install_requires=[
         'sn_tools>=0.1',
-        'dustmaps'
+        'dustmaps',
+        'sn_telmodel>=0.1'
     ],
 )
