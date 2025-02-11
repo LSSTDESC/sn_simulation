@@ -204,6 +204,12 @@ class FitWrapper:
             checkDir(self.outDir)
 
     def __call__(self, lc_list, remove_sat=False):
+
+        res = self.fit.fit_multiproc(lc_list, remove_sat, self.nproc)
+
+        return res
+
+    def __call__deprecated(self, lc_list, remove_sat=False):
         """
         Method to fit light curves
 
@@ -230,15 +236,15 @@ class FitWrapper:
 
         return res
         """
-        from sn_tools.sn_utils import multiproc
+        # from sn_tools.sn_utils import multiproc
         params = {}
         params['remove_sat'] = remove_sat
 
-        res = multiproc(lc_list, params, self.fit_lcs, self.nproc)
+        res = self.multiproc(lc_list, params, self.fit_lcs, self.nproc)
 
         return res
 
-    def fit_lcs(self, lc_list, params, j=0, output_q=None):
+    def fit_lcs_deprecated(self, lc_list, params, j=0, output_q=None):
         """
         Method to fit LCs
 
@@ -677,7 +683,7 @@ class SimInfoFitWrapper:
 
         self.outdf = pd.DataFrame()
 
-    def run(self, obs, imulti=0, verbose=True):
+    def run(self, obs, imulti=0, verbose=False):
         """
 
 
