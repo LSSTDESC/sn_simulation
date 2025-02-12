@@ -285,7 +285,7 @@ class SN(SN_Object):
         source = sncosmo.get_source(model, version)
 
         if model == 'salt3':
-            source._wave[0] = 1700.
+            source._wave[0] = 1500.  # used to be 1700
             source._wave[-1] = 24990.
 
         self.SN = sncosmo.Model(source=source,
