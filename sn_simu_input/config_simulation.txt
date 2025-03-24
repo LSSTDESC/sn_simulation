@@ -27,6 +27,7 @@ SN z min 0.01 float #SN z min
 SN z max 1.0 float #SN z max
 SN z step 0.01 float #SN z step
 SN z rate combined str #SN z rate
+SN z weight sn_rate str #SN z weight(sn_rate/flat)
 SN z maxsimu 1.1 float # SN max z for rate
 SN z minsimu 0.01 float # SN max z for rate
 SN z sigmaz 1.e-5 float # redshift error to be propagated to zsim
