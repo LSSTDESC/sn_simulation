@@ -399,6 +399,26 @@ class InfoWrapper:
         return lc_list
 
     def run_list(self, light_curves, params, j, output_q=None):
+        """
+        method to estimate general params of the light curve
+
+        Parameters
+        ----------
+        light_curves : list(Table)
+            Light curve list.
+        params : dict
+            Parameters.
+        j : int
+            internal parameter (multiprocessing).
+        output_q : multiprocessing queue, optional
+            Where to put the results. The default is None.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
 
         getInfos = params['getInfos']
         # selParams = params['selParams']
@@ -421,11 +441,12 @@ class InfoWrapper:
                 else:
                     resdict = self.calc_infos(lc_sel, T0, z,
                                               getInfos, selParams={})
-                    for vval in [10, 15, 20]:
+                    for vval in snr_max:
                         vc = 'Nfilt_{}'.format(vval)
                         resdict[vc] = self.nfilt_snrmax(lc_sel, snr_max=vval)
 
             # update meta data
+
             lc.meta.update(resdict)
             lc_list.append(lc)
 
@@ -453,7 +474,7 @@ class InfoWrapper:
 
         resdict = {}
         for key in getInfos.keys():
-            resdict[key] = -1
+            resdict[key] = 0
 
         for b in 'ugrizy':
             resdict['SNR_{}'.format(b)] = -1.0
