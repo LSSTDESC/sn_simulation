@@ -424,7 +424,7 @@ class InfoWrapper:
         # selParams = params['selParams']
 
         lc_list = []
-        snr_max = [10, 15, 20]
+        snr_max = [2, 5, 10, 15, 20]
 
         for lc in light_curves:
             T0 = lc.meta['daymax']
@@ -524,9 +524,13 @@ class InfoWrapper:
             resdict['selected'] = int(self.select(resdict, selParams))
         # add snr per band
         SNRtot = 0.
+
+        lc_sel = lc_sel.to_pandas()
+
         for b in 'ugrizy':
-            idx = lc_sel['band'] == 'lsst{}'.format(b)
+            idx = lc_sel['band'].str.contains('LSST::{}'.format(b))
             sel = lc_sel[idx]
+
             SNR = 0.
             if len(sel) > 0:
                 SNR = np.sum(sel['snr_m5']**2)
@@ -535,6 +539,7 @@ class InfoWrapper:
 
         resdict['SNR'] = SNRtot
 
+        del lc_sel
         return resdict
 
     def select(self, res, list_sel):
