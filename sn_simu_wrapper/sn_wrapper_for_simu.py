@@ -690,6 +690,7 @@ class SimInfoFitWrapper:
         None.
 
         """
+
         self.name = 'sim_info_fit'
         self.simu_wrapper = SimuWrapper(yaml_config_simu)
         self.info_wrapper = InfoWrapper(infoDict)
@@ -995,7 +996,10 @@ class SimuWrapper:
         self.name = 'simulation'
 
         # get X0 for SNIa normalization
-        x0_tab = self.x0(config)
+        x0_tab = None
+        x0_griddata = config['SN']['x0']['griddata']
+        if x0_griddata:
+            x0_tab = self.x0(config)
 
         # load references if simulator = sn_fast
         # reference_lc = self.load_reference(config)

@@ -63,7 +63,9 @@ SN NSNabsolute -1 int #absolute number of SN to produce
 SN sigmaInt 0.0 float #SN intrinsic dispersion
 SN nspectra 0 int #Number of spectra to generate
 SN smearFlux 1 int #LC flux smearing
-
+SN alpha 0.13 float #nuisance parameter (alpha)
+SN beta 3.1 float #nuisance parameter (beta)
+SN x0 griddata 0 int #to extract x0 from griddata
 ##Simulation parameters(from file)
 SN simuFile None str # simulation parameter file
 

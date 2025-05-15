@@ -1,7 +1,7 @@
 import sncosmo
 import numpy as np
 from astropy.table import Table, vstack
-from scipy.interpolate import griddata, interp1d
+from scipy.interpolate import interp1d
 from sn_simu_wrapper.sn_object import SN_Object
 import time
 from sn_tools.sn_utils import SNTimer, register_bands_sncosmo
@@ -360,9 +360,11 @@ class SN(SN_Object):
                                 effect_frames=['rest', 'obs'])
         self.SN.set(z=self.sn_parameters['z'])
 
+        """
         self.SN.set_source_peakabsmag(self.sn_parameters['absmag'],
                                       self.sn_parameters['band'],
                                       self.sn_parameters['magsys'])
+        """
         # print(self.SN)
         # self.SN.set(amplitude=2.e-8)
 
@@ -467,44 +469,64 @@ class SN(SN_Object):
         self.SN.set(x1=self.sn_parameters['x1'] +
                     self.gen_parameters['epsilon_x1'])
 
-        self.X0 = self.x0(self.dL)
-        """
         self.SN.set_source_peakabsmag(self.sn_parameters['absmag'],
                                       self.sn_parameters['band'],
                                       self.sn_parameters['magsys'])
 
-        # get X0 fro source_abspeak norm
+        if self.sn_parameters['x0']['griddata']:
+            self.X0 = self.get_x0_from_grid(self.dL)
+        else:
+            self.X0 = self.get_x0()
 
-        self.X0 = self.SN.get('x0')
-        # need to correct X0 for alpha and beta
-        alpha = 0.13
-        beta = 3.1
-        self.X0 *= np.power(10., 0.4*(alpha *
-                                 self.sn_parameters['x1'] - beta *
-                                 self.sn_parameters['color']))
-        # estimate mb
-        mb = -2.5*np.log10(self.X0)+10.635
-
-        # smear if
-        from random import gauss
-
-        print('before iii',mb,self.X0,self.sn_parameters['sigmaInt'])
-        mb = gauss(mb,self.sn_parameters['sigmaInt'])
-
-
-        # and recalculate X0
-        self.X0 = 10**(-0.4*(mb-10.635))
-        print('after',mb,self.X0)
-
-        self.X0 += self.gen_parameters['epsilon_x0']
-
-        """
         # set X0
         self.SN.set(x0=self.X0)
 
         # print('after',self.SN.get('x0'),self.SN.get('x1'),self.SN.get('c'))
 
-    def x0(self, lumidist):
+    def get_x0(self):
+        """
+
+        Method to estimate x0 from (alpha, beta,sigmaint)
+
+        Returns
+        -------
+        X0 : TYPE
+            DESCRIPTION.
+
+        """
+
+        X0 = self.SN.get('x0')
+        alpha = self.sn_parameters['alpha']
+        beta = self.sn_parameters['beta']
+
+        X0 *= np.power(10., 0.4*(alpha *
+                                 self.sn_parameters['x1'] - beta *
+                                 self.sn_parameters['color']))
+
+        if self.sn_parameters['sigmaInt'] > 0 or np.abs(self.nsigmamb) > 1.e-5:
+
+            # estimate mb
+            mb = -2.5*np.log10(X0)+10.635
+
+            if self.sn_parameters['sigmaInt'] > 0:
+                # smear it
+                from random import gauss
+
+                mb = gauss(mb, self.sn_parameters['sigmaInt'])
+
+            if np.abs(self.nsigmamb) > 1.e-5:
+                # get sigma from z
+                sigmamb = self.sigma_mb_z(self.sn_parameters['z'])
+                mb += self.nsigmamb*sigmamb
+
+            # and recalculate X0
+            X0 = 10**(-0.4*(mb-10.635))
+
+        X0 += self.gen_parameters['epsilon_x0']
+
+        return X0
+
+    def get_x0_from_grid(self, lumidist):
         """"
         Method to estimate x0 from a griddata
 
@@ -514,14 +536,18 @@ class SN(SN_Object):
           luminosity distance
 
         """
+        from scipy.interpolate import griddata
 
         X0_grid = griddata((self.x0_grid['x1'], self.x0_grid['color']),
                            self.x0_grid['x0_norm'], (
             self.sn_parameters['x1'], self.sn_parameters['color']),
             method='nearest')
+
         X0 = X0_grid / lumidist ** 2
-        alpha = 0.13
-        beta = 3.1
+
+        alpha = self.sn_parameters['alpha']
+        beta = self.sn_parameters['beta']
+
         X0 *= np.power(10., 0.4*(alpha *
                                  self.sn_parameters['x1'] - beta *
                                  self.sn_parameters['color']))

@@ -7,7 +7,7 @@ import numpy as np
 class SN_Object:
     def __init__(self, name, sn_parameters, simulator_parameters,
                  gen_parameters, cosmology, telescope, zp_airmass,
-                 snid, area, x0_grid,
+                 snid, area, x0_grid=None,
                  salt2Dir='SALT2_Files',
                  mjdCol='mjd', RACol='pixRa', DecCol='pixDec',
                  filterCol='band', exptimeCol='exptime',
