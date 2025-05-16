@@ -34,6 +34,7 @@ SN z sigmaz 1.e-5 float # redshift error to be propagated to zsim
 # daymax
 SN daymax type unique str #SN daymax type
 SN daymax step 1. float #SN daymax step
+SN daymax restricted 0 int #to restrict daymax values
 #rf cuts
 SN minRFphase -20. float #SN min rf phase
 SN maxRFphase 60. float #SN max rf phase
