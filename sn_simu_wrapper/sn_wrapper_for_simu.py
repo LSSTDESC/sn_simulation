@@ -512,8 +512,10 @@ class InfoWrapper:
         resdict = {}
         # add phase column
         lc_sel['phase'] = (lc_sel['time']-T0)/(1+z)
+        """
         if 'filter' in lc_sel.columns:
             lc_sel.remove_columns(['filter'])
+        """
         # self.plotLC(lc_sel)
         for key, vals in getInfos.items():
             resdict[key] = self.nepochs_phase(
@@ -738,7 +740,8 @@ class SimInfoFitWrapper:
             print('simulation')
 
         light_curves = self.simu_wrapper(obs, imulti)
-        # print('nlc simulated', len(light_curves))
+        #print('nlc simulated', len(light_curves))
+        
         # analyze these LC + flag for selection
         if light_curves is None:
             return None
