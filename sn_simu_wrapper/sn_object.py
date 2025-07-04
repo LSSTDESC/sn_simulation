@@ -16,7 +16,7 @@ class SN_Object:
                  seeingEffCol='seeingFwhmEff', seeingGeomCol='seeingFwhmGeom',
                  airmassCol='airmass', skyCol='sky', moonCol='moonPhase',
                  airmassType='const', airmass=1.2,
-                 pwv=4.0, oz=300., aerosol=0.0,
+                 pwv=4.0, ozone=300., aerosol=0.0,
                  psf_flux='', frac_flux_seeing=None, ccd_full_well=-1.):
         """ class SN object
         handles sn name, parameters,
@@ -99,7 +99,7 @@ class SN_Object:
         self.airmassType = airmassType
         self.airmass = airmass
         self.pwv = pwv
-        self.oz = oz
+        self.ozone = ozone
         self.aerosol = aerosol
         self.psf_flux = psf_flux
         self.frac_flux_seeing = frac_flux_seeing

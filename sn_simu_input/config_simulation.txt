@@ -89,7 +89,7 @@ InstrumentSimu airmassType const str #instrument airmass/const/dep
 #Instrument atmos 1 int #instrument atmos
 InstrumentSimu aerosol 0.0 float #instrument aerosol
 InstrumentSimu pwv 4.0 float #instrument precipit. water vapor
-InstrumentSimu oz 300. float #ozone 
+InstrumentSimu ozone 300. float #ozone 
 
 ##Observations
 Observations filename fullDbName str #observation file name

@@ -37,7 +37,7 @@ class SN(SN_Object):
                          airmassType=param.airmassType,
                          airmass=param.airmass,
                          pwv=param.pwv,
-                         oz=param.oz,
+                         ozone=param.ozone,
                          aerosol=param.aerosol,
                          psf_flux=param.psf_flux,
                          frac_flux_seeing=param.frac_flux_seeing,
@@ -736,12 +736,23 @@ class SN(SN_Object):
                 outvals.append(bb)
 
         lcdf = pd.DataFrame(np.copy(obs[outvals]))
+
+        # set atmospheric parameters
+        lcdf = self.set_atmos_params(lcdf)
+
         # zp variation vs airmass
         lst = lcdf[self.filterCol].tolist()
         lcdf['zp_slope'] = np.array([*map(self.zp_slope.get, lst)])
         lcdf['zp_intercept'] = np.array([*map(self.zp_intercept.get, lst)])
         lcdf['zp'] = lcdf['zp_slope'] * \
             lcdf['airmass']+lcdf['zp_intercept']
+
+        # more precise zp estimation
+        lcdf = self.get_zp(lcdf)
+
+        print('allo', lcdf[['filter', 'zp', 'zp_new']])
+
+        print(test)
 
         lcdf['zpsys'] = 'ab'
 
@@ -919,6 +930,75 @@ class SN(SN_Object):
 
         return [table_lc]
 
+    def get_zp(self, lcdf):
+        """
+        Method to estimate zero points
+
+        Parameters
+        ----------
+        lcdf : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        lcdf : TYPE
+            DESCRIPTION.
+
+        """
+
+        ra = []
+        rb = []
+        for i, row in lcdf.iterrows():
+            airmass = row['airmass']
+            pwv = row['pwv']
+            ozone = row['ozone']
+            aerosol = row['aerosol']
+            b = row['filter']
+            self.telescope.new_atmosphere(site_name=self.telescope.site_name,
+                                          airmass=airmass,
+                                          aerosol=aerosol,
+                                          pwv=pwv, ozone=ozone)
+            self.telescope.reset_data()
+            self.telescope.mean_wave()
+            # grab zp
+            mean_wave = self.telescope.mean_wavelength[b]
+            zp = self.telescope.zp(b)
+            ra.append((zp))
+            rb.append((mean_wave))
+
+        lcdf['zp_new'] = ra
+        lcdf['mean_wave'] = rb
+
+        return lcdf
+
+    def set_atmos_params(self, lcdf):
+        """
+        Method to set atmospheric parameters
+
+        Parameters
+        ----------
+        lcdf : pandas df
+            Data to process.
+
+        Returns
+        -------
+        lcdf : pandas df
+            output data.
+
+        """
+
+        if 'pwv' not in lcdf.columns:
+            lcdf['pwv'] = self.pwv
+        if 'ozone' not in lcdf.columns:
+            lcdf['ozone'] = self.ozone
+        if 'aerosol' not in lcdf.columns:
+            lcdf['aerosol'] = self.aerosol
+
+        lcdf = lcdf.round(
+            {self.airmassCol: 2, 'pwv': 2, 'ozone': 2, 'aerosol': 2})
+
+        return lcdf
+
     def get_register_throughput(self, lcdf):
         """
         Method to estimate throughput and register in sncosmo
@@ -935,15 +1015,6 @@ class SN(SN_Object):
 
         """
 
-        if 'pwv' not in lcdf.columns:
-            lcdf['pwv'] = self.pwv
-        if 'ozone' not in lcdf.columns:
-            lcdf['ozone'] = self.oz
-        if 'aerosol' not in lcdf.columns:
-            lcdf['aerosol'] = self.aerosol
-
-        lcdf = lcdf.round(
-            {self.airmassCol: 2, 'pwv': 2, 'ozone': 2, 'aerosol': 2})
         bandname = self.telescope.site_name+'::' + lcdf[self.filterCol]+'_' + \
             lcdf[self.airmassCol].astype(str)+'_' + \
             lcdf['pwv'].astype(str)+'_' + \

@@ -196,7 +196,7 @@ class SNSimu_Params:
         self.airmassType = config_instr['airmassType']
         self.airmass = config_instr['airmass']
         self.pwv = config_instr['pwv']
-        self.oz = config_instr['oz']
+        self.ozone = config_instr['ozone']
         self.aerosol = config_instr['aerosol']
 
     def simu_params_from_file(self, simuFile):
@@ -254,6 +254,10 @@ class SNSimu_Params:
 
         from sn_telmodel.sn_transtools import Zeropoint_airmass
 
+        pwv = config['pwv']
+        ozone = config['ozone']
+        aerosol = config['aerosol']
+
         """
         tel_dir = config['telescope']['dir']
         tel_tag = config['telescope']['tag']
@@ -268,7 +272,8 @@ class SNSimu_Params:
         oz = float(oz)
         aerosol = float(aerosol)
         """
-        zp = Zeropoint_airmass(self.telescope)
+        zp = Zeropoint_airmass(self.telescope, pwv=pwv,
+                               ozone=ozone, aerosol=aerosol)
 
         self.zp_airmass = zp.get_fit_params()
 
@@ -1243,7 +1248,7 @@ class SNSimulation(SNSimu_Params):
                               airmassType=self.airmassType,
                               airmass=self.airmass,
                               pwv=self.pwv,
-                              oz=self.oz,
+                              ozone=self.ozone,
                               aerosol=self.aerosol,
                               psf_flux=self.psf_flux,
                               frac_flux_seeing=self.frac_flux_seeing,
