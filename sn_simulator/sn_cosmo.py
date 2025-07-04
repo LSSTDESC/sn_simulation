@@ -748,11 +748,7 @@ class SN(SN_Object):
             lcdf['airmass']+lcdf['zp_intercept']
 
         # more precise zp estimation
-        lcdf = self.get_zp(lcdf)
-
-        print('allo', lcdf[['filter', 'zp', 'zp_new']])
-
-        print(test)
+        # lcdf = self.get_zp(lcdf)
 
         lcdf['zpsys'] = 'ab'
 
