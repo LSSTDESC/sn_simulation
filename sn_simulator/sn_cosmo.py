@@ -5,7 +5,6 @@ from scipy.interpolate import interp1d
 from sn_simu_wrapper.sn_object import SN_Object
 import time
 from sn_tools.sn_utils import SNTimer, register_bands_sncosmo
-from sn_tools.sn_utils import register_bands_sncosmo_new
 import pandas as pd
 import os
 
@@ -133,7 +132,7 @@ class SN(SN_Object):
         self.zp_slope = dict(zip(bands, slope))
         self.zp_intercept = dict(zip(bands, intercept))
         """
-        self.register_bands()
+        # self.register_bands()
 
         """
         for band in 'grizy':
@@ -163,7 +162,7 @@ class SN(SN_Object):
         None.
 
         """
-
+        from sn_tools.sn_utils import register_bands_sncosmo_old
         airmass = [self.airmass]
         pwvs = [self.pwv]
         ozs = [self.oz]
@@ -186,16 +185,18 @@ class SN(SN_Object):
             aerosol = row['aerosol']
             pwv = row['pwv']
             ozone = row['ozone']
-            register_bands_sncosmo(sncosmo,
-                                   self.telescope,
-                                   airmass, aerosol, pwv, ozone)
-            
+            register_bands_sncosmo_old(sncosmo,
+                                       self.telescope,
+                                       airmass, aerosol, pwv, ozone)
+
     def register_bands_on_the_fly(self, telescope, data):
         """
         Method to register bands on sncosmo
 
         Parameters
         ----------
+        telescope: Telescope
+            telescope to use
         data: pandas df
             data to register
 
@@ -204,7 +205,7 @@ class SN(SN_Object):
         None.
 
         """
-        
+
         for i, row in data.iterrows():
             bandname = row['band_cosmo']
             band = row[self.filterCol]
@@ -212,13 +213,9 @@ class SN(SN_Object):
             pwv = row['pwv']
             ozone = row['ozone']
             aerosol = row['aerosol']
-            register_bands_sncosmo_new(sncosmo,telescope,
-                                       bandname,band,
-                                       airmass,pwv,ozone,aerosol)
-        
-        
-        
-        
+            register_bands_sncosmo(sncosmo, telescope,
+                                   bandname, band,
+                                   airmass, pwv, ozone, aerosol)
 
     def register_bands_old(self):
         """
@@ -749,46 +746,7 @@ class SN(SN_Object):
         lcdf['zpsys'] = 'ab'
 
         # get band flux
-        if self.airmassType != 'const':
-            if 'pwv' not in lcdf.columns:
-                lcdf['pwv'] = self.pwv
-            if 'ozone' not in lcdf.columns:
-                lcdf['ozone'] = self.oz
-            if 'aerosol' not in lcdf.columns:
-                lcdf['aerosol'] = self.aerosol
-            
-            lcdf = lcdf.round({self.airmassCol:2,'pwv':2,'ozone':2,'aerosol':2})
-            bandname = self.telescope.site_name+'::' + lcdf[self.filterCol]+'_' + \
-                lcdf[self.airmassCol].astype(str)+'_'+ \
-                lcdf['pwv'].astype(str)+'_'+ \
-                lcdf['ozone'].astype(str)+'_'+ \
-                lcdf['aerosol'].astype(str)
-                
-            lcdf['band_cosmo'] = bandname
-            
-            self.register_bands_on_the_fly(self.telescope,
-                                           lcdf[['band_cosmo',
-                                            self.filterCol,
-                                            self.airmassCol,
-                                            'pwv','ozone','aerosol']])
-            """
-            
-            print(bandname)
-            airm_vv = '{}_10'.format(self.airmassCol)
-            band_cosmo = '{}_cosmo'.format(self.filterCol)
-            lcdf[airm_vv] = 10 * \
-                lcdf[self.airmassCol]
-            lcdf[airm_vv] = lcdf[airm_vv].astype(int)
-            lcdf[band_cosmo] = self.telescope.site_name+'::' + \
-                lcdf[self.filterCol]+'_' + \
-                lcdf[airm_vv].astype(str)
-            del lcdf[airm_vv]
-            """
-        else:
-            band_cosmo = '{}_cosmo'.format(self.filterCol)
-            lcdf[band_cosmo] = self.telescope.site_name+'::' + \
-                lcdf[self.filterCol]+'_{}'.format(int(10*self.airmass))
-            # lcdf[band_cosmo] = 'lsst'+lcdf[self.filterCol]
+        lcdf = self.get_register_throughput(lcdf)
 
         # lcdf['zp'] = lcdf['zp_e_sec']
         lcdf['flux'] = self.SN.bandflux(
@@ -960,6 +918,47 @@ class SN(SN_Object):
         # table_lc.remove_columns(toremove)
 
         return [table_lc]
+
+    def get_register_throughput(self, lcdf):
+        """
+        Method to estimate throughput and register in sncosmo
+
+        Parameters
+        ----------
+        lcdf : pandas df
+            Data to process.
+
+        Returns
+        -------
+        lcdf : pandas df
+            init df plus additionnal params.
+
+        """
+
+        if 'pwv' not in lcdf.columns:
+            lcdf['pwv'] = self.pwv
+        if 'ozone' not in lcdf.columns:
+            lcdf['ozone'] = self.oz
+        if 'aerosol' not in lcdf.columns:
+            lcdf['aerosol'] = self.aerosol
+
+        lcdf = lcdf.round(
+            {self.airmassCol: 2, 'pwv': 2, 'ozone': 2, 'aerosol': 2})
+        bandname = self.telescope.site_name+'::' + lcdf[self.filterCol]+'_' + \
+            lcdf[self.airmassCol].astype(str)+'_' + \
+            lcdf['pwv'].astype(str)+'_' + \
+            lcdf['ozone'].astype(str)+'_' + \
+            lcdf['aerosol'].astype(str)
+
+        lcdf['band_cosmo'] = bandname
+
+        self.register_bands_on_the_fly(self.telescope,
+                                       lcdf[['band_cosmo',
+                                             self.filterCol,
+                                             self.airmassCol,
+                                             'pwv', 'ozone', 'aerosol']])
+
+        return lcdf
 
     def estimate_satured_flux(self, lcdf):
         """
