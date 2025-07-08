@@ -275,7 +275,27 @@ class SNSimu_Params:
         zp = Zeropoint_airmass(self.telescope, pwv=pwv,
                                ozone=ozone, aerosol=aerosol)
 
-        self.zp_airmass = zp.get_fit_params()
+        #self.zp_airmass = zp.get_fit_params()
+        
+        zp_data= zp.get_data()
+        
+        bands = np.unique(zp_data['band'])
+        
+        self.zp_airmass = {}
+        self.mean_wavelength_airmass = {}
+        from scipy.interpolate import interp1d
+        for b in bands:
+            idx = zp_data['band'] == b
+            sel = zp_data[idx]
+            self.zp_airmass[b] = interp1d(sel['airmass'],
+                                                 sel['zp'],
+                                                 bounds_error=False, 
+                                                 fill_value=0.)
+            self.mean_wavelength_airmass[b] = interp1d(sel['airmass'],
+                                                 sel['mean_wavelength'],
+                                                 bounds_error=False, 
+                                                 fill_value=0.)
+        
 
     def load_for_snfast(self, web_path):
         """
@@ -1236,6 +1256,7 @@ class SNSimulation(SNSimu_Params):
                               self.cosmology,
                               self.telescope,
                               self.zp_airmass,
+                              self.mean_wavelength_airmass,
                               SNID, self.area,
                               x0_grid=self.x0_grid,
                               salt2Dir=self.salt2Dir,

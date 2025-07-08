@@ -7,6 +7,7 @@ import numpy as np
 class SN_Object:
     def __init__(self, name, sn_parameters, simulator_parameters,
                  gen_parameters, cosmology, telescope, zp_airmass,
+                 mean_wavelength_airmass,
                  snid, area, x0_grid=None,
                  salt2Dir='SALT2_Files',
                  mjdCol='mjd', RACol='pixRa', DecCol='pixDec',
@@ -112,6 +113,7 @@ class SN_Object:
                                          869.01326737, 973.60607034]))
         """
 
+        """
         bands = zp_airmass['band'].tolist()
         mean_waves = zp_airmass['mean_wavelength'].tolist()
         slope = zp_airmass['slope'].tolist()
@@ -120,6 +122,10 @@ class SN_Object:
         self.mean_wavelength = dict(zip(bands, mean_waves))
         self.zp_slope = dict(zip(bands, slope))
         self.zp_intercept = dict(zip(bands, intercept))
+        """
+        self.zp_airmass= zp_airmass
+        self.mean_wavelength_airmass = mean_wavelength_airmass
+        
 
     @ property
     def name(self):
@@ -185,11 +191,26 @@ class SN_Object:
         self.red_cutoffs = red_cutoffs
 
         filters = np.array(obs[self.filterCol].tolist())
+        airmass = np.array(obs['airmass'].tolist())
+        
+        filt_air = list(zip(filters,airmass))
         filters = filters.reshape((len(filters), 1))
+        
         blue_values = np.apply_along_axis(self.blues, 1, filters)
         red_values = np.apply_along_axis(self.reds, 1, filters)
+        
+        
+        """
         mean_restframe_wavelength = \
-            np.apply_along_axis(self.mean_wave, 1, filters)/(1.+z)
+            np.apply_along_axis(self.mean_wave, 1, filters,airmass)/(1.+z)
+        mean_restframe_wavelength= mean_restframe_wavelength.reshape((len(filters),1))
+        """
+        print('jjj',self.mean_wavelength_airmass['g'](1.2))
+        
+        #filt_air = np.array([*map(self.mean_wavelength_airmass.get, filters)])
+        res = list(map(lambda x:self.mean_wavelength_airmass[x[0]](x[1]),filt_air))
+        
+        mean_restframe_wavelength = np.array(res)/(1.+z)
 
         p = (obs[self.mjdCol]-T0)/(1.+z)
 
@@ -254,7 +275,28 @@ class SN_Object:
 
         """
 
-        return self.mean_wavelength[band[0]]
+        #return self.mean_wavelength[band[0]]
+        return self.mean_wavelength_airmass[band[0]]
+    
+    def mean_wave_airmass(self, vv):
+        """
+        Method to return the mean_restframe_wavelength
+
+        Parameters
+        ----------
+        band : str
+            the band to process
+
+        Returns
+        -------
+        float
+            the mean restframe wavelength corresponding to band
+
+        """
+
+        print('hello',vv)
+        return self.filt_air(vv)  
+    
 
     @ staticmethod
     def plotLC(table, time_display, airmass=1.2):

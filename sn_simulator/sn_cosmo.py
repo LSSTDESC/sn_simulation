@@ -18,6 +18,7 @@ class SN(SN_Object):
                          param.cosmology,
                          param.telescope,
                          param.zp_airmass,
+                         param.mean_wavelength_airmass,
                          param.SNID,
                          param.area, param.x0_grid,
                          mjdCol=param.mjdCol,
@@ -742,13 +743,25 @@ class SN(SN_Object):
 
         # zp variation vs airmass
         lst = lcdf[self.filterCol].tolist()
+        airmass = lcdf['airmass'].tolist()
+        filt_airmass = list(zip(lst,airmass))
+        lcdf['zp'] = list(map(lambda x:self.zp_airmass[x[0]](x[1]),filt_airmass))
+        #lcdf['zp_interp'] = np.array([*map(self.zp_airmass.get, lst)])
+        """
         lcdf['zp_slope'] = np.array([*map(self.zp_slope.get, lst)])
         lcdf['zp_intercept'] = np.array([*map(self.zp_intercept.get, lst)])
         lcdf['zp'] = lcdf['zp_slope'] * \
             lcdf['airmass']+lcdf['zp_intercept']
+        """
+        #lcdf['zp'] = lcdf['zp_interp'](lcdf['airmass'])
 
         # more precise zp estimation
-        # lcdf = self.get_zp(lcdf)
+        lcdf = self.get_zp(lcdf)
+
+        lcdf['diff_zp']= lcdf['zp']-lcdf['zp_new']
+        print('allo',lcdf[['filter','airmass','zp','zp_new','diff_zp']])
+        
+        print(tzst)
 
         lcdf['zpsys'] = 'ab'
 
@@ -944,12 +957,15 @@ class SN(SN_Object):
 
         ra = []
         rb = []
+        from random import gauss
         for i, row in lcdf.iterrows():
             airmass = row['airmass']
             pwv = row['pwv']
             ozone = row['ozone']
             aerosol = row['aerosol']
             b = row['filter']
+            pwv += gauss(0.2)
+            # ozone += gauss(5.)
             self.telescope.new_atmosphere(site_name=self.telescope.site_name,
                                           airmass=airmass,
                                           aerosol=aerosol,
