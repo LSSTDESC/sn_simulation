@@ -16,7 +16,7 @@ class SN_Object:
                  nightCol='night', m5Col='fiveSigmaDepth', seasonCol='season',
                  seeingEffCol='seeingFwhmEff', seeingGeomCol='seeingFwhmGeom',
                  airmassCol='airmass', skyCol='sky', moonCol='moonPhase',
-                 airmassType='const', airmass=1.2,
+                 atmosType='const', airmass=1.2,
                  pwv=4.0, ozone=300., aerosol=0.0,
                  psf_flux='', frac_flux_seeing=None, ccd_full_well=-1.):
         """ class SN object
@@ -97,7 +97,7 @@ class SN_Object:
         self.salt2Dir = salt2Dir
         self.x0_grid = x0_grid
 
-        self.airmassType = airmassType
+        self.atmosType = atmosType
         self.airmass = airmass
         self.pwv = pwv
         self.ozone = ozone
@@ -191,9 +191,9 @@ class SN_Object:
         self.red_cutoffs = red_cutoffs
 
         filters = np.array(obs[self.filterCol].tolist())
-        airmass = np.array(obs['airmass'].tolist())
+        #airmass = np.array(obs['airmass'].tolist())
         
-        filt_air = list(zip(filters,airmass))
+        #filt_air = list(zip(filters,airmass))
         filters = filters.reshape((len(filters), 1))
         
         blue_values = np.apply_along_axis(self.blues, 1, filters)
@@ -205,12 +205,12 @@ class SN_Object:
             np.apply_along_axis(self.mean_wave, 1, filters,airmass)/(1.+z)
         mean_restframe_wavelength= mean_restframe_wavelength.reshape((len(filters),1))
         """
-        print('jjj',self.mean_wavelength_airmass['g'](1.2))
+        #print('jjj',self.mean_wavelength_airmass['g'](1.2))
         
         #filt_air = np.array([*map(self.mean_wavelength_airmass.get, filters)])
-        res = list(map(lambda x:self.mean_wavelength_airmass[x[0]](x[1]),filt_air))
+        #res = list(map(lambda x:self.mean_wavelength_airmass[x[0]](x[1]),filt_air))
         
-        mean_restframe_wavelength = np.array(res)/(1.+z)
+        mean_wavelength = obs['mean_wave']/(1.+z)
 
         p = (obs[self.mjdCol]-T0)/(1.+z)
 
@@ -219,8 +219,8 @@ class SN_Object:
         idx &= (mean_restframe_wavelength > blue_cutoff)
         idx &= (mean_restframe_wavelength < red_cutoff)
         """
-        idx &= (mean_restframe_wavelength - blue_values >= 0.)
-        idx &= (mean_restframe_wavelength - red_values <= 0.)
+        idx &= (mean_wavelength - blue_values >= 0.)
+        idx &= (mean_wavelength - red_values <= 0.)
 
         selobs = obs[idx]
 
@@ -378,3 +378,151 @@ class SN_Object:
         plt.draw()
         plt.pause(time_display)
         plt.close()
+
+    def add_zp_meanwave_from_interp(self,obs):
+        """
+        Method to estimate mean_restframe wavelength
+
+        Parameters
+        ----------
+        obs : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
+        
+        filters = np.array(obs[self.filterCol].tolist())
+        airmass = np.array(obs['airmass'].tolist())
+        
+        filt_airmass = list(zip(filters,airmass))
+        mean_wave = list(map(lambda x:self.mean_wavelength_airmass[x[0]](x[1]),filt_airmass))
+    
+        zp = list(map(lambda x:self.zp_airmass[x[0]](x[1]),filt_airmass))
+    
+        import numpy.lib.recfunctions as rf
+        obs =  rf.append_fields(obs, 'zp',zp)
+        obs =  rf.append_fields(obs, 'mean_wave',mean_wave)
+        return obs
+
+    def add_zp_meanwave_from_obs(self, obs):
+        """
+        Method to estimate zero points
+
+        Parameters
+        ----------
+        obs : record array
+            data to process.
+
+        Returns
+        -------
+        lcdf : pandas df
+            output result.
+
+        """
+
+        ra = []
+        rb = []
+        from random import gauss
+        for row in obs:
+            airmass = row['airmass']
+            pwv = row['pwv']
+            ozone = row['ozone']
+            aerosol = row['aerosol']
+            b = row['filter']
+            #pwv += gauss(0.2)
+            # ozone += gauss(5.)
+            self.telescope.new_atmosphere(site_name=self.telescope.site_name,
+                                          airmass=airmass,
+                                          aerosol=aerosol,
+                                          pwv=pwv, ozone=ozone)
+            self.telescope.reset_data()
+            self.telescope.mean_wave()
+            # grab zp
+            mean_wave = self.telescope.mean_wavelength[b]
+            zp = self.telescope.zp(b)
+            ra.append((zp))
+            rb.append((mean_wave))
+
+        import numpy.lib.recfunctions as rf
+        obs =  rf.append_fields(obs, 'zp_new',ra)
+        obs =  rf.append_fields(obs, 'mean_wave_new',rb)
+
+
+        return obs
+
+
+    def add_zp_meanwave_from_obs_df(self, lcdf):
+        """
+        Method to estimate zero points
+
+        Parameters
+        ----------
+        lcdf : pandas df
+            data to process.
+
+        Returns
+        -------
+        lcdf : pandas df
+            output result.
+
+        """
+
+        ra = []
+        rb = []
+        from random import gauss
+        for i, row in lcdf.iterrows():
+            airmass = row['airmass']
+            pwv = row['pwv']
+            ozone = row['ozone']
+            aerosol = row['aerosol']
+            b = row['filter']
+            pwv += gauss(0.2)
+            # ozone += gauss(5.)
+            self.telescope.new_atmosphere(site_name=self.telescope.site_name,
+                                          airmass=airmass,
+                                          aerosol=aerosol,
+                                          pwv=pwv, ozone=ozone)
+            self.telescope.reset_data()
+            self.telescope.mean_wave()
+            # grab zp
+            mean_wave = self.telescope.mean_wavelength[b]
+            zp = self.telescope.zp(b)
+            ra.append((zp))
+            rb.append((mean_wave))
+
+
+        lcdf['zp_new'] = ra
+        lcdf['mean_wave_new'] = rb
+
+        return lcdf
+    
+    
+    def set_atmos_params(self, obs):
+        """
+        Method to set atmospheric parameters
+
+        Parameters
+        ----------
+        obs: numpy array
+            Data to process.
+
+        Returns
+        -------
+        obs : pandas df
+            output data.
+
+        """
+        import numpy.lib.recfunctions as rf
+
+        for atm_param in ['airmass','pwv','ozone','aerosol']:
+            if atm_param not in obs.dtype.names:
+                atm_value= eval('self.{}'.format(atm_param))
+                atm_value = np.round(atm_value,2)
+                obs = rf.append_fields(obs,atm_param,[atm_value]*len(obs))
+      
+
+        return obs

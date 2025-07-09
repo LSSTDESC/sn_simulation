@@ -193,7 +193,7 @@ class SNSimu_Params:
         self.zp_from_config(config['InstrumentSimu'])
 
         config_instr = config['InstrumentSimu']
-        self.airmassType = config_instr['airmassType']
+        self.atmosType = config_instr['atmosType']
         self.airmass = config_instr['airmass']
         self.pwv = config_instr['pwv']
         self.ozone = config_instr['ozone']
@@ -1266,7 +1266,7 @@ class SNSimulation(SNSimu_Params):
                               filterCol=self.filterCol,
                               exptimeCol=self.exptimeCol,
                               m5Col=self.m5Col,
-                              airmassType=self.airmassType,
+                              atmosType=self.atmosType,
                               airmass=self.airmass,
                               pwv=self.pwv,
                               ozone=self.ozone,

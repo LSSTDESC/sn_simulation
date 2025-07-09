@@ -35,7 +35,7 @@ class SN(SN_Object):
                          airmassCol=param.airmassCol,
                          skyCol=param.skyCol, moonCol=param.moonCol,
                          salt2Dir=param.salt2Dir,
-                         airmassType=param.airmassType,
+                         atmosType=param.atmosType,
                          airmass=param.airmass,
                          pwv=param.pwv,
                          ozone=param.ozone,
@@ -274,7 +274,7 @@ class SN(SN_Object):
         # band registery in sncosmo
         from astropy import units as u
 
-        if self.airmassType != 'const':
+        if self.atmosType != 'const':
             # for various airmass
             for airmass in range(10, 31, 1):
                 for band in 'grizy':
@@ -716,7 +716,26 @@ class SN(SN_Object):
 
         self.SN.set(mwebv=ebvofMW)
 
-        obs = self.select_filter_cutoff(obs, ra, dec, pix, area, season,
+
+        # add atmospheric parameters here
+        obs = self.set_atmos_params(obs)
+
+        # estimate zp and mean_wavelength
+        if self.atmosType == 'const':
+            obs=self.add_zp_meanwave_from_interp(obs)
+        else:
+            obs = self.add_zp_meanwave_from_obs(obs)
+
+
+        """
+        print('allo',obs.dtype)
+        diff_zp = obs['zp']-obs['zp_new']
+        diff_wave = obs['mean_wave']-obs['mean_wave_new']
+        print(diff_zp,diff_wave)
+        print(test)
+        """
+        obs = self.select_filter_cutoff(obs,
+                                        ra, dec, pix, area, season,
                                         season_length,
                                         ti, ebvofMW)
 
@@ -730,7 +749,7 @@ class SN(SN_Object):
         # preparing the results : stored in lcdf pandas DataFrame
         outvals = [self.m5Col, self.mjdCol,
                    self.exptimeCol, self.nexpCol,
-                   self.filterCol, self.nightCol]
+                   self.filterCol, self.nightCol,'zp','zp_new','mean_wave','mean_wave_new']
         for bb in [self.airmassCol, self.skyCol, self.moonCol,
                    self.seeingEffCol, self.seeingGeomCol]:
             if bb in obs.dtype.names:
@@ -739,13 +758,15 @@ class SN(SN_Object):
         lcdf = pd.DataFrame(np.copy(obs[outvals]))
 
         # set atmospheric parameters
-        lcdf = self.set_atmos_params(lcdf)
+        #lcdf = self.set_atmos_params(lcdf)
 
         # zp variation vs airmass
+        """
         lst = lcdf[self.filterCol].tolist()
         airmass = lcdf['airmass'].tolist()
         filt_airmass = list(zip(lst,airmass))
-        lcdf['zp'] = list(map(lambda x:self.zp_airmass[x[0]](x[1]),filt_airmass))
+        """
+        #lcdf['zp'] = list(map(lambda x:self.zp_airmass[x[0]](x[1]),filt_airmass))
         #lcdf['zp_interp'] = np.array([*map(self.zp_airmass.get, lst)])
         """
         lcdf['zp_slope'] = np.array([*map(self.zp_slope.get, lst)])
@@ -756,10 +777,11 @@ class SN(SN_Object):
         #lcdf['zp'] = lcdf['zp_interp'](lcdf['airmass'])
 
         # more precise zp estimation
-        lcdf = self.get_zp(lcdf)
+        #lcdf = self.get_zp(lcdf)
 
         lcdf['diff_zp']= lcdf['zp']-lcdf['zp_new']
-        print('allo',lcdf[['filter','airmass','zp','zp_new','diff_zp']])
+        lcdf['diff_wave']= lcdf['mean_wave']-lcdf['mean_wave_new']
+        print('allo',lcdf[['filter','airmass','zp','zp_new','diff_zp','diff_wave']])
         
         print(tzst)
 
@@ -939,7 +961,7 @@ class SN(SN_Object):
 
         return [table_lc]
 
-    def get_zp(self, lcdf):
+    def get_zp_deprecated(self, lcdf):
         """
         Method to estimate zero points
 
@@ -983,7 +1005,7 @@ class SN(SN_Object):
 
         return lcdf
 
-    def set_atmos_params(self, lcdf):
+    def set_atmos_params_deprecated(self, lcdf):
         """
         Method to set atmospheric parameters
 
@@ -1072,7 +1094,8 @@ class SN(SN_Object):
         lcdf = lcdf.drop(columns=[vvar])
         return lcdf
 
-    def select_filter_cutoff(self, obs, ra, dec, pix, area, season,
+    def select_filter_cutoff(self, obs,
+                             ra, dec, pix, area, season,
                              season_length,
                              ti, ebvofMW):
         """
