@@ -17,7 +17,8 @@ class SN_Object:
                  seeingEffCol='seeingFwhmEff', seeingGeomCol='seeingFwhmGeom',
                  airmassCol='airmass', skyCol='sky', moonCol='moonPhase',
                  atmosType='const', airmass=1.2,
-                 pwv=4.0, ozone=300., aerosol=0.0,
+                 pwv=4.0, ozone=300., aerosol=0.1,
+                 sigma_pwv=0.2, sigma_ozone=3., sigma_aerosol=0.01,
                  psf_flux='', frac_flux_seeing=None, ccd_full_well=-1.):
         """ class SN object
         handles sn name, parameters,
@@ -102,6 +103,9 @@ class SN_Object:
         self.pwv = pwv
         self.ozone = ozone
         self.aerosol = aerosol
+        self.sigma_pwv = sigma_pwv
+        self.sigma_ozone = sigma_ozone
+        self.sigma_aerosol = sigma_aerosol
         self.psf_flux = psf_flux
         self.frac_flux_seeing = frac_flux_seeing
         self.ccd_full_well = ccd_full_well
@@ -426,15 +430,15 @@ class SN_Object:
 
         ra = []
         rb = []
-        from random import gauss
+        
         for row in obs:
             airmass = row['airmass']
             pwv = row['pwv']
             ozone = row['ozone']
             aerosol = row['aerosol']
             b = row['filter']
-            #pwv += gauss(0.2)
-            # ozone += gauss(5.)
+            
+            print('there man',pwv,ozone,aerosol)
             self.telescope.new_atmosphere(site_name=self.telescope.site_name,
                                           airmass=airmass,
                                           aerosol=aerosol,
@@ -448,8 +452,8 @@ class SN_Object:
             rb.append((mean_wave))
 
         import numpy.lib.recfunctions as rf
-        obs =  rf.append_fields(obs, 'zp_new',ra)
-        obs =  rf.append_fields(obs, 'mean_wave_new',rb)
+        obs =  rf.append_fields(obs, 'zp',ra)
+        obs =  rf.append_fields(obs, 'mean_wave',rb)
 
 
         return obs
@@ -480,8 +484,7 @@ class SN_Object:
             ozone = row['ozone']
             aerosol = row['aerosol']
             b = row['filter']
-            pwv += gauss(0.2)
-            # ozone += gauss(5.)
+            
             self.telescope.new_atmosphere(site_name=self.telescope.site_name,
                                           airmass=airmass,
                                           aerosol=aerosol,
@@ -517,12 +520,20 @@ class SN_Object:
 
         """
         import numpy.lib.recfunctions as rf
-
+        from random import gauss
+        
         for atm_param in ['airmass','pwv','ozone','aerosol']:
             if atm_param not in obs.dtype.names:
                 atm_value= eval('self.{}'.format(atm_param))
                 atm_value = np.round(atm_value,2)
+                
                 obs = rf.append_fields(obs,atm_param,[atm_value]*len(obs))
-      
+                
+                
+        #smear atmos parameters
+        """
+        atm_sigma = eval('gauss(self.sigma_{})'.format(atm_param))
+        atm_value += atm_sigma
+        """
 
         return obs

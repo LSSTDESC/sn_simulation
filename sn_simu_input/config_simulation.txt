@@ -87,9 +87,12 @@ InstrumentSimu atmosDir atmos str #instrument atmos dir
 InstrumentSimu airmass 1.2 float #instrument airmass
 InstrumentSimu atmosType const str #instrument atmos/const/dep
 #Instrument atmos 1 int #instrument atmos
-InstrumentSimu aerosol 0.0 float #instrument aerosol
+InstrumentSimu aerosol 0.1 float #instrument aerosol
 InstrumentSimu pwv 4.0 float #instrument precipit. water vapor
-InstrumentSimu ozone 300. float #ozone 
+InstrumentSimu ozone 300. float #ozone
+InstrumentSimu sigma_aerosol 0.01 float #instrument aerosol
+InstrumentSimu sigma_pwv 0.1 float #instrument precipit. water vapor
+InstrumentSimu sigma_ozone 3. float #ozone
 
 ##Observations
 Observations filename fullDbName str #observation file name

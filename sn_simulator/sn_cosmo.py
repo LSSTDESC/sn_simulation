@@ -684,6 +684,8 @@ class SN(SN_Object):
           time: time(days)(float)
           phase: phase(float)
         """
+        
+        
         # start timer
         ti = SNTimer(time.time())
         if len(obs) == 0:
@@ -726,19 +728,13 @@ class SN(SN_Object):
         else:
             obs = self.add_zp_meanwave_from_obs(obs)
 
-
-        """
-        print('allo',obs.dtype)
-        diff_zp = obs['zp']-obs['zp_new']
-        diff_wave = obs['mean_wave']-obs['mean_wave_new']
-        print(diff_zp,diff_wave)
-        print(test)
-        """
+        # filter cutoffs
         obs = self.select_filter_cutoff(obs,
                                         ra, dec, pix, area, season,
                                         season_length,
                                         ti, ebvofMW)
 
+        
         lsst_start = -1
         mjd_max = -1.0
         if len(obs) == 0:
@@ -749,41 +745,14 @@ class SN(SN_Object):
         # preparing the results : stored in lcdf pandas DataFrame
         outvals = [self.m5Col, self.mjdCol,
                    self.exptimeCol, self.nexpCol,
-                   self.filterCol, self.nightCol,'zp','zp_new','mean_wave','mean_wave_new']
+                   self.filterCol, self.nightCol,]
         for bb in [self.airmassCol, self.skyCol, self.moonCol,
-                   self.seeingEffCol, self.seeingGeomCol]:
+                   self.seeingEffCol, self.seeingGeomCol,
+                   'zp','mean_wave','pwv','ozone','aerosol']:
             if bb in obs.dtype.names:
                 outvals.append(bb)
 
         lcdf = pd.DataFrame(np.copy(obs[outvals]))
-
-        # set atmospheric parameters
-        #lcdf = self.set_atmos_params(lcdf)
-
-        # zp variation vs airmass
-        """
-        lst = lcdf[self.filterCol].tolist()
-        airmass = lcdf['airmass'].tolist()
-        filt_airmass = list(zip(lst,airmass))
-        """
-        #lcdf['zp'] = list(map(lambda x:self.zp_airmass[x[0]](x[1]),filt_airmass))
-        #lcdf['zp_interp'] = np.array([*map(self.zp_airmass.get, lst)])
-        """
-        lcdf['zp_slope'] = np.array([*map(self.zp_slope.get, lst)])
-        lcdf['zp_intercept'] = np.array([*map(self.zp_intercept.get, lst)])
-        lcdf['zp'] = lcdf['zp_slope'] * \
-            lcdf['airmass']+lcdf['zp_intercept']
-        """
-        #lcdf['zp'] = lcdf['zp_interp'](lcdf['airmass'])
-
-        # more precise zp estimation
-        #lcdf = self.get_zp(lcdf)
-
-        lcdf['diff_zp']= lcdf['zp']-lcdf['zp_new']
-        lcdf['diff_wave']= lcdf['mean_wave']-lcdf['mean_wave_new']
-        print('allo',lcdf[['filter','airmass','zp','zp_new','diff_zp','diff_wave']])
-        
-        print(tzst)
 
         lcdf['zpsys'] = 'ab'
 
@@ -887,10 +856,12 @@ class SN(SN_Object):
         if self.sn_smearFlux:
             lcdf['flux'] = lcdf['flux']+np.random.normal(0., lcdf['fluxerr'])
 
+        """
         filters = np.array(lcdf['filter'])
         filters = filters.reshape((len(filters), 1))
 
         lcdf['lambdabar'] = np.apply_along_axis(self.lambdabar, 1, filters)
+        """
 
         if len(lcdf) == 0:
             return [self.nosim(ra, dec, pix, area, season, season_length,
@@ -1481,7 +1452,7 @@ class SN(SN_Object):
 
         return int_fluxes
 
-    def lambdabar(self, band):
+    def lambdabar_deprecated(self, band):
 
         return self.mean_wavelength[band[0]]
 
