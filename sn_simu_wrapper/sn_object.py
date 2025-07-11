@@ -528,12 +528,9 @@ class SN_Object:
                 atm_value = np.round(atm_value,2)
                 
                 obs = rf.append_fields(obs,atm_param,[atm_value]*len(obs))
-                
-                
-        #smear atmos parameters
-        """
-        atm_sigma = eval('gauss(self.sigma_{})'.format(atm_param))
-        atm_value += atm_sigma
-        """
+                #smear atmospheric parameters
+                vvb = [eval('self.sigma_{}'.format(atm_param))]*len(obs)
+                obs[atm_param] += np.random.normal(0,vvb)
+            
 
         return obs
