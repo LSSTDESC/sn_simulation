@@ -198,6 +198,9 @@ class SNSimu_Params:
         self.pwv = config_instr['pwv']
         self.ozone = config_instr['ozone']
         self.aerosol = config_instr['aerosol']
+        self.sigma_pwv = config_instr['sigma']['pwv']
+        self.sigma_ozone = config_instr['sigma']['ozone']
+        self.sigma_aerosol = config_instr['sigma']['aerosol']
 
     def simu_params_from_file(self, simuFile):
         """
@@ -1271,6 +1274,9 @@ class SNSimulation(SNSimu_Params):
                               pwv=self.pwv,
                               ozone=self.ozone,
                               aerosol=self.aerosol,
+                              sigma_pwv=self.sigma_pwv,
+                              sigma_ozone=self.sigma_ozone,
+                              sigma_aerosol=self.sigma_aerosol,
                               psf_flux=self.psf_flux,
                               frac_flux_seeing=self.frac_flux_seeing,
                               ccd_full_well=self.ccd_full_well)

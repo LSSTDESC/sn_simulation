@@ -423,8 +423,8 @@ class SN_Object:
 
         Returns
         -------
-        lcdf : pandas df
-            output result.
+        obs : numpy array
+            output result (original array with atmos. params)
 
         """
 
@@ -438,7 +438,6 @@ class SN_Object:
             aerosol = row['aerosol']
             b = row['filter']
             
-            print('there man',pwv,ozone,aerosol)
             self.telescope.new_atmosphere(site_name=self.telescope.site_name,
                                           airmass=airmass,
                                           aerosol=aerosol,
@@ -457,51 +456,6 @@ class SN_Object:
 
 
         return obs
-
-
-    def add_zp_meanwave_from_obs_df(self, lcdf):
-        """
-        Method to estimate zero points
-
-        Parameters
-        ----------
-        lcdf : pandas df
-            data to process.
-
-        Returns
-        -------
-        lcdf : pandas df
-            output result.
-
-        """
-
-        ra = []
-        rb = []
-        from random import gauss
-        for i, row in lcdf.iterrows():
-            airmass = row['airmass']
-            pwv = row['pwv']
-            ozone = row['ozone']
-            aerosol = row['aerosol']
-            b = row['filter']
-            
-            self.telescope.new_atmosphere(site_name=self.telescope.site_name,
-                                          airmass=airmass,
-                                          aerosol=aerosol,
-                                          pwv=pwv, ozone=ozone)
-            self.telescope.reset_data()
-            self.telescope.mean_wave()
-            # grab zp
-            mean_wave = self.telescope.mean_wavelength[b]
-            zp = self.telescope.zp(b)
-            ra.append((zp))
-            rb.append((mean_wave))
-
-
-        lcdf['zp_new'] = ra
-        lcdf['mean_wave_new'] = rb
-
-        return lcdf
     
     
     def set_atmos_params(self, obs):

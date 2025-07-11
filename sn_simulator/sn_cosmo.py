@@ -40,6 +40,9 @@ class SN(SN_Object):
                          pwv=param.pwv,
                          ozone=param.ozone,
                          aerosol=param.aerosol,
+                         sigma_pwv=param.sigma_pwv,
+                         sigma_ozone=param.sigma_ozone,
+                         sigma_aerosol=param.sigma_aerosol,
                          psf_flux=param.psf_flux,
                          frac_flux_seeing=param.frac_flux_seeing,
                          ccd_full_well=param.ccd_full_well)
@@ -722,7 +725,7 @@ class SN(SN_Object):
         # add atmospheric parameters here
         obs = self.set_atmos_params(obs)
 
-        # estimate zp and mean_wavelength
+        # estimate zp and mean_wavelength corresponding to obs
         if self.atmosType == 'const':
             obs=self.add_zp_meanwave_from_interp(obs)
         else:
