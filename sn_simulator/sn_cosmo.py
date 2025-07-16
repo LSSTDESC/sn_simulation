@@ -1,24 +1,22 @@
-import sncosmo
+# import sncosmo
 import numpy as np
-from astropy.table import Table, vstack
+from astropy.table import Table, vstack, unique
 from scipy.interpolate import interp1d
 from sn_simu_wrapper.sn_object import SN_Object
 import time
-from sn_tools.sn_utils import SNTimer, register_bands_sncosmo
+from sn_tools.sn_utils import SNTimer
 import pandas as pd
 import os
 
 
 class SN(SN_Object):
-    def __init__(self, param, simu_param, reference_lc=None, dustcorr=None):
+    def __init__(self, param, simu_param, sncosmo_emul,
+                 reference_lc=None, dustcorr=None):
         super().__init__(param.name,
                          param.sn_parameters,
                          param.simulator_parameters,
                          param.gen_parameters,
                          param.cosmology,
-                         param.telescope,
-                         param.zp_airmass,
-                         param.mean_wavelength_airmass,
                          param.SNID,
                          param.area, param.x0_grid,
                          mjdCol=param.mjdCol,
@@ -35,14 +33,6 @@ class SN(SN_Object):
                          airmassCol=param.airmassCol,
                          skyCol=param.skyCol, moonCol=param.moonCol,
                          salt2Dir=param.salt2Dir,
-                         atmosType=param.atmosType,
-                         airmass=param.airmass,
-                         pwv=param.pwv,
-                         ozone=param.ozone,
-                         aerosol=param.aerosol,
-                         sigma_pwv=param.sigma_pwv,
-                         sigma_ozone=param.sigma_ozone,
-                         sigma_aerosol=param.sigma_aerosol,
                          psf_flux=param.psf_flux,
                          frac_flux_seeing=param.frac_flux_seeing,
                          ccd_full_well=param.ccd_full_well)
@@ -62,11 +52,13 @@ class SN(SN_Object):
 
         """
 
+        self.sncosmo = sncosmo_emul
+
         self.error_model = self.simulator_parameters['errorModel']
         # self.error_model_cut = self.simulator_parameters['errorModelCut']
 
         # dust map
-        self.dustmap = sncosmo.OD94Dust()
+        self.dustmap = self.sncosmo.OD94Dust()
         # self.dustmap = sncosmo.CCM89Dust()
 
         # load info for sigma_mb shift
@@ -157,7 +149,7 @@ class SN(SN_Object):
         from random import gauss
         self.zmeas = z+gauss(0, sigmaz*(1.+z))
 
-    def register_bands(self):
+    def register_bands_deprecated(self):
         """
         Method to register bands in sncosmo
 
@@ -193,7 +185,7 @@ class SN(SN_Object):
                                        self.telescope,
                                        airmass, aerosol, pwv, ozone)
 
-    def register_bands_on_the_fly(self, telescope, data):
+    def register_bands_on_the_fly_deprecated(self, telescope, data):
         """
         Method to register bands on sncosmo
 
@@ -314,16 +306,16 @@ class SN(SN_Object):
           version number
 
         """
-        source = sncosmo.get_source(model, version)
+        source = self.sncosmo.get_source(model, version)
 
         if model == 'salt3':
             source._wave[0] = 1500.  # used to be 1700
             source._wave[-1] = 24990.
 
-        self.SN = sncosmo.Model(source=source,
-                                effects=[self.dustmap, self.dustmap],
-                                effect_names=['host', 'mw'],
-                                effect_frames=['rest', 'obs'])
+        self.SN = self.sncosmo.Model(source=source,
+                                     effects=[self.dustmap, self.dustmap],
+                                     effect_names=['host', 'mw'],
+                                     effect_frames=['rest', 'obs'])
         self.model = model
         # set cosmology here
         self.SN.cosmo = self.cosmology
@@ -385,11 +377,11 @@ class SN(SN_Object):
         self.sn_version = sn_version
 
         # self.source(self.sn_model, self.sn_version)
-        source = sncosmo.get_source(sn_model, sn_version)
-        self.SN = sncosmo.Model(source=source,
-                                effects=[self.dustmap, self.dustmap],
-                                effect_names=['host', 'mw'],
-                                effect_frames=['rest', 'obs'])
+        source = self.sncosmo.get_source(sn_model, sn_version)
+        self.SN = self.sncosmo.Model(source=source,
+                                     effects=[self.dustmap, self.dustmap],
+                                     effect_names=['host', 'mw'],
+                                     effect_frames=['rest', 'obs'])
         self.SN.set(z=self.sn_parameters['z'])
 
         """
@@ -687,8 +679,7 @@ class SN(SN_Object):
           time: time(days)(float)
           phase: phase(float)
         """
-        
-        
+
         # start timer
         ti = SNTimer(time.time())
         if len(obs) == 0:
@@ -721,23 +712,26 @@ class SN(SN_Object):
 
         self.SN.set(mwebv=ebvofMW)
 
-
         # add atmospheric parameters here
-        obs = self.set_atmos_params(obs)
+        # obs = self.set_atmos_params(obs)
+
+        # register throughputs for sn_cosmo
+
+        # obs = self.register_bands_from_atmos(obs)
 
         # estimate zp and mean_wavelength corresponding to obs
+        """
         if self.atmosType == 'const':
-            obs=self.add_zp_meanwave_from_interp(obs)
+            obs = self.add_zp_meanwave_from_interp(obs)
         else:
             obs = self.add_zp_meanwave_from_obs(obs)
-
+        """
         # filter cutoffs
         obs = self.select_filter_cutoff(obs,
                                         ra, dec, pix, area, season,
                                         season_length,
                                         ti, ebvofMW)
 
-        
         lsst_start = -1
         mjd_max = -1.0
         if len(obs) == 0:
@@ -746,23 +740,27 @@ class SN(SN_Object):
                                self.psf_flux, self.ccd_full_well, -1.)]
 
         # preparing the results : stored in lcdf pandas DataFrame
-        outvals = [self.m5Col, self.mjdCol,
-                   self.exptimeCol, self.nexpCol,
-                   self.filterCol, self.nightCol,]
-        for bb in [self.airmassCol, self.skyCol, self.moonCol,
-                   self.seeingEffCol, self.seeingGeomCol,
-                   'zp','mean_wave','pwv','ozone','aerosol']:
-            if bb in obs.dtype.names:
-                outvals.append(bb)
+        a = [self.m5Col, self.mjdCol,
+             self.exptimeCol, self.nexpCol,
+             self.filterCol, self.nightCol]
+        a += [self.airmassCol, self.skyCol, self.moonCol,
+              self.seeingEffCol, self.seeingGeomCol,
+              'zp', 'mean_wave', 'pwv', 'ozone',
+              'aerosol', 'band_cosmo']
+
+        b = obs.dtype.names
+
+        outvals = list(set(a) & set(b))
 
         lcdf = pd.DataFrame(np.copy(obs[outvals]))
 
         lcdf['zpsys'] = 'ab'
 
         # get band flux
-        lcdf = self.get_register_throughput(lcdf)
+        # lcdf = self.get_register_throughput(lcdf)
 
         # lcdf['zp'] = lcdf['zp_e_sec']
+        # get band flux
         lcdf['flux'] = self.SN.bandflux(
             lcdf['band_cosmo'], lcdf[self.mjdCol], zpsys=lcdf['zpsys'],
             zp=lcdf['zp'])
@@ -935,6 +933,53 @@ class SN(SN_Object):
 
         return [table_lc]
 
+    def register_bands_from_atmos_deprecated(self, obs,
+                                             cols=['airmass',
+                                                   'pwv', 'ozone', 'aerosol']):
+        """
+        Method to register throughputs from atmos params
+
+        Parameters
+        ----------
+        obs : numpy array
+            observations.
+        cols : list(str), optional
+            columns of interest. The default is ['airmass','pwv', 'ozone', 'aerosol'].
+
+        Returns
+        -------
+        obs : numpy array
+            observations.
+
+        """
+        import time
+        time_ref = time.time()
+        # round atmos parameters
+        for vv in cols:
+            obs[vv] = np.round(obs[vv], 1)
+
+        # set band_cosmo column
+        bcols = self.telescope.site_name+'::' + \
+            obs[self.filterCol]+'_' + \
+            obs[self.airmassCol].astype(str)+'_' + \
+            obs['pwv'].astype(str)+'_' + \
+            obs['ozone'].astype(str)+'_' + \
+            obs['aerosol'].astype(str)
+
+        import numpy.lib.recfunctions as rf
+        obs = rf.append_fields(obs, 'band_cosmo', bcols.tolist())
+
+        # grab unique parameters
+        all_cols = [self.filterCol]+['band_cosmo']+cols
+        atmos_table = unique(Table(obs[all_cols]))
+
+        # register
+
+        self.register_bands_on_the_fly(self.telescope,
+                                       atmos_table[all_cols].to_pandas())
+
+        return obs
+
     def get_zp_deprecated(self, lcdf):
         """
         Method to estimate zero points
@@ -1023,7 +1068,8 @@ class SN(SN_Object):
 
         """
 
-        bandname = self.telescope.site_name+'::' + lcdf[self.filterCol]+'_' + \
+        bandname = self.telescope.site_name+'::' + \
+            lcdf[self.filterCol]+'_' + \
             lcdf[self.airmassCol].astype(str)+'_' + \
             lcdf['pwv'].astype(str)+'_' + \
             lcdf['ozone'].astype(str)+'_' + \
@@ -1177,8 +1223,7 @@ class SN(SN_Object):
 
         # estimate SNR
         # Get photometric parameters to estimate SNR
-        from rubin_sim.phot_utils.photometric_parameters \
-            import PhotometricParameters
+        from rubin_sim.phot_utils.photometric_parameters import PhotometricParameters
         from rubin_sim.phot_utils import signaltonoise
         photParams = [PhotometricParameters(
             exptime=vv[self.exptimeCol]/vv[self.nexpCol],

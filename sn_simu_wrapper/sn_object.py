@@ -6,19 +6,16 @@ import numpy as np
 
 class SN_Object:
     def __init__(self, name, sn_parameters, simulator_parameters,
-                 gen_parameters, cosmology, telescope, zp_airmass,
-                 mean_wavelength_airmass,
+                 gen_parameters, cosmology,
                  snid, area, x0_grid=None,
                  salt2Dir='SALT2_Files',
                  mjdCol='mjd', RACol='pixRa', DecCol='pixDec',
-                 filterCol='band', exptimeCol='exptime',
+                 filterCol='band',
+                 exptimeCol='exptime',
                  nexpCol='numExposures',
                  nightCol='night', m5Col='fiveSigmaDepth', seasonCol='season',
                  seeingEffCol='seeingFwhmEff', seeingGeomCol='seeingFwhmGeom',
                  airmassCol='airmass', skyCol='sky', moonCol='moonPhase',
-                 atmosType='const', airmass=1.2,
-                 pwv=4.0, ozone=300., aerosol=0.1,
-                 sigma_pwv=0.2, sigma_ozone=3., sigma_aerosol=0.01,
                  psf_flux='', frac_flux_seeing=None, ccd_full_well=-1.):
         """ class SN object
         handles sn name, parameters,
@@ -76,12 +73,11 @@ class SN_Object:
         self._simulator_parameters = simulator_parameters
         self._gen_parameters = gen_parameters
         self._cosmology = cosmology
-        self.zp_airmass = zp_airmass
-        self.telescope = telescope
         self._SNID = snid
         self.mjdCol = mjdCol
         self.RACol = RACol
         self.DecCol = DecCol
+
         self.filterCol = filterCol
         self.exptimeCol = exptimeCol
         self.nexpCol = nexpCol
@@ -98,38 +94,9 @@ class SN_Object:
         self.salt2Dir = salt2Dir
         self.x0_grid = x0_grid
 
-        self.atmosType = atmosType
-        self.airmass = airmass
-        self.pwv = pwv
-        self.ozone = ozone
-        self.aerosol = aerosol
-        self.sigma_pwv = sigma_pwv
-        self.sigma_ozone = sigma_ozone
-        self.sigma_aerosol = sigma_aerosol
         self.psf_flux = psf_flux
         self.frac_flux_seeing = frac_flux_seeing
         self.ccd_full_well = ccd_full_well
-
-        """
-        self.mean_wavelength = dict(zip('ugrizy',
-                                        [368.41544788, 479.98080171,
-                                         623.00583188, 754.10402246,
-                                         869.01326737, 973.60607034]))
-        """
-
-        """
-        bands = zp_airmass['band'].tolist()
-        mean_waves = zp_airmass['mean_wavelength'].tolist()
-        slope = zp_airmass['slope'].tolist()
-        intercept = zp_airmass['intercept'].tolist()
-
-        self.mean_wavelength = dict(zip(bands, mean_waves))
-        self.zp_slope = dict(zip(bands, slope))
-        self.zp_intercept = dict(zip(bands, intercept))
-        """
-        self.zp_airmass= zp_airmass
-        self.mean_wavelength_airmass = mean_wavelength_airmass
-        
 
     @ property
     def name(self):
@@ -195,25 +162,24 @@ class SN_Object:
         self.red_cutoffs = red_cutoffs
 
         filters = np.array(obs[self.filterCol].tolist())
-        #airmass = np.array(obs['airmass'].tolist())
-        
-        #filt_air = list(zip(filters,airmass))
+        # airmass = np.array(obs['airmass'].tolist())
+
+        # filt_air = list(zip(filters,airmass))
         filters = filters.reshape((len(filters), 1))
-        
+
         blue_values = np.apply_along_axis(self.blues, 1, filters)
         red_values = np.apply_along_axis(self.reds, 1, filters)
-        
-        
+
         """
         mean_restframe_wavelength = \
             np.apply_along_axis(self.mean_wave, 1, filters,airmass)/(1.+z)
         mean_restframe_wavelength= mean_restframe_wavelength.reshape((len(filters),1))
         """
-        #print('jjj',self.mean_wavelength_airmass['g'](1.2))
-        
-        #filt_air = np.array([*map(self.mean_wavelength_airmass.get, filters)])
-        #res = list(map(lambda x:self.mean_wavelength_airmass[x[0]](x[1]),filt_air))
-        
+        # print('jjj',self.mean_wavelength_airmass['g'](1.2))
+
+        # filt_air = np.array([*map(self.mean_wavelength_airmass.get, filters)])
+        # res = list(map(lambda x:self.mean_wavelength_airmass[x[0]](x[1]),filt_air))
+
         mean_wavelength = obs['mean_wave']/(1.+z)
 
         p = (obs[self.mjdCol]-T0)/(1.+z)
@@ -279,9 +245,9 @@ class SN_Object:
 
         """
 
-        #return self.mean_wavelength[band[0]]
+        # return self.mean_wavelength[band[0]]
         return self.mean_wavelength_airmass[band[0]]
-    
+
     def mean_wave_airmass(self, vv):
         """
         Method to return the mean_restframe_wavelength
@@ -298,9 +264,8 @@ class SN_Object:
 
         """
 
-        print('hello',vv)
-        return self.filt_air(vv)  
-    
+        print('hello', vv)
+        return self.filt_air(vv)
 
     @ staticmethod
     def plotLC(table, time_display, airmass=1.2):
@@ -382,109 +347,3 @@ class SN_Object:
         plt.draw()
         plt.pause(time_display)
         plt.close()
-
-    def add_zp_meanwave_from_interp(self,obs):
-        """
-        Method to estimate mean_restframe wavelength
-
-        Parameters
-        ----------
-        obs : TYPE
-            DESCRIPTION.
-
-        Returns
-        -------
-        TYPE
-            DESCRIPTION.
-
-        """
-        
-        filters = np.array(obs[self.filterCol].tolist())
-        airmass = np.array(obs['airmass'].tolist())
-        
-        filt_airmass = list(zip(filters,airmass))
-        mean_wave = list(map(lambda x:self.mean_wavelength_airmass[x[0]](x[1]),filt_airmass))
-    
-        zp = list(map(lambda x:self.zp_airmass[x[0]](x[1]),filt_airmass))
-    
-        import numpy.lib.recfunctions as rf
-        obs =  rf.append_fields(obs, 'zp',zp)
-        obs =  rf.append_fields(obs, 'mean_wave',mean_wave)
-        return obs
-
-    def add_zp_meanwave_from_obs(self, obs):
-        """
-        Method to estimate zero points
-
-        Parameters
-        ----------
-        obs : record array
-            data to process.
-
-        Returns
-        -------
-        obs : numpy array
-            output result (original array with atmos. params)
-
-        """
-
-        ra = []
-        rb = []
-        
-        for row in obs:
-            airmass = row['airmass']
-            pwv = row['pwv']
-            ozone = row['ozone']
-            aerosol = row['aerosol']
-            b = row['filter']
-            
-            self.telescope.new_atmosphere(site_name=self.telescope.site_name,
-                                          airmass=airmass,
-                                          aerosol=aerosol,
-                                          pwv=pwv, ozone=ozone)
-            self.telescope.reset_data()
-            self.telescope.mean_wave()
-            # grab zp
-            mean_wave = self.telescope.mean_wavelength[b]
-            zp = self.telescope.zp(b)
-            ra.append((zp))
-            rb.append((mean_wave))
-
-        import numpy.lib.recfunctions as rf
-        obs =  rf.append_fields(obs, 'zp',ra)
-        obs =  rf.append_fields(obs, 'mean_wave',rb)
-
-
-        return obs
-    
-    
-    def set_atmos_params(self, obs):
-        """
-        Method to set atmospheric parameters
-
-        Parameters
-        ----------
-        obs: numpy array
-            Data to process.
-
-        Returns
-        -------
-        obs : pandas df
-            output data.
-
-        """
-        import numpy.lib.recfunctions as rf
-        from random import gauss
-        
-        for atm_param in ['airmass','pwv','ozone','aerosol']:
-            if atm_param not in obs.dtype.names:
-                atm_value= eval('self.{}'.format(atm_param))
-                atm_value = np.round(atm_value,2)
-                
-                obs = rf.append_fields(obs,atm_param,[atm_value]*len(obs))
-                #smear atmospheric parameters
-                vvb = [eval('self.sigma_{}'.format(atm_param))]*len(obs)
-                obs[atm_param] += np.random.normal(0,vvb)
-            
-
-        return obs

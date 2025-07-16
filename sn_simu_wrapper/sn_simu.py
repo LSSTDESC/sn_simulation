@@ -4,7 +4,7 @@ import os
 import time
 import multiprocessing
 import astropy
-from astropy.table import Table, vstack
+from astropy.table import Table, vstack, unique
 from astropy.cosmology import w0waCDM
 from importlib import import_module
 from sn_simu_wrapper.sn_object import SN_Object
@@ -15,6 +15,8 @@ from sn_tools.sn_stacker import CoaddStacker
 from sn_telmodel.sn_throughputs import load_throughputs_from_config
 import numpy.lib.recfunctions as rf
 import pandas as pd
+from sn_tools.sn_utils import register_bands_sncosmo
+import sncosmo as sncosmo_emul
 # import tracemalloc
 
 
@@ -278,12 +280,12 @@ class SNSimu_Params:
         zp = Zeropoint_airmass(self.telescope, pwv=pwv,
                                ozone=ozone, aerosol=aerosol)
 
-        #self.zp_airmass = zp.get_fit_params()
-        
-        zp_data= zp.get_data()
-        
+        # self.zp_airmass = zp.get_fit_params()
+
+        zp_data = zp.get_data()
+
         bands = np.unique(zp_data['band'])
-        
+
         self.zp_airmass = {}
         self.mean_wavelength_airmass = {}
         from scipy.interpolate import interp1d
@@ -291,14 +293,13 @@ class SNSimu_Params:
             idx = zp_data['band'] == b
             sel = zp_data[idx]
             self.zp_airmass[b] = interp1d(sel['airmass'],
-                                                 sel['zp'],
-                                                 bounds_error=False, 
-                                                 fill_value=0.)
+                                          sel['zp'],
+                                          bounds_error=False,
+                                          fill_value=0.)
             self.mean_wavelength_airmass[b] = interp1d(sel['airmass'],
-                                                 sel['mean_wavelength'],
-                                                 bounds_error=False, 
-                                                 fill_value=0.)
-        
+                                                       sel['mean_wavelength'],
+                                                       bounds_error=False,
+                                                       fill_value=0.)
 
     def load_for_snfast(self, web_path):
         """
@@ -688,8 +689,11 @@ class SNSimulation(SNSimu_Params):
             return None
 
         # stack if necessary
+        print('before stacker', len(obs))
         if self.stacker is not None:
             obs = self.stacker._run(obs)
+
+        print('after stacker', len(obs))
 
         self.fieldname = 'unknown'
         self.fieldid = 0
@@ -732,9 +736,22 @@ class SNSimulation(SNSimu_Params):
 
         list_lc = []
 
+        # add atmospheric parameters here
+        obs = self.set_atmos_params(obs)
+
+        # register throughputs for sn_cosmo
+
+        obs = self.register_bands_from_atmos(obs)
+
+        # estimate zp and mean_wavelength corresponding to obs
+        if self.atmosType == 'const':
+            obs = self.add_zp_meanwave_from_interp(obs)
+        else:
+            obs = self.add_zp_meanwave_from_obs(obs)
+
         if gen_params is not None:
             print('NLC to simulate:', len(gen_params),
-                  np.unique(obs['healpixID']))
+                  np.unique(obs['healpixID']), len(obs))
 
             # LC simulation using multiprocessing
             par = {}
@@ -1257,9 +1274,6 @@ class SNSimulation(SNSimu_Params):
                               simulator_par,
                               gen_params,
                               self.cosmology,
-                              self.telescope,
-                              self.zp_airmass,
-                              self.mean_wavelength_airmass,
                               SNID, self.area,
                               x0_grid=self.x0_grid,
                               salt2Dir=self.salt2Dir,
@@ -1269,20 +1283,12 @@ class SNSimulation(SNSimu_Params):
                               filterCol=self.filterCol,
                               exptimeCol=self.exptimeCol,
                               m5Col=self.m5Col,
-                              atmosType=self.atmosType,
-                              airmass=self.airmass,
-                              pwv=self.pwv,
-                              ozone=self.ozone,
-                              aerosol=self.aerosol,
-                              sigma_pwv=self.sigma_pwv,
-                              sigma_ozone=self.sigma_ozone,
-                              sigma_aerosol=self.sigma_aerosol,
                               psf_flux=self.psf_flux,
                               frac_flux_seeing=self.frac_flux_seeing,
                               ccd_full_well=self.ccd_full_well)
 
         module = import_module(self.simu_config['name'])
-        simu = module.SN(sn_object, self.simu_config,
+        simu = module.SN(sn_object, self.simu_config, sncosmo_emul,
                          self.reference_lc, self.dustcorr)
         # simulation - this is supposed to be a list of astropytables
         lc_table = simu(obs, self.display_lc, self.time_display)
@@ -1294,6 +1300,186 @@ class SNSimulation(SNSimu_Params):
         del simu
         del module
         return lc_table, seds
+
+    def set_atmos_params(self, obs):
+        """
+        Method to set atmospheric parameters
+
+        Parameters
+        ----------
+        obs: numpy array
+            Data to process.
+
+        Returns
+        -------
+        obs : pandas df
+            output data.
+
+        """
+        import numpy.lib.recfunctions as rf
+        from random import gauss
+
+        for atm_param in ['airmass', 'pwv', 'ozone', 'aerosol']:
+            if atm_param not in obs.dtype.names:
+                atm_value = eval('self.{}'.format(atm_param))
+                atm_value = np.round(atm_value, 2)
+
+                obs = rf.append_fields(obs, atm_param, [atm_value]*len(obs))
+                # smear atmospheric parameters
+                if self.atmosType != 'const':
+                    vvb = [eval('self.sigma_{}'.format(atm_param))]*len(obs)
+                    obs[atm_param] += np.random.normal(0, vvb)
+
+        return obs
+
+    def add_zp_meanwave_from_interp(self, obs):
+        """
+        Method to estimate mean_restframe wavelength
+
+        Parameters
+        ----------
+        obs : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
+
+        filters = np.array(obs[self.filterCol].tolist())
+        airmass = np.array(obs['airmass'].tolist())
+
+        filt_airmass = list(zip(filters, airmass))
+        mean_wave = list(
+            map(lambda x: self.mean_wavelength_airmass[x[0]](x[1]), filt_airmass))
+
+        zp = list(map(lambda x: self.zp_airmass[x[0]](x[1]), filt_airmass))
+
+        import numpy.lib.recfunctions as rf
+        obs = rf.append_fields(obs, 'zp', zp)
+        obs = rf.append_fields(obs, 'mean_wave', mean_wave)
+        return obs
+
+    def add_zp_meanwave_from_obs(self, obs):
+        """
+        Method to estimate zero points
+
+        Parameters
+        ----------
+        obs : record array
+            data to process.
+
+        Returns
+        -------
+        obs : numpy array
+            output result (original array with atmos. params)
+
+        """
+
+        ra = []
+        rb = []
+
+        for row in obs:
+            airmass = row['airmass']
+            pwv = row['pwv']
+            ozone = row['ozone']
+            aerosol = row['aerosol']
+            b = row['filter']
+
+            self.telescope.new_atmosphere(site_name=self.telescope.site_name,
+                                          airmass=airmass,
+                                          aerosol=aerosol,
+                                          pwv=pwv, ozone=ozone)
+            self.telescope.reset_data()
+            self.telescope.mean_wave()
+            # grab zp
+            mean_wave = self.telescope.mean_wavelength[b]
+            zp = self.telescope.zp(b)
+            ra.append((zp))
+            rb.append((mean_wave))
+
+        import numpy.lib.recfunctions as rf
+        obs = rf.append_fields(obs, 'zp', ra)
+        obs = rf.append_fields(obs, 'mean_wave', rb)
+
+        return obs
+
+    def register_bands_from_atmos(self, obs,
+                                  cols=['airmass',
+                                        'pwv', 'ozone', 'aerosol']):
+        """
+        Method to register throughputs from atmos params
+
+        Parameters
+        ----------
+        obs : numpy array
+            observations.
+        cols : list(str), optional
+            columns of interest. The default is ['airmass','pwv', 'ozone', 'aerosol'].
+
+        Returns
+        -------
+        obs : numpy array
+            observations.
+
+        """
+        import time
+        time_ref = time.time()
+        # round atmos parameters
+        for vv in cols:
+            obs[vv] = np.round(obs[vv], 1)
+
+        # set band_cosmo column
+        bcols = self.telescope.site_name+'::' + \
+            obs[self.filterCol]+'_' + \
+            obs[self.airmassCol].astype(str)+'_' + \
+            obs['pwv'].astype(str)+'_' + \
+            obs['ozone'].astype(str)+'_' + \
+            obs['aerosol'].astype(str)
+
+        import numpy.lib.recfunctions as rf
+        obs = rf.append_fields(obs, 'band_cosmo', bcols.tolist())
+
+        # grab unique parameters
+        all_cols = [self.filterCol]+['band_cosmo']+cols
+        atmos_table = unique(Table(obs[all_cols]))
+
+        # register
+
+        self.register_bands_on_the_fly(self.telescope,
+                                       atmos_table[all_cols].to_pandas())
+
+        return obs
+
+    def register_bands_on_the_fly(self, telescope, data):
+        """
+        Method to register bands on sncosmo
+
+        Parameters
+        ----------
+        telescope: Telescope
+            telescope to use
+        data: pandas df
+            data to register
+
+        Returns
+        -------
+        None.
+
+        """
+
+        for i, row in data.iterrows():
+            bandname = row['band_cosmo']
+            band = row[self.filterCol]
+            airmass = row[self.airmassCol]
+            pwv = row['pwv']
+            ozone = row['ozone']
+            aerosol = row['aerosol']
+            register_bands_sncosmo(sncosmo_emul, telescope,
+                                   bandname, band,
+                                   airmass, pwv, ozone, aerosol)
 
     def dump(self, lc_list, lc_out):
         """
