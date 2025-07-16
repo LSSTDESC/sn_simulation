@@ -688,13 +688,40 @@ class SNSimulation(SNSimu_Params):
         if len(obs) == 0:
             return None
 
+        # select cols on interest only
+        ccolsa = obs.dtype.names
+        ccolsb = ['numExposures', 'visitTime',
+                  'observationStartMJD', 'fieldRA', 'fieldDec',
+                  'pixRA', 'pixDec',
+                  'healpixID', 'season', 'sky', 'moonPhase',
+                  'seeingFwhmEff', 'seeingFwhmGeom', 'note',
+                  'filter', 'night', 'visitExposureTime',
+                  'fiveSigmaDepth', 'visitExposureTime',
+                  'airmass', 'pwv', 'ozone', 'aerosol']
+
+        ccols_ = list(set(ccolsa) & set(ccolsb))
+        obs = obs[ccols_]
+        # add atmospheric parameters here
+        obs = self.set_atmos_params(obs)
+
         # stack if necessary
         print('before stacker', len(obs))
         if self.stacker is not None:
-            obs = self.stacker._run(obs)
+            obs = self.stacker._run(obs, atmosType=self.atmosType)
 
         print('after stacker', len(obs))
 
+        # register throughputs for sn_cosmo
+
+        obs = self.register_bands_from_atmos(obs)
+
+        # estimate zp and mean_wavelength corresponding to obs
+        if self.atmosType == 'const':
+            obs = self.add_zp_meanwave_from_interp(obs)
+        else:
+            obs = self.add_zp_meanwave_from_obs(obs)
+
+        print('after zp meanwave')
         self.fieldname = 'unknown'
         self.fieldid = 0
         try:
@@ -735,19 +762,6 @@ class SNSimulation(SNSimu_Params):
             return None
 
         list_lc = []
-
-        # add atmospheric parameters here
-        obs = self.set_atmos_params(obs)
-
-        # register throughputs for sn_cosmo
-
-        obs = self.register_bands_from_atmos(obs)
-
-        # estimate zp and mean_wavelength corresponding to obs
-        if self.atmosType == 'const':
-            obs = self.add_zp_meanwave_from_interp(obs)
-        else:
-            obs = self.add_zp_meanwave_from_obs(obs)
 
         if gen_params is not None:
             print('NLC to simulate:', len(gen_params),
@@ -1301,7 +1315,7 @@ class SNSimulation(SNSimu_Params):
         del module
         return lc_table, seds
 
-    def set_atmos_params(self, obs):
+    def set_atmos_params(self, obsa):
         """
         Method to set atmospheric parameters
 
@@ -1319,16 +1333,22 @@ class SNSimulation(SNSimu_Params):
         import numpy.lib.recfunctions as rf
         from random import gauss
 
-        for atm_param in ['airmass', 'pwv', 'ozone', 'aerosol']:
+        obs = np.copy(obsa)
+        del obsa
+        for atm_param in ['pwv', 'ozone', 'aerosol']:
             if atm_param not in obs.dtype.names:
                 atm_value = eval('self.{}'.format(atm_param))
                 atm_value = np.round(atm_value, 2)
-
                 obs = rf.append_fields(obs, atm_param, [atm_value]*len(obs))
+                obs[atm_param] = [atm_value]*len(obs)
                 # smear atmospheric parameters
+                vv_sigma = [0.0]*len(obs)
                 if self.atmosType != 'const':
-                    vvb = [eval('self.sigma_{}'.format(atm_param))]*len(obs)
-                    obs[atm_param] += np.random.normal(0, vvb)
+                    vv_sigma = [
+                        eval('self.sigma_{}'.format(atm_param))]*len(obs)
+                    obs[atm_param] += np.random.normal(0, vv_sigma)
+                obs = rf.append_fields(
+                    obs, 'sigma_{}'.format(atm_param), vv_sigma)
 
         return obs
 
@@ -1433,10 +1453,10 @@ class SNSimulation(SNSimu_Params):
 
         # set band_cosmo column
         bcols = self.telescope.site_name+'::' + \
-            obs[self.filterCol]+'_' + \
-            obs[self.airmassCol].astype(str)+'_' + \
-            obs['pwv'].astype(str)+'_' + \
-            obs['ozone'].astype(str)+'_' + \
+            obs[self.filterCol]+'_' +\
+            obs[self.airmassCol].astype(str)+'_' +\
+            obs['pwv'].astype(str)+'_' +\
+            obs['ozone'].astype(str)+'_' +\
             obs['aerosol'].astype(str)
 
         import numpy.lib.recfunctions as rf
