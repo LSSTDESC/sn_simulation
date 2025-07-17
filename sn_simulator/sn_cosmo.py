@@ -711,6 +711,8 @@ class SN(SN_Object):
         # smear lc fluxes
         if self.sn_smearFlux:
             lcdf['flux'] = lcdf['flux']+np.random.normal(0., lcdf['fluxerr'])
+            lcdf.loc[lcdf.flux < 0, 'flux'] = 0.
+            lcdf['snr'] = lcdf['flux']/lcdf['fluxerr']
 
         """
         filters = np.array(lcdf['filter'])
@@ -811,7 +813,7 @@ class SN(SN_Object):
         time_ref = time.time()
         # round atmos parameters
         for vv in cols:
-            obs[vv] = np.round(obs[vv], 1)
+            obs[vv] = np.round(obs[vv], 2)
 
         # set band_cosmo column
         bcols = self.telescope.site_name+'::' + \

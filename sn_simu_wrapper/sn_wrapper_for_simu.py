@@ -204,6 +204,22 @@ class FitWrapper:
             checkDir(self.outDir)
 
     def __call__(self, lc_list, remove_sat=False):
+        """
+        Main fit method using multiprocessing
+
+        Parameters
+        ----------
+        lc_list : list(lc)
+            List of light curves to fit.
+        remove_sat : bool, optional
+            To remove saturated points. The default is False.
+
+        Returns
+        -------
+        res : pandas df
+            output results.
+
+        """
 
         res = self.fit.fit_multiproc(lc_list, remove_sat, self.nproc)
 

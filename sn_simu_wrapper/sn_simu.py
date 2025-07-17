@@ -1428,7 +1428,8 @@ class SNSimulation(SNSimu_Params):
 
     def register_bands_from_atmos(self, obs,
                                   cols=['airmass',
-                                        'pwv', 'ozone', 'aerosol']):
+                                        'pwv', 'ozone', 'aerosol'],
+                                  roundings=[2,1,1,1]):
         """
         Method to register throughputs from atmos params
 
@@ -1448,8 +1449,8 @@ class SNSimulation(SNSimu_Params):
         import time
         time_ref = time.time()
         # round atmos parameters
-        for vv in cols:
-            obs[vv] = np.round(obs[vv], 1)
+        for i,vv in enumerate(cols):
+            obs[vv] = np.round(obs[vv], roundings[i])
 
         # set band_cosmo column
         bcols = self.telescope.site_name+'::' + \
