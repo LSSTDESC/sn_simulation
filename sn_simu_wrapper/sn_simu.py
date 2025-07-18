@@ -712,8 +712,11 @@ class SNSimulation(SNSimu_Params):
         print('after stacker', len(obs))
 
         # register throughputs for sn_cosmo
-
+        idx = obs['airmass'] <= 2.5
+        obs = obs[idx]
+        print('band registry', np.max(obs['airmass']))
         obs = self.register_bands_from_atmos(obs)
+        print('registry done')
 
         # estimate zp and mean_wavelength corresponding to obs
         if self.atmosType == 'const':
@@ -1338,7 +1341,7 @@ class SNSimulation(SNSimu_Params):
         for atm_param in ['pwv', 'ozone', 'aerosol']:
             if atm_param not in obs.dtype.names:
                 atm_value = eval('self.{}'.format(atm_param))
-                atm_value = np.round(atm_value, 2)
+                atm_value = np.round(atm_value, 1)
                 obs = rf.append_fields(obs, atm_param, [atm_value]*len(obs))
                 obs[atm_param] = [atm_value]*len(obs)
                 # smear atmospheric parameters
@@ -1429,7 +1432,7 @@ class SNSimulation(SNSimu_Params):
     def register_bands_from_atmos(self, obs,
                                   cols=['airmass',
                                         'pwv', 'ozone', 'aerosol'],
-                                  roundings=[2,1,1,1]):
+                                  roundings=[2, 1, 1, 1]):
         """
         Method to register throughputs from atmos params
 
@@ -1449,7 +1452,7 @@ class SNSimulation(SNSimu_Params):
         import time
         time_ref = time.time()
         # round atmos parameters
-        for i,vv in enumerate(cols):
+        for i, vv in enumerate(cols):
             obs[vv] = np.round(obs[vv], roundings[i])
 
         # set band_cosmo column

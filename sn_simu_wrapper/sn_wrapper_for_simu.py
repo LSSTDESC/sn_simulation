@@ -6,6 +6,8 @@ from sn_tools.sn_io import check_get_file
 import pandas as pd
 import operator
 from astropy.table import Table, vstack
+from sn_tools.sn_utils import load_config
+from sn_fit_wrapper.sn_wrapper_for_fit import FitWrapper
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -170,7 +172,7 @@ class MakeYaml:
         return yaml.load(filedata, Loader=yaml.FullLoader)
 
 
-class FitWrapper:
+class FitWrapper_deprecated:
     def __init__(self, yaml_config_fit):
         """
         Class to fit a set of light curves
@@ -1165,31 +1167,6 @@ class SimuWrapper:
             astropy.io.misc.hdf5.write_table_hdf5(
                 self.meta_table, self.meta_out, path='metadata',
                 append=True, serialize_meta=True)
-
-
-def load_config(yaml_config):
-    """
-
-
-    Parameters
-    ----------
-    yaml_config : str
-        yaml fine name
-
-    Returns
-    -------
-    config : dict
-        dict of the yaml file
-
-    """
-    config = {}
-    if isinstance(yaml_config, dict):
-        config = yaml_config
-    else:
-        with open(yaml_config) as file:
-            config = yaml.full_load(file)
-
-    return config
 
 
 class InfoFitWrapper:
