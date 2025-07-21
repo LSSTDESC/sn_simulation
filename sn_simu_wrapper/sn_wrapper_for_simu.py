@@ -757,12 +757,7 @@ class SimInfoFitWrapper:
             time_ref = time.time()
             print('simulation')
 
-        import time
-        time_ref = time.time()
         light_curves = self.simu_wrapper(obs, imulti)
-
-        print('nlc simulated', len(obs), len(
-            light_curves), time.time()-time_ref)
 
         # analyze these LC + flag for selection
         if light_curves is None:
@@ -775,7 +770,6 @@ class SimInfoFitWrapper:
 
         light_curves_ana = self.info_wrapper(light_curves)
 
-        print('lc analysis', time.time()-time_ref)
         """
         ccols = ['n_epochs_phase_minus_10', 'n_epochs_phase_plus_20',
                  'n_epochs_m10_p35', 'n_epochs_m10_p5',
@@ -803,7 +797,6 @@ class SimInfoFitWrapper:
         if verbose:
             print('end of fitting', time.time()-time_ref)
 
-        print('end of fitting', time.time()-time_ref)
         if len(self.outdf) > 10000:
             self.dump_df()
             self.outdf = pd.DataFrame()
