@@ -791,8 +791,9 @@ class SimInfoFitWrapper:
 
         for rr in self.fit_remove_sat:
             fitlc = self.fit_wrapper(light_curves_ana, remove_sat=rr)
-            fitlc['remove_sat'] = rr
-            self.myconcat(fitlc)
+            if len(fitlc) > 0:
+                fitlc['remove_sat'] = rr
+                self.myconcat(fitlc)
 
         if verbose:
             print('end of fitting', time.time()-time_ref)
