@@ -701,7 +701,7 @@ class SNSimulation(SNSimu_Params):
                   'seeingFwhmEff', 'seeingFwhmGeom', 'note',
                   'filter', 'night', 'visitExposureTime',
                   'fiveSigmaDepth', 'visitExposureTime',
-                  'airmass', 'pwv', 'ozone', 'aerosol']
+                  'airmass', 'pwv', 'ozone', 'aerosol', 'lsst_start']
 
         ccols_ = list(set(ccolsa) & set(ccolsb))
         obs = obs[ccols_]
