@@ -1409,6 +1409,8 @@ class SNSimulation(SNSimu_Params):
             ozone = row['ozone']
             aerosol = row['aerosol']
             b = row['filter']
+            exptime = row['visitExposureTime']
+            nexp = row['numExposures']
 
             self.telescope.new_atmosphere(site_name=self.telescope.site_name,
                                           airmass=airmass,
@@ -1418,7 +1420,7 @@ class SNSimulation(SNSimu_Params):
             self.telescope.mean_wave()
             # grab zp
             mean_wave = self.telescope.mean_wavelength[b]
-            zp = self.telescope.zp(b)
+            zp = self.telescope.zp(b, exptime, nexp)
             ra.append((zp))
             rb.append((mean_wave))
 
