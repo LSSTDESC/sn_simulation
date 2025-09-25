@@ -9,6 +9,7 @@ requires-python = ">=3.5"
 dependencies = [
   "getObsAtmo@git+https://github.com/lsstdesc/getObsAtmo#egg=getObsAtmo",
   "rubin_sim@git+https://github.com/lsst/rubin_sim.git#egg=rubin_sim",
+  "dustmaps",
 ]
 authors = [
   {name = "Philippe Gris", email = "philippe.gris@clermont.in2p3.fr"}
