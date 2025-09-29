@@ -715,8 +715,11 @@ class SNSimulation(SNSimu_Params):
         # register throughputs for sn_cosmo
         idx = obs['airmass'] <= 3.0
         obs = obs[idx]
-        obs = self.register_bands_from_atmos(obs)
 
+        if len(obs) < 2:
+            return None
+
+        obs = self.register_bands_from_atmos(obs)
         # estimate zp and mean_wavelength corresponding to obs
         if self.atmosType == 'const':
             obs = self.add_zp_meanwave_from_interp(obs)
