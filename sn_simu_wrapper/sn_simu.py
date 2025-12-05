@@ -61,9 +61,10 @@ class SNSimu_Params:
         self.airmassCol = airmassCol
         self.skyCol = skyCol
         self.moonCol = moonCol
+        self.obs_coadd = config['Observations']['coadd']
 
         # load stacker
-        self.stacker = self.load_stacker(config['Observations']['coadd'])
+        # self.stacker = self.load_stacker(config['Observations']['coadd'])
 
         # bands considered
         self.filterNames = 'grizy'
@@ -191,22 +192,27 @@ class SNSimu_Params:
         # load the instrument(telescope)
         self.telescope = load_throughputs_from_config(config['InstrumentSimu'])
 
-        # estimate zp vs airmass
-        self.zp_from_config(config['InstrumentSimu'])
-
         config_instr = config['InstrumentSimu']
         self.atmosType = config_instr['atmosType']
+        # airmass parameters
         self.airmass = config_instr['airmass']
+        self.sigma_airmass = config_instr['sigma']['airmass']
         self.airmass_round = config_instr['round']['airmass']
+        # pwv parameters
         self.pwv = config_instr['pwv']
-        self.pwv_round = config_instr['round']['pwv']
-        self.ozone = config_instr['ozone']
-        self.ozone_round = config_instr['round']['ozone']
-        self.aerosol = config_instr['aerosol']
-        self.aerosol_round = config_instr['round']['aerosol']
         self.sigma_pwv = config_instr['sigma']['pwv']
+        self.pwv_round = config_instr['round']['pwv']
+        # ozone parameters
+        self.ozone = config_instr['ozone']
         self.sigma_ozone = config_instr['sigma']['ozone']
+        self.ozone_round = config_instr['round']['ozone']
+        # aerosol parameters
+        self.aerosol = config_instr['aerosol']
         self.sigma_aerosol = config_instr['sigma']['aerosol']
+        self.aerosol_round = config_instr['round']['aerosol']
+
+        # estimate zp vs airmass
+        self.zp_from_config(config_instr)
 
     def simu_params_from_file(self, simuFile):
         """
@@ -261,11 +267,7 @@ class SNSimu_Params:
 
         """
 
-        from sn_telmodel.sn_transtools import Zeropoint_airmass
-
-        pwv = config['pwv']
-        ozone = config['ozone']
-        aerosol = config['aerosol']
+        from sn_telmodel.sn_transtools import Zeropoint_sigma_airmass
 
         """
         tel_dir = config['telescope']['dir']
@@ -281,29 +283,16 @@ class SNSimu_Params:
         oz = float(oz)
         aerosol = float(aerosol)
         """
-        zp = Zeropoint_airmass(self.telescope, pwv=pwv,
-                               ozone=ozone, aerosol=aerosol)
+        zp = Zeropoint_sigma_airmass(self.telescope, pwv=self.pwv,
+                                     ozone=self.ozone, aerosol=self.aerosol,
+                                     sigma_airmass=self.sigma_airmass,
+                                     sigma_pwv=self.sigma_pwv,
+                                     sigma_aerosol=self.sigma_aerosol,
+                                     sigma_ozone=self.sigma_ozone)
 
         # self.zp_airmass = zp.get_fit_params()
 
-        zp_data = zp.get_data()
-
-        bands = np.unique(zp_data['band'])
-
-        self.zp_airmass = {}
-        self.mean_wavelength_airmass = {}
-        from scipy.interpolate import interp1d
-        for b in bands:
-            idx = zp_data['band'] == b
-            sel = zp_data[idx]
-            self.zp_airmass[b] = interp1d(sel['airmass'],
-                                          sel['zp'],
-                                          bounds_error=False,
-                                          fill_value=0.)
-            self.mean_wavelength_airmass[b] = interp1d(sel['airmass'],
-                                                       sel['mean_wavelength'],
-                                                       bounds_error=False,
-                                                       fill_value=0.)
+        self.zp_atmos = zp.get_data()
 
     def load_for_snfast(self, web_path):
         """
@@ -708,9 +697,11 @@ class SNSimulation(SNSimu_Params):
         # add atmospheric parameters here
         obs = self.set_atmos_params(obs)
 
-        # stack if necessary
+        # stack if necessary - obsolete
+        """
         if self.stacker is not None:
             obs = self.stacker._run(obs, atmosType=self.atmosType)
+        """
 
         # register throughputs for sn_cosmo
         idx = obs['airmass'] <= 3.0
@@ -720,7 +711,7 @@ class SNSimulation(SNSimu_Params):
             return None
 
         obs = self.register_bands_from_atmos(obs)
-        # estimate zp and mean_wavelength corresponding to obs
+        # estimate zp and mean_wavelength (and sigmas) corresponding to obs
         if self.atmosType == 'const':
             obs = self.add_zp_meanwave_from_interp(obs)
         else:
@@ -775,6 +766,7 @@ class SNSimulation(SNSimu_Params):
             par = {}
             par['obs'] = obs
             par['nspectra'] = self.sn_parameters['nspectra']
+            par['obs_coadd'] = self.obs_coadd
             """
             import matplotlib.pyplot as plt
             fig, ax = plt.subplots()
@@ -1027,6 +1019,7 @@ class SNSimulation(SNSimu_Params):
         time_ref = time.time()
         # print('multiproc simu', j, len(gen_params))
         obs = params['obs']
+        obs_coadd = params['obs_coadd']
 
         lsst_start = -1
         if 'lsst_start' in obs.dtype.names:
@@ -1041,9 +1034,9 @@ class SNSimulation(SNSimu_Params):
 
         if 'sn_fast' not in self.simu_config['name']:
             lc_list, lc_list_keep, tab_meta, sed_list = self.loop_gen(
-                obs, gen_params, j, lc_out)
+                obs, gen_params, obs_coadd, j, lc_out)
         else:
-            lc_list = self.simuLCs(obs, gen_params)
+            lc_list = self.simuLCs(obs, gen_params, obs_coadd)
             if not self.throwafterdump:
                 import copy
                 lc_list_keep = copy.deepcopy(lc_list)
@@ -1135,7 +1128,7 @@ class SNSimulation(SNSimu_Params):
 
         df_spectra.to_hdf(sed_out, key='spec_data')
 
-    def loop_gen(self, obs, gen_params, j, lc_out):
+    def loop_gen(self, obs, gen_params, obs_coadd, j, lc_out):
         """
         Method to generate LCs by looping on genparams
 
@@ -1145,6 +1138,8 @@ class SNSimulation(SNSimu_Params):
             data to process (observations).
         gen_params : array
             simulation parameters.
+        obs_coadd: int
+           to coadd obs.
         j : int
             tag for SNID and output file.
         lc_out : str
@@ -1172,7 +1167,7 @@ class SNSimulation(SNSimu_Params):
             season = genpar['season']
             idx = obs['season'] == season
             obs_season = obs[idx]
-            lc, sed = self.simuLCs(obs_season, genpar)
+            lc, sed = self.simuLCs(obs_season, genpar, obs_coadd)
             if len(lc) == 0:
                 continue
 
@@ -1262,7 +1257,7 @@ class SNSimulation(SNSimu_Params):
         if os.path.exists(fileName):
             os.remove(fileName)
 
-    def simuLCs(self, obs, gen_params):
+    def simuLCs(self, obs, gen_params, obs_coadd):
         """ Generate LC for one season and a set of simu parameters
 
         Parameters
@@ -1271,6 +1266,8 @@ class SNSimulation(SNSimu_Params):
           array of observations
         gen_params: dict
            generation parameters
+        obs_coadd: int.
+           to coadd observations.
 
         Returns
         ----------
@@ -1309,7 +1306,7 @@ class SNSimulation(SNSimu_Params):
         simu = module.SN(sn_object, self.simu_config, sncosmo_emul,
                          self.reference_lc, self.dustcorr)
         # simulation - this is supposed to be a list of astropytables
-        lc_table = simu(obs, self.display_lc, self.time_display)
+        lc_table = simu(obs, self.display_lc, self.time_display, obs_coadd)
 
         seds = []
         nspectra = self.sn_parameters['nspectra']
@@ -1378,13 +1375,20 @@ class SNSimulation(SNSimu_Params):
 
         filt_airmass = list(zip(filters, airmass))
         mean_wave = list(
-            map(lambda x: self.mean_wavelength_airmass[x[0]](x[1]), filt_airmass))
+            map(lambda x: self.zp_atmos['mean_wave'][x[0]](x[1]), filt_airmass))
+        sigma_mean_wave = list(
+            map(lambda x: self.zp_atmos['sigma_mean_wave'][x[0]](x[1]), filt_airmass))
 
-        zp = list(map(lambda x: self.zp_airmass[x[0]](x[1]), filt_airmass))
+        zp = list(map(lambda x: self.zp_atmos['zp'][x[0]](x[1]), filt_airmass))
+        sigma_zp = list(
+            map(lambda x: self.zp_atmos['sigma_zp'][x[0]](x[1]), filt_airmass))
 
         import numpy.lib.recfunctions as rf
         obs = rf.append_fields(obs, 'zp', zp)
+        obs = rf.append_fields(obs, 'sigma_zp', sigma_zp)
         obs = rf.append_fields(obs, 'mean_wave', mean_wave)
+        obs = rf.append_fields(obs, 'sigma_mean_wave', sigma_mean_wave)
+
         return obs
 
     def add_zp_meanwave_from_obs(self, obs):

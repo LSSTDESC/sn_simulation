@@ -479,7 +479,7 @@ class SN(SN_Object):
             np.savetxt('{}/{}.dat'.format(SALT2Dir, vv),
                        data, fmt=['%1.2f', '%4d', '%.7e', ])
 
-    def __call__(self, obs, display=False, time_display=0.):
+    def __call__(self, obs, display=False, time_display=0., obs_coadd=0):
         """ Simulation of the light curve
 
         Parameters
@@ -639,7 +639,7 @@ class SN(SN_Object):
         lcdf['fluxerr_model'] = 0.
         if self.error_model and self.sn_type == 'SN_Ia':
             fluxcov_cosmo = self.SN.bandfluxcov(
-                lcdf[band_cosmo], lcdf[self.mjdCol], zpsys='ab',
+                lcdf['band_cosmo'], lcdf[self.mjdCol], zpsys='ab',
                 zp=2.5*np.log10(3631))
             lcdf['fluxerr_model'] = np.sqrt(np.diag(fluxcov_cosmo[1]))
 
