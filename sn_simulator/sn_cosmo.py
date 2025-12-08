@@ -836,12 +836,13 @@ class SN(SN_Object):
 
         res = pd.DataFrame(lcdf)
 
-        print(res.columns)
         # round atmos params
+        """
         for vv in ccols:
             # round_value = eval('self.{}_round'.format(vv))
             round_value = int(res['round_{}'.format(vv)].mean())
             res[vv] = np.round(res[vv], round_value)
+        """
         del lcdf
         return res
 
