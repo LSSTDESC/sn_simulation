@@ -7,7 +7,7 @@ import time
 from sn_tools.sn_utils import SNTimer
 import pandas as pd
 import os
-from random import gauss
+# from random import gauss
 
 
 class SN(SN_Object):
@@ -603,8 +603,10 @@ class SN(SN_Object):
               self.seeingEffCol, self.seeingGeomCol,
               'zp', 'mean_wave', 'pwv', 'ozone',
               'aerosol', 'band_cosmo',
-              'sigma_zp', 'sigma_airmass', 'sigma_pwv',
-              'sigma_ozone', 'sigma_aerosol']
+              'sigma_zp']
+        for vv in ['airmass', 'pwv', 'ozone', 'aerosol']:
+            for vvb in ['sigma', 'min', 'max']:
+                a.append('{}_{}'.format(vvb, vv))
 
         b = obs.dtype.names
 
@@ -613,7 +615,7 @@ class SN(SN_Object):
         lcdf = pd.DataFrame(np.copy(obs[outvals]))
 
         # smear zp here
-        lcdf['zp'] += gauss(0, lcdf['sigma_zp'])
+        lcdf['zp'] += np.random.normal(0, lcdf['sigma_zp'])
         lcdf['zpsys'] = 'ab'
 
         # get band flux
@@ -720,7 +722,9 @@ class SN(SN_Object):
             lcdf['snr'] = lcdf['flux']/lcdf['fluxerr']
 
         # smear atmos parameters
+        print('before', lcdf[['airmass', 'pwv', 'ozone', 'aerosol']])
         self.smear_atmos(lcdf)
+        print('after', lcdf[['airmass', 'pwv', 'ozone', 'aerosol']])
         print(test)
 
         """
@@ -818,9 +822,17 @@ class SN(SN_Object):
         ccols = ['airmass', 'ozone', 'pwv', 'aerosol']
 
         for vv in ccols:
-            lcdf[vv] += lcdf['sigma_{}'.format(vv)]
+            lcdf[vv] += np.random.normal(0., lcdf['sigma_{}'.format(vv)])
 
         # check whether values are inside the allowed range (getobsatmo)
+
+        for vv in ccols:
+            idx = lcdf[vv] < lcdf['min_{}'.format(vv)]
+            if len(lcdf[idx]) > 0:
+                lcdf.iloc[idx][vv] = lcdf['min_{}'.format(vv)]
+            idx = lcdf[vv] > lcdf['max_{}'.format(vv)]
+            if len(lcdf[idx]) > 0:
+                lcdf.iloc[idx][vv] = lcdf['max_{}'.format(vv)]
 
     def register_bands_from_atmos_deprecated(self, obs,
                                              cols=['airmass',

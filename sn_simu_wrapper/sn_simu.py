@@ -1343,8 +1343,13 @@ class SNSimulation(SNSimu_Params):
             if atm_param not in obs.dtype.names:
                 atm_value = self.config_instr[atm_param]
                 atm_round_value = self.config_instr['round'][atm_param]
-                atm_sigma_value = self.config_instr['sigma'][atm_param]
-
+                atm_value = np.round(atm_value, atm_round_value)
+                obs = rf.append_fields(obs, atm_param, [atm_value]*len(obs))
+                for myval in ['sigma', 'min', 'max']:
+                    atm_val_value = self.config_instr[myval][atm_param]
+                    obs = rf.append_fields(obs, '{}_{}'.format(myval,
+                                                               atm_param), [atm_val_value]*len(obs))
+                """
                 # atm_value = eval('self.{}'.format(atm_param))
                 # atm_round_value = eval('self.{}_round'.format(atm_param))
                 atm_value = np.round(atm_value, atm_round_value)
@@ -1352,7 +1357,7 @@ class SNSimulation(SNSimu_Params):
                 # obs[atm_param] = [atm_value]*len(obs)
                 obs = rf.append_fields(obs, 'sigma_{}'.format(
                     atm_param), [atm_sigma_value]*len(obs))
-
+                """
                 # smear atmospheric parameters
                 # vv_sigma = [0.0]*len(obs)
                 """
@@ -1368,8 +1373,10 @@ class SNSimulation(SNSimu_Params):
                 """
 
         # airmass
-        sigma_airmass = self.config_instr['sigma']['airmass']
-        obs = rf.append_fields(obs, 'sigma_airmass', [sigma_airmass]*len(obs))
+        for myval in ['sigma', 'min', 'max']:
+            val = self.config_instr[myval]['airmass']
+            obs = rf.append_fields(
+                obs, '{}_airmass'.format(myval), [val]*len(obs))
 
         return obs
 
