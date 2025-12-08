@@ -605,7 +605,7 @@ class SN(SN_Object):
               'aerosol', 'band_cosmo',
               'sigma_zp']
         for vv in ['airmass', 'pwv', 'ozone', 'aerosol']:
-            for vvb in ['sigma', 'min', 'max']:
+            for vvb in ['sigma', 'min', 'max', 'round']:
                 a.append('{}_{}'.format(vvb, vv))
 
         b = obs.dtype.names
@@ -723,9 +723,8 @@ class SN(SN_Object):
 
         # smear atmos parameters
         print('before', lcdf[['airmass', 'pwv', 'ozone', 'aerosol']])
-        self.smear_atmos(lcdf)
+        lcdf = self.smear_atmos(lcdf)
         print('after', lcdf[['airmass', 'pwv', 'ozone', 'aerosol']])
-        print(test)
 
         """
         filters = np.array(lcdf['filter'])
@@ -803,7 +802,7 @@ class SN(SN_Object):
 
         return [table_lc]
 
-    def smear_atmos(self, lcdf):
+    def smear_atmos(self, lcdfa):
         """
         Method to smear atmospheric parameters
 
@@ -821,6 +820,7 @@ class SN(SN_Object):
 
         ccols = ['airmass', 'ozone', 'pwv', 'aerosol']
 
+        lcdf = pd.DataFrame(lcdfa)
         for vv in ccols:
             lcdf[vv] += np.random.normal(0., lcdf['sigma_{}'.format(vv)])
 
@@ -829,10 +829,21 @@ class SN(SN_Object):
         for vv in ccols:
             idx = lcdf[vv] < lcdf['min_{}'.format(vv)]
             if len(lcdf[idx]) > 0:
-                lcdf.iloc[idx][vv] = lcdf['min_{}'.format(vv)]
+                lcdf.loc[idx, vv] = lcdf['min_{}'.format(vv)]
             idx = lcdf[vv] > lcdf['max_{}'.format(vv)]
             if len(lcdf[idx]) > 0:
-                lcdf.iloc[idx][vv] = lcdf['max_{}'.format(vv)]
+                lcdf.loc[idx, vv] = lcdf['max_{}'.format(vv)]
+
+        res = pd.DataFrame(lcdf)
+
+        print(res.columns)
+        # round atmos params
+        for vv in ccols:
+            # round_value = eval('self.{}_round'.format(vv))
+            round_value = int(res['round_{}'.format(vv)].mean())
+            res[vv] = np.round(res[vv], round_value)
+        del lcdf
+        return res
 
     def register_bands_from_atmos_deprecated(self, obs,
                                              cols=['airmass',

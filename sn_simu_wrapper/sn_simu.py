@@ -1345,7 +1345,7 @@ class SNSimulation(SNSimu_Params):
                 atm_round_value = self.config_instr['round'][atm_param]
                 atm_value = np.round(atm_value, atm_round_value)
                 obs = rf.append_fields(obs, atm_param, [atm_value]*len(obs))
-                for myval in ['sigma', 'min', 'max']:
+                for myval in ['sigma', 'min', 'max', 'round']:
                     atm_val_value = self.config_instr[myval][atm_param]
                     obs = rf.append_fields(obs, '{}_{}'.format(myval,
                                                                atm_param), [atm_val_value]*len(obs))
@@ -1373,7 +1373,7 @@ class SNSimulation(SNSimu_Params):
                 """
 
         # airmass
-        for myval in ['sigma', 'min', 'max']:
+        for myval in ['sigma', 'min', 'max', 'round']:
             val = self.config_instr[myval]['airmass']
             obs = rf.append_fields(
                 obs, '{}_airmass'.format(myval), [val]*len(obs))
