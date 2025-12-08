@@ -192,27 +192,11 @@ class SNSimu_Params:
         # load the instrument(telescope)
         self.telescope = load_throughputs_from_config(config['InstrumentSimu'])
 
-        config_instr = config['InstrumentSimu']
-        self.atmosType = config_instr['atmosType']
-        # airmass parameters
-        self.airmass = config_instr['airmass']
-        self.sigma_airmass = config_instr['sigma']['airmass']
-        self.airmass_round = config_instr['round']['airmass']
-        # pwv parameters
-        self.pwv = config_instr['pwv']
-        self.sigma_pwv = config_instr['sigma']['pwv']
-        self.pwv_round = config_instr['round']['pwv']
-        # ozone parameters
-        self.ozone = config_instr['ozone']
-        self.sigma_ozone = config_instr['sigma']['ozone']
-        self.ozone_round = config_instr['round']['ozone']
-        # aerosol parameters
-        self.aerosol = config_instr['aerosol']
-        self.sigma_aerosol = config_instr['sigma']['aerosol']
-        self.aerosol_round = config_instr['round']['aerosol']
+        self.config_instr = config['InstrumentSimu']
+        self.atmosType = self.config_instr['atmosType']
 
-        # estimate zp vs airmass
-        self.zp_from_config(config_instr)
+        # estimate zp , mean_wave and sigmas vs airmass
+        self.zp_from_config()
 
     def simu_params_from_file(self, simuFile):
         """
@@ -252,7 +236,7 @@ class SNSimu_Params:
 
         return df[ccols+ccolsb].to_records(index=False)
 
-    def zp_from_config(self, config):
+    def zp_from_config(self):
         """
         Method to estimate zp vs airmass
 
@@ -283,12 +267,31 @@ class SNSimu_Params:
         oz = float(oz)
         aerosol = float(aerosol)
         """
-        zp = Zeropoint_sigma_airmass(self.telescope, pwv=self.pwv,
-                                     ozone=self.ozone, aerosol=self.aerosol,
-                                     sigma_airmass=self.sigma_airmass,
-                                     sigma_pwv=self.sigma_pwv,
-                                     sigma_aerosol=self.sigma_aerosol,
-                                     sigma_ozone=self.sigma_ozone)
+        ntrial = self.config_instr['ntrial']['zp']
+        # airmass parameters
+        airmass = self.config_instr['airmass']
+        sigma_airmass = self.config_instr['sigma']['airmass']
+        # airmass_round = self.config_instr['round']['airmass']
+        # pwv parameters
+        pwv = self.config_instr['pwv']
+        sigma_pwv = self.config_instr['sigma']['pwv']
+        # pwv_round = self.config_instr['round']['pwv']
+        # ozone parameters
+        ozone = self.config_instr['ozone']
+        sigma_ozone = self.config_instr['sigma']['ozone']
+        # ozone_round = self.config_instr['round']['ozone']
+        # aerosol parameters
+        aerosol = self.config_instr['aerosol']
+        sigma_aerosol = self.config_instr['sigma']['aerosol']
+        # aerosol_round = self.config_instr['round']['aerosol']
+
+        zp = Zeropoint_sigma_airmass(self.telescope, pwv=pwv,
+                                     ozone=ozone, aerosol=aerosol,
+                                     sigma_airmass=sigma_airmass,
+                                     sigma_pwv=sigma_pwv,
+                                     sigma_aerosol=sigma_aerosol,
+                                     sigma_ozone=sigma_ozone,
+                                     ntrial=ntrial)
 
         # self.zp_airmass = zp.get_fit_params()
 
@@ -1338,19 +1341,35 @@ class SNSimulation(SNSimu_Params):
         del obsa
         for atm_param in ['pwv', 'ozone', 'aerosol']:
             if atm_param not in obs.dtype.names:
-                atm_value = eval('self.{}'.format(atm_param))
-                atm_round_value = eval('self.{}_round'.format(atm_param))
+                atm_value = self.config_instr[atm_param]
+                atm_round_value = self.config_instr['round'][atm_param]
+                atm_sigma_value = self.config_instr['sigma'][atm_param]
+
+                # atm_value = eval('self.{}'.format(atm_param))
+                # atm_round_value = eval('self.{}_round'.format(atm_param))
                 atm_value = np.round(atm_value, atm_round_value)
                 obs = rf.append_fields(obs, atm_param, [atm_value]*len(obs))
-                obs[atm_param] = [atm_value]*len(obs)
+                # obs[atm_param] = [atm_value]*len(obs)
+                obs = rf.append_fields(obs, 'sigma_{}'.format(
+                    atm_param), [atm_sigma_value]*len(obs))
+
                 # smear atmospheric parameters
-                vv_sigma = [0.0]*len(obs)
+                # vv_sigma = [0.0]*len(obs)
+                """
                 if self.atmosType != 'const':
                     vv_sigma = [
                         eval('self.sigma_{}'.format(atm_param))]*len(obs)
                     obs[atm_param] += np.random.normal(0, vv_sigma)
+                """
+                """
+                sigma_val = eval('self.sigma_{}'.format(atm_param))
                 obs = rf.append_fields(
-                    obs, 'sigma_{}'.format(atm_param), vv_sigma)
+                    obs, 'sigma_{}'.format(atm_param), [sigma_val]*len(obs))
+                """
+
+        # airmass
+        sigma_airmass = self.config_instr['sigma']['airmass']
+        obs = rf.append_fields(obs, 'sigma_airmass', [sigma_airmass]*len(obs))
 
         return obs
 
@@ -1460,7 +1479,8 @@ class SNSimulation(SNSimu_Params):
         time_ref = time.time()
         # round atmos parameters
         for i, vv in enumerate(cols):
-            round_value = eval('self.{}_round'.format(vv))
+            # round_value = eval('self.{}_round'.format(vv))
+            round_value = self.config_instr['round'][vv]
             obs[vv] = np.round(obs[vv], round_value)
 
         # set band_cosmo column

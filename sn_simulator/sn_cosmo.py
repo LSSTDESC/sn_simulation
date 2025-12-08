@@ -7,6 +7,7 @@ import time
 from sn_tools.sn_utils import SNTimer
 import pandas as pd
 import os
+from random import gauss
 
 
 class SN(SN_Object):
@@ -601,7 +602,9 @@ class SN(SN_Object):
         a += [self.airmassCol, self.skyCol, self.moonCol,
               self.seeingEffCol, self.seeingGeomCol,
               'zp', 'mean_wave', 'pwv', 'ozone',
-              'aerosol', 'band_cosmo']
+              'aerosol', 'band_cosmo',
+              'sigma_zp', 'sigma_airmass', 'sigma_pwv',
+              'sigma_ozone', 'sigma_aerosol']
 
         b = obs.dtype.names
 
@@ -609,6 +612,8 @@ class SN(SN_Object):
 
         lcdf = pd.DataFrame(np.copy(obs[outvals]))
 
+        # smear zp here
+        lcdf['zp'] += gauss(0, lcdf['sigma_zp'])
         lcdf['zpsys'] = 'ab'
 
         # get band flux
@@ -714,6 +719,10 @@ class SN(SN_Object):
             lcdf.loc[lcdf.flux < 0, 'flux'] = 0.
             lcdf['snr'] = lcdf['flux']/lcdf['fluxerr']
 
+        # smear atmos parameters
+        self.smear_atmos(lcdf)
+        print(test)
+
         """
         filters = np.array(lcdf['filter'])
         filters = filters.reshape((len(filters), 1))
@@ -789,6 +798,29 @@ class SN(SN_Object):
         # table_lc.remove_columns(toremove)
 
         return [table_lc]
+
+    def smear_atmos(self, lcdf):
+        """
+        Method to smear atmospheric parameters
+
+        Parameters
+        ----------
+        lcdf : pandas df
+            data to smear.
+
+        Returns
+        -------
+        lcdf: pandas df
+          date with smeared atmos params
+
+        """
+
+        ccols = ['airmass', 'ozone', 'pwv', 'aerosol']
+
+        for vv in ccols:
+            lcdf[vv] += lcdf['sigma_{}'.format(vv)]
+
+        # check whether values are inside the allowed range (getobsatmo)
 
     def register_bands_from_atmos_deprecated(self, obs,
                                              cols=['airmass',

@@ -97,6 +97,15 @@ InstrumentSimu round_pwv 1 int #instrument precipit. water vapor rounding
 InstrumentSimu ozone 300. float #ozone
 InstrumentSimu sigma_ozone 10. float #sigma_ozone
 InstrumentSimu round_ozone 1 int #ozone rounding
+InstrumentSimu ntrial_zp 20 int #ntrial to estimate zp vs airmass
+InstrumentSimu min_airmass 1.0 float #airmass min after smearing
+InstrumentSimu max_airmass 2.9 float #airmass max after smearing
+InstrumentSimu min_pwv 0.0 float #pwv min after smearing
+InstrumentSimu max_pwv 25. float #pwv max after smearing
+InstrumentSimu min_ozone 0.0 float #ozone min after smearing
+InstrumentSimu max_ozone 600. float #ozone max after smearing
+InstrumentSimu min_aerosol 0. float #aerosol min after smearing
+InstrumentSimu max_aerosol 0.5 float #aerosol max after smearing
 
 ##Observations
 Observations filename fullDbName str #observation file name
