@@ -480,7 +480,7 @@ class SN(SN_Object):
             np.savetxt('{}/{}.dat'.format(SALT2Dir, vv),
                        data, fmt=['%1.2f', '%4d', '%.7e', ])
 
-    def __call__(self, obs, display=False, time_display=0., obs_coadd=0):
+    def __call__(self, obs, display=False, time_display=0., lc_coadd=0):
         """ Simulation of the light curve
 
         Parameters
@@ -493,6 +493,8 @@ class SN(SN_Object):
         time_display: float
           duration(sec) for which the display is visible
           default: 0
+         lc_coadd: int, opt
+           to coadd lc fluxes
 
         Returns
         -----------
@@ -603,7 +605,7 @@ class SN(SN_Object):
               self.seeingEffCol, self.seeingGeomCol,
               'zp', 'mean_wave', 'pwv', 'ozone',
               'aerosol', 'band_cosmo',
-              'sigma_zp']
+              'sigma_zp', 'tel_site_name']
         for vv in ['airmass', 'pwv', 'ozone', 'aerosol']:
             for vvb in ['sigma', 'min', 'max', 'round']:
                 a.append('{}_{}'.format(vvb, vv))
@@ -722,9 +724,9 @@ class SN(SN_Object):
             lcdf['snr'] = lcdf['flux']/lcdf['fluxerr']
 
         # smear atmos parameters
-        print('before', lcdf[['airmass', 'pwv', 'ozone', 'aerosol']])
+        # print('before', lcdf[['airmass', 'pwv', 'ozone', 'aerosol']])
         lcdf = self.smear_atmos(lcdf)
-        print('after', lcdf[['airmass', 'pwv', 'ozone', 'aerosol']])
+        # print('after', lcdf[['airmass', 'pwv', 'ozone', 'aerosol']])
 
         """
         filters = np.array(lcdf['filter'])
@@ -799,6 +801,10 @@ class SN(SN_Object):
                     'gamma', 'mag', 'magerr', 'magerr_phot']
 
         # table_lc.remove_columns(toremove)
+
+        if lc_coadd:
+            from sn_tools.sn_lcana import coadd_lc
+            table_lc = coadd_lc(table_lc)
 
         return [table_lc]
 
