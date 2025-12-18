@@ -78,6 +78,9 @@ Cosmology H0 70.0 float #cosmology H0
 Cosmology w0 -1.0 float #cosmology w0
 Cosmology wa 0.0 float #cosmology wa
 
+#Light curve
+LC coadd 1 int #to coadd LC fluxes
+
 ## Instrument
 InstrumentSimu name LSST str #instrument name
 InstrumentSimu telescope_dir throughputs str #main telescope dir
@@ -90,13 +93,13 @@ InstrumentSimu sigma_airmass 0.005 float #instrument sigma_airmass
 InstrumentSimu round_airmass 1 int #instrument airmass rounding
 InstrumentSimu aerosol 0.05 float #instrument aerosol
 InstrumentSimu sigma_aerosol 0.001 float #instrument sigma_aerosol
-InstrumentSimu round_aerosol 2 int #instrument aerosol rounding
+InstrumentSimu round_aerosol 4 int #instrument aerosol rounding
 InstrumentSimu pwv 5.0 float #instrument precipit. water vapor
 InstrumentSimu sigma_pwv 0.02 float #instrument sigma precipit. water vapor
-InstrumentSimu round_pwv 1 int #instrument precipit. water vapor rounding
+InstrumentSimu round_pwv 3 int #instrument precipit. water vapor rounding
 InstrumentSimu ozone 300. float #ozone
 InstrumentSimu sigma_ozone 10. float #sigma_ozone
-InstrumentSimu round_ozone 1 int #ozone rounding
+InstrumentSimu round_ozone 3 int #ozone rounding
 InstrumentSimu ntrial_zp 20 int #ntrial to estimate zp vs airmass
 InstrumentSimu min_airmass 1.0 float #airmass min after smearing
 InstrumentSimu max_airmass 2.9 float #airmass max after smearing
@@ -111,7 +114,7 @@ InstrumentSimu max_aerosol 0.5 float #aerosol max after smearing
 Observations filename fullDbName str #observation file name
 Observations fieldtype WFD str #observations field type
 Observations fieldname all  str #observations field name (DD only)
-Observations coadd 1 int #observations coaddition per night
+Observations coadd 0 int #observations coaddition per night
 Observations season -1 str #observations seasons 
 
 ## Simulator
