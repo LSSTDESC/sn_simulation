@@ -25,3 +25,10 @@ setup(
         'sn_telmodel>=0.1'
     ],
 )
+
+# pyproject.toml
+dependencies = [
+    "getObsAtmo@git+https://github.com/lsstdesc/getObsAtmo#egg=getObsAtmo",
+    "rubin_sim@git+https://github.com/lsst/rubin_sim.git#egg=rubin_sim",
+    "dustmaps",
+]
