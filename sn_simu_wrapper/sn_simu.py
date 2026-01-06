@@ -721,12 +721,41 @@ class SNSimulation(SNSimu_Params):
         if len(obs) == 0:
             return None
 
+        list_lc = []
+        for seas in seasons:
+            idx = obs['season'] == seas
+            obs_seas = obs[idx]
+            list_lc += self.run_season(obs_seas, seas)
+
+        if list_lc:
+            return list_lc
+
+        return None
+
+    def run_season(self, obs, seas):
+        """
+        Method to simulate LCs per season
+
+        Parameters
+        ----------
+        obs : numpy array
+            Observations
+        seas : int
+            season number.
+
+        Returns
+        -------
+        list_lc : TYPE
+            DESCRIPTION.
+
+        """
+
         # set atmos params and throughputs
         obs = self.set_atmos_and_throughput(obs)
 
         # get simulation parameters
 
-        gen_params = self.get_all_gen_params(obs, seasons)
+        gen_params = self.get_all_gen_params(obs, [seas])
 
         if gen_params is None:
             return None
