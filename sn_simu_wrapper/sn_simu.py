@@ -17,6 +17,7 @@ import numpy.lib.recfunctions as rf
 import pandas as pd
 from sn_tools.sn_utils import register_bands_sncosmo
 import sncosmo as sncosmo_emul
+from sn_tools.sn_obs import load_season
 # import tracemalloc
 
 
@@ -30,7 +31,7 @@ class SNSimu_Params:
                  vistimeCol, seeingEffCol,
                  airmassCol,
                  skyCol, moonCol,
-                 seeingGeomCol, config, x0_norm):
+                 seeingGeomCol, config, x0_norm, zp_airmass=None):
         """
         Class to load simulation parameters
 
@@ -150,7 +151,7 @@ class SNSimu_Params:
         self.field_type = config['Observations']['fieldtype']
 
         # seasons
-        self.season = self.load_season(config['Observations']['season'])
+        self.season = load_season(config['Observations']['season'])
 
         self.type = 'simulation'
 
@@ -197,7 +198,11 @@ class SNSimu_Params:
         self.atmosType = self.config_instr['atmosType']
 
         # estimate zp , mean_wave and sigmas vs airmass
-        self.zp_from_config()
+        if zp_airmass is None:
+            from sn_telmodel.sn_transtools import zp_from_config
+            self.zp_atmos = zp_from_config(config['InstrumentSimu'])
+        else:
+            self.zp_atmos = zp_airmass
 
     def simu_params_from_file(self, simuFile):
         """
@@ -236,67 +241,6 @@ class SNSimu_Params:
             df[vv] = self.sn_parameters[vv]
 
         return df[ccols+ccolsb].to_records(index=False)
-
-    def zp_from_config(self):
-        """
-        Method to estimate zp vs airmass
-
-        Parameters
-        ----------
-        config : dict
-            Telescope config.
-
-        Returns
-        -------
-        None.
-
-        """
-
-        from sn_telmodel.sn_transtools import Zeropoint_sigma_airmass
-
-        """
-        tel_dir = config['telescope']['dir']
-        tel_tag = config['telescope']['tag']
-        through_dir = config['throughputDir']
-        atmos_dir = config['atmosDir']
-        airmass = config['airmass']
-        aerosol = config['aerosol']
-        pwv = config['pwv']
-        oz = config['oz']
-
-        pwv = float(pwv)
-        oz = float(oz)
-        aerosol = float(aerosol)
-        """
-        ntrial = self.config_instr['ntrial']['zp']
-        # airmass parameters
-        airmass = self.config_instr['airmass']
-        sigma_airmass = self.config_instr['sigma']['airmass']
-        # airmass_round = self.config_instr['round']['airmass']
-        # pwv parameters
-        pwv = self.config_instr['pwv']
-        sigma_pwv = self.config_instr['sigma']['pwv']
-        # pwv_round = self.config_instr['round']['pwv']
-        # ozone parameters
-        ozone = self.config_instr['ozone']
-        sigma_ozone = self.config_instr['sigma']['ozone']
-        # ozone_round = self.config_instr['round']['ozone']
-        # aerosol parameters
-        aerosol = self.config_instr['aerosol']
-        sigma_aerosol = self.config_instr['sigma']['aerosol']
-        # aerosol_round = self.config_instr['round']['aerosol']
-
-        zp = Zeropoint_sigma_airmass(self.telescope, pwv=pwv,
-                                     ozone=ozone, aerosol=aerosol,
-                                     sigma_airmass=sigma_airmass,
-                                     sigma_pwv=sigma_pwv,
-                                     sigma_aerosol=sigma_aerosol,
-                                     sigma_ozone=sigma_ozone,
-                                     ntrial=ntrial)
-
-        # self.zp_airmass = zp.get_fit_params()
-
-        self.zp_atmos = zp.get_data()
 
     def load_for_snfast(self, web_path):
         """
@@ -370,31 +314,6 @@ class SNSimu_Params:
             dustcorr = resultdict[1]
 
         return reference_lc, dustcorr
-
-    def load_season(self, seasons):
-        """
-        Method to get the list of seasons
-
-        Parameters
-        ----------
-        seasons : str
-              list of seasons.
-
-        Returns
-        -------
-        season : list(int)
-           list of seasons to process
-
-        """
-        if '-' not in seasons or seasons[0] == '-':
-            season = list(map(int, seasons.split(',')))
-        else:
-            seasl = seasons.split('-')
-            seasmin = int(seasl[0])
-            seasmax = int(seasl[1])
-            season = list(range(seasmin, seasmax+1))
-
-        return season
 
     def load_stacker(self, coadd=False):
         """
@@ -615,6 +534,8 @@ class SNSimulation(SNSimu_Params):
      configuration dict for simulation (SN parameters, cosmology, telescope,..)
     x0_norm: array of float
      grid ox (x1,color,x0) values
+    zp_airmass: dict(interp1d)
+      zeropoints vs airmass/filter
 
     """
 
@@ -629,7 +550,8 @@ class SNSimulation(SNSimu_Params):
                  airmassCol='airmass',
                  skyCol='sky', moonCol='moonPhase',
                  seeingGeomCol='seeingFwhmGeom',
-                 uniqueBlocks=False, config=None, x0_norm=None, **kwargs):
+                 uniqueBlocks=False, config=None, x0_norm=None,
+                 zp_airmass=None, **kwargs):
         super().__init__(mjdCol=mjdCol,
                          RACol=RACol, DecCol=DecCol,
                          filterCol=filterCol, m5Col=m5Col,
@@ -640,7 +562,7 @@ class SNSimulation(SNSimu_Params):
                          airmassCol=airmassCol,
                          skyCol=skyCol, moonCol=moonCol,
                          seeingGeomCol=seeingGeomCol,
-                         config=config, x0_norm=x0_norm)
+                         config=config, x0_norm=x0_norm, zp_airmass=zp_airmass)
 
     def run(self, obs, slicePoint=None, imulti=0):
         """ LC simulations
@@ -658,7 +580,8 @@ class SNSimulation(SNSimu_Params):
         obs = obs[goodFilters]
 
         # estimate seasons
-        obs = seasoncalc(obs, season_gap=50., force_calc=True)
+        if 'season' not in obs.dtype.names:
+            obs = seasoncalc(obs, season_gap=50., force_calc=True)
 
         # check the number of seasons
         # if too low get seasons using clusters

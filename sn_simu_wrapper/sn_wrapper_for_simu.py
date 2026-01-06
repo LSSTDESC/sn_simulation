@@ -7,6 +7,8 @@ import pandas as pd
 import operator
 from astropy.table import Table, vstack
 from sn_tools.sn_utils import load_config
+from sn_tools.sn_obs import load_season
+from sn_telmodel.sn_transtools import zp_from_config
 from sn_fit_wrapper.sn_wrapper_for_fit import FitWrapper
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -712,14 +714,22 @@ class SimInfoFitWrapper:
         """
 
         self.name = 'sim_info_fit'
+        config_simu = load_config(yaml_config_simu)
+        # self.config_instr = config_simu['InstrumentSimu']
+        self.config_simu = config_simu
+        self.infoDict = infoDict
+        self.yaml_config_fit = yaml_config_fit
+        self.fit_remove_sat_str = fit_remove_sat = fit_remove_sat
+        """
         self.simu_wrapper = SimuWrapper(yaml_config_simu)
         self.info_wrapper = InfoWrapper(infoDict)
         self.fit_wrapper = FitWrapper(yaml_config_fit)
         self.fit_remove_sat = list(map(int, fit_remove_sat.split(',')))
-
+        """
         self.outName = ''
 
         self.ccolref = []
+        """
         if self.fit_wrapper.saveData:
             outFile = 'SN_{}.hdf5'.format(self.simu_wrapper.prodid)
             self.outName = '{}/{}'.format(self.fit_wrapper.outDir, outFile)
@@ -727,12 +737,85 @@ class SimInfoFitWrapper:
             # import os
             if os.path.isfile(self.outName):
                 os.system('rm {}'.format(self.outName))
-
+        """
         self.outdf = pd.DataFrame()
+
+        # grab seasons
+        # grab seasons
+
+        self.seasons = load_season(config_simu['Observations']['season'])
+
+        # getting zeropoints vs airmass
+        self.zp_atmos = zp_from_config(config_simu['InstrumentSimu'])
+
+    def instances(self, clean_dir=False):
+        """
+        Method to instantiate necessary classes
+
+        Parameters
+        ----------
+        clean_dir : TYPE, optional
+            DESCRIPTION. The default is False.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        self.simu_wrapper = SimuWrapper(self.config_simu, self.zp_atmos)
+        self.info_wrapper = InfoWrapper(self.infoDict)
+        self.fit_wrapper = FitWrapper(self.yaml_config_fit)
+        self.fit_remove_sat = list(
+            map(int, self.fit_remove_sat_str.split(',')))
+
+        if self.fit_wrapper.saveData:
+            outFile = 'SN_{}.hdf5'.format(self.simu_wrapper.prodid)
+            self.outName = '{}/{}'.format(self.fit_wrapper.outDir, outFile)
+            # check wether this file already exist and remove it
+            # import os
+            if clean_dir:
+                if os.path.isfile(self.outName):
+                    os.system('rm {}'.format(self.outName))
 
     def run(self, obs, imulti=0, verbose=False):
         """
+        Parameters
+        ----------
+        obs : array
+            array of observations       
+        imulti : int, optional
+            internal tag. The default is 0.
+        verbose : bool, optional
+            To print infos. The default is False.
 
+        Returns
+        -------
+        None.
+
+        """
+        if 'season' not in obs.dtype.names:
+            from sn_tools.sn_obs import season as seasoncalc
+            obs = seasoncalc(obs, season_gap=50., force_calc=True)
+
+        for i, seas in enumerate(self.seasons):
+            idx = obs['season'] == seas
+            obs_seas = obs[idx]
+            clean_dir = False
+            if i == 0:
+                clean_dir = True
+
+            # update config for simu
+            self.config_simu['Observations']['season'] = '{}'.format(seas)
+
+            # instances
+            self.instances(clean_dir=clean_dir)
+
+            # run
+            self.run_season(obs_seas, imulti, verbose)
+
+    def run_season(self, obs, imulti=0, verbose=True):
+        """
 
         Parameters
         ----------
@@ -990,9 +1073,9 @@ class SimuWrapper:
 
     """
 
-    def __init__(self, yaml_config):
+    def __init__(self, config, zp_airmass):
 
-        config = load_config(yaml_config)
+        # config = load_config(yaml_config)
 
         self.saveData_simu = config['OutputSimu']['savefromwrapper']
         self.lc_out = None
@@ -1031,7 +1114,7 @@ class SimuWrapper:
         #                              coadd=config['Observations']['coadd'])
 
         self.metric = SNSimulation(
-            config=config, x0_norm=x0_tab)
+            config=config, x0_norm=x0_tab, zp_airmass=zp_airmass)
 
         self.prodid = config['ProductionIDSimu']
         self.outlc = []
