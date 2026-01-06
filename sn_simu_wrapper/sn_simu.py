@@ -648,7 +648,9 @@ class SNSimulation(SNSimu_Params):
         for seas in seasons:
             idx = obs['season'] == seas
             obs_seas = obs[idx]
-            list_lc += self.run_season(obs_seas, seas)
+            ll = self.run_season(obs_seas, seas)
+            if ll is not None:
+                list_lc += ll
 
         if list_lc:
             return list_lc
