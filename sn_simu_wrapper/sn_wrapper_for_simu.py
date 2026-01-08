@@ -748,6 +748,12 @@ class SimInfoFitWrapper:
         # getting zeropoints vs airmass
         self.zp_atmos = zp_from_config(config_simu['InstrumentSimu'])
 
+        # info required for obs_quality
+        min_rf_phase_qual = self.config_simu['SN']['minRFphaseQual']
+        max_rf_phase_qual = self.config_simu['SN']['maxRFphaseQual']
+        self.diff_rf = max_rf_phase_qual-min_rf_phase_qual
+        self.zmin = self.config_simu['SN']['z']['min']
+
     def instances(self, clean_dir=False):
         """
         Method to instantiate necessary classes
@@ -801,6 +807,8 @@ class SimInfoFitWrapper:
         for i, seas in enumerate(self.seasons):
             idx = obs['season'] == seas
             obs_seas = obs[idx]
+            if not self.obs_quality(obs_seas):
+                continue
             clean_dir = False
             if i == 0:
                 clean_dir = True
@@ -901,6 +909,45 @@ class SimInfoFitWrapper:
                                                   path='SN', overwrite=True,
                                                   serialize_meta=True)
         """
+
+    def obs_quality(self, obs,
+                    duration_min_z=20, nobs_min=5,
+                    mjdCol='observationStartMJD'):
+        """
+        Method to estimate obs quality (nobs and season length)
+
+        Parameters
+        ----------
+        obs : pandas df
+            Data to check.
+        duration_min_z : float, optional
+            min season duration req (z dep). The default is 20.
+        nobs_min : int, optional
+            min number of observations. The default is 5.
+        mjdCol : str, optional
+            mjd colname. The default is 'observationStartMJD'.
+
+        Returns
+        -------
+        bool
+            True=ok; False=not ok.
+
+        """
+
+        if len(obs) < nobs_min:
+            return False
+
+        daymin = np.min(obs[mjdCol])
+        daymax = np.max(obs[mjdCol])
+        duration = daymax-daymin
+
+        zlim = (duration-duration_min_z)/self.diff_rf
+        zlim -= 1
+
+        if zlim < self.zmin:
+            return False
+
+        return True
 
     def myanatest(self, lightcurves):
         """
