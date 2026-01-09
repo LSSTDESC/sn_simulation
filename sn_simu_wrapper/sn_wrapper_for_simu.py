@@ -729,15 +729,19 @@ class SimInfoFitWrapper:
         self.outName = ''
 
         self.ccolref = []
-        """
-        if self.fit_wrapper.saveData:
-            outFile = 'SN_{}.hdf5'.format(self.simu_wrapper.prodid)
-            self.outName = '{}/{}'.format(self.fit_wrapper.outDir, outFile)
+        fw = load_config(self.yaml_config_fit)
+        print(fw)
+        if fw['OutputFit']['save']:
+            simu_wrapper = load_config(self.config_simu)
+            outFile = 'SN_{}.hdf5'.format(simu_wrapper['ProductionIDSimu'])
+            self.outName = '{}/{}'.format(fw['OutputFit']
+                                          ['directory'], outFile)
             # check wether this file already exist and remove it
             # import os
             if os.path.isfile(self.outName):
                 os.system('rm {}'.format(self.outName))
-        """
+            del simu_wrapper
+        del fw
         self.outdf = pd.DataFrame()
 
         # grab seasons
@@ -754,14 +758,13 @@ class SimInfoFitWrapper:
         self.diff_rf = max_rf_phase_qual-min_rf_phase_qual
         self.zmin = self.config_simu['SN']['z']['min']
 
-    def instances(self, clean_dir=False):
+    def instances(self):
         """
         Method to instantiate necessary classes
 
         Parameters
         ----------
-        clean_dir : TYPE, optional
-            DESCRIPTION. The default is False.
+        None
 
         Returns
         -------
@@ -775,21 +778,12 @@ class SimInfoFitWrapper:
         self.fit_remove_sat = list(
             map(int, self.fit_remove_sat_str.split(',')))
 
-        if self.fit_wrapper.saveData:
-            outFile = 'SN_{}.hdf5'.format(self.simu_wrapper.prodid)
-            self.outName = '{}/{}'.format(self.fit_wrapper.outDir, outFile)
-            # check wether this file already exist and remove it
-            # import os
-            if clean_dir:
-                if os.path.isfile(self.outName):
-                    os.system('rm {}'.format(self.outName))
-
     def run(self, obs, imulti=0, verbose=False):
         """
         Parameters
         ----------
         obs : array
-            array of observations       
+            array of observations
         imulti : int, optional
             internal tag. The default is 0.
         verbose : bool, optional
@@ -809,15 +803,12 @@ class SimInfoFitWrapper:
             obs_seas = obs[idx]
             if not self.obs_quality(obs_seas):
                 continue
-            clean_dir = False
-            if i == 0:
-                clean_dir = True
 
             # update config for simu
             self.config_simu['Observations']['season'] = '{}'.format(seas)
 
             # instances
-            self.instances(clean_dir=clean_dir)
+            self.instances()
 
             # run
             self.run_season(obs_seas, imulti, verbose)
@@ -828,7 +819,7 @@ class SimInfoFitWrapper:
         Parameters
         ----------
         obs : array
-            array of observations       
+            array of observations
         imulti : int, optional
             internal tag. The default is 0.
         verbose : bool, optional
