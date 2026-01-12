@@ -730,7 +730,7 @@ class SimInfoFitWrapper:
 
         self.ccolref = []
         fw = load_config(self.yaml_config_fit)
-        print(fw)
+
         if fw['OutputFit']['save']:
             simu_wrapper = load_config(self.config_simu)
             outFile = 'SN_{}.hdf5'.format(simu_wrapper['ProductionIDSimu'])
