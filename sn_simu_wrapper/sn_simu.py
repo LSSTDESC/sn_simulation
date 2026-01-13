@@ -347,7 +347,7 @@ class SNSimu_Params:
                                    col_group=[
                                        self.filterCol, self.nightCol],
                                    col_coadd=self.m5Col,
-                                   col_visit='visitExposureTime')
+                                   col_visit='visitExposureTime', col_atmos=[])
         return stacker
 
     def load_cosmology(self, cosmo_par):
@@ -608,9 +608,10 @@ class SNSimulation(SNSimu_Params):
         if len(obs) == 0:
             return None
         # stack obs if required
+        # np.save('obs_orig.npy', obs)
         if self.stacker is not None:
             obs = self.stacker._run(obs, atmosType=self.atmosType)
-
+        # np.save('obs_coadd.npy', obs)
         self.fieldname = 'unknown'
         self.fieldid = 0
         try:
@@ -2030,10 +2031,12 @@ class SNSimulation(SNSimu_Params):
         goodFilters = np.in1d(obs[self.filterCol], self.filterNames)
         obs = obs[goodFilters]
 
+        np.save('obs1.npy', obs)
         # stack if necessary
         if self.stacker is not None:
             obs = self.stacker._run(obs)
 
+        np.save('obs_coadd.npy', obs)
         self.fieldname = 'unknown'
         self.fieldid = 0
         try:
