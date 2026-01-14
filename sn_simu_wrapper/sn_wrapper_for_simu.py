@@ -798,21 +798,62 @@ class SimInfoFitWrapper:
             from sn_tools.sn_obs import season as seasoncalc
             obs = seasoncalc(obs, season_gap=50., force_calc=True)
 
+        from sn_tools.sn_utils import simu_params
         for i, seas in enumerate(self.seasons):
             idx = obs['season'] == seas
             obs_seas = obs[idx]
             if not self.obs_quality(obs_seas):
+                print('bad obs quality',seas,len(obs_seas))
                 continue
+
+           
 
             # update config for simu
             self.config_simu['Observations']['season'] = '{}'.format(seas)
 
             # instances
+            print('instances')
             self.instances()
 
-            # run
-            self.run_season(obs_seas, imulti, verbose)
+            #grab SNe Ia simulation parameters
+            gen_simu_params = simu_params(obs,[seas],
+                                          self.simu_wrapper.simuParamsFile,
+                                          self.simu_wrapper.gen_par) 
 
+            print('allo',gen_simu_params)
+
+            # run
+            print('run_season new')
+            
+            params = {}
+            params['obs'] = obs_seas
+            params['verbose'] = True
+            params['imulti'] = imulti
+            #self.run_season_new(obs_seas, gen_simu_params,imulti)
+            from sn_tools.sn_utils import multiproc
+            lc_list = multiproc(gen_simu_params,params,self.run_season_new,8)
+            
+            print('finished',len(lc_list))
+            
+    def run_season_new(self,gen_params, params, j=0, output_q=None):
+        
+        obs = params['obs']
+        verbose = params['verbose']
+        imulti = params['imulti']
+        if verbose:
+            import time
+            time_ref = time.time()
+            print('simulation')
+
+        light_curves = self.simu_wrapper(obs, gen_params,imulti)
+        
+        # print('done', j, time.time()-time_ref)
+        
+        if output_q is not None:
+            return output_q.put({j: light_curves})
+        else:
+            return light_curves
+        
     def run_season(self, obs, imulti=0, verbose=True):
         """
 
@@ -841,6 +882,8 @@ class SimInfoFitWrapper:
 
         light_curves = self.simu_wrapper(obs, imulti)
 
+        if verbose:
+            print('after simulation',light_curves)
         # analyze these LC + flag for selection
         if light_curves is None:
             return None
@@ -939,6 +982,7 @@ class SimInfoFitWrapper:
             return False
 
         return True
+        
 
     def myanatest(self, lightcurves):
         """
@@ -1111,7 +1155,7 @@ class SimuWrapper:
 
     """
 
-    def __init__(self, config, zp_airmass):
+    def __init__(self, config, zp_airmass,mjdCol='observationStartMJD'):
 
         # config = load_config(yaml_config)
 
@@ -1157,6 +1201,21 @@ class SimuWrapper:
         self.prodid = config['ProductionIDSimu']
         self.outlc = []
 
+        #gen simu parameters instance
+        
+        import healpy as hp
+        nside = config['Pixelisation']['nside']
+        area = hp.nside2pixarea(nside, degrees=True)
+        from sn_tools.sn_utils import SimuParameters
+        self.gen_par = SimuParameters(config['SN'], config['Cosmology'],
+                                      mjdCol=mjdCol, area=area,
+                                      web_path=config['WebPathSimu'])
+
+        # simu params from file
+        from sn_tools.sn_utils import simu_params_from_file
+        self.simuParamsFile = simu_params_from_file(config['SN'])
+
+
     def x0(self, config):
         """
         Method to load x0 data
@@ -1194,7 +1253,7 @@ class SimuWrapper:
 
         return np.load(x0normFile)
 
-    def run(self, obs, imulti=0):
+    def run(self, obs, gen_simu_params, imulti=0):
         """
         Method to run the metric
 
@@ -1205,7 +1264,8 @@ class SimuWrapper:
 
         """
 
-        light_curves = self.metric.run(obs, imulti=imulti)
+
+        light_curves = self.metric.run(obs, gen_simu_params,imulti=imulti)
 
         if light_curves is None:
             return None

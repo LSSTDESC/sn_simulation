@@ -2,7 +2,7 @@ import numpy as np
 import healpy as hp
 import os
 import time
-import multiprocessing
+#import multiprocessing
 import astropy
 from astropy.table import Table, vstack, unique
 from astropy.cosmology import w0waCDM
@@ -16,7 +16,7 @@ from sn_telmodel.sn_throughputs import load_throughputs_from_config
 import numpy.lib.recfunctions as rf
 import pandas as pd
 from sn_tools.sn_utils import register_bands_sncosmo
-import sncosmo as sncosmo_emul
+#import sncosmo as sncosmo_emul
 from sn_tools.sn_obs import load_season
 # import tracemalloc
 
@@ -100,9 +100,10 @@ class SNSimu_Params:
         self.simulator_parameters = config['Simulator']
 
         # simu params from file
+        """
         self.simuParamsFile = self.simu_params_from_file(
             self.sn_parameters['simuFile'])
-
+        """
         # this is for output
 
         save_status = config['OutputSimu']['save']
@@ -204,7 +205,7 @@ class SNSimu_Params:
         else:
             self.zp_atmos = zp_airmass
 
-    def simu_params_from_file(self, simuFile):
+    def simu_params_from_file_deprecated(self, simuFile):
         """
         Method to grab simu parameters from file
 
@@ -563,8 +564,43 @@ class SNSimulation(SNSimu_Params):
                          skyCol=skyCol, moonCol=moonCol,
                          seeingGeomCol=seeingGeomCol,
                          config=config, x0_norm=x0_norm, zp_airmass=zp_airmass)
+ 
+    def run(self, obs, gen_simu_params,slicePoint=None, imulti=0):
+     """ LC simulations
 
-    def run(self, obs, slicePoint=None, imulti=0):
+     Parameters
+     --------------
+     obs: array
+       array of observations
+
+     """       
+     # set atmos params and throughputs
+     obs = self.set_atmos_and_throughput(obs)
+     par = {}
+     par['obs'] = obs
+     par['nspectra'] = self.sn_parameters['nspectra']
+     par['lc_coadd'] = self.lc_coadd
+     
+     """
+     list_lc = []
+     for vv in gen_simu_params:
+         lca = self.simuLoop(vv,par)
+         list_lc += lca
+         print('aooo',lca)
+     """
+     
+     list_lc = self.simuLoop(gen_simu_params,par)
+     
+     print('simu',list_lc)
+     
+     if list_lc:
+         return list_lc
+    
+     return None
+         
+         
+
+    def run_deprecated(self, obs, slicePoint=None, imulti=0):
         """ LC simulations
 
         Parameters
@@ -646,6 +682,7 @@ class SNSimulation(SNSimu_Params):
             return None
 
         list_lc = []
+        """
         for seas in seasons:
             idx = obs['season'] == seas
             obs_seas = obs[idx]
@@ -653,7 +690,11 @@ class SNSimulation(SNSimu_Params):
                 ll = self.run_season(obs_seas, seas)
                 if ll is not None:
                     list_lc += ll
-
+        if ll is not None:
+             list_lc += ll
+        """
+        list_lc = self.run_season(obs, seasons[0])
+       
         if list_lc:
             return list_lc
 
@@ -881,7 +922,7 @@ class SNSimulation(SNSimu_Params):
 
         plt.show()
 
-    def get_all_gen_params(self, obs, seasons):
+    def get_all_gen_params_deprecated(self, obs, seasons):
         """
         Method to get simu parameters for all seasons
 
@@ -917,7 +958,7 @@ class SNSimulation(SNSimu_Params):
 
         return gp
 
-    def gen_params_from_file(self, obs, seas):
+    def gen_params_from_file_deprecated(self, obs, seas):
         """
         Method to grab simu parameters from input file
 
@@ -944,7 +985,7 @@ class SNSimulation(SNSimu_Params):
 
         return sel
 
-    def gen_params_from_season(self, obs, seas):
+    def gen_params_from_season_deprecated(self, obs, seas):
         """
         Method to grab simu params (estimated from obs) for a season
 
@@ -964,6 +1005,7 @@ class SNSimulation(SNSimu_Params):
 
         idxa = obs[self.seasonCol] == seas
         obs_season = obs[idxa]
+        print('gen params')
         gen_pars = self.gen_par.simuparams(obs_season)
 
         if gen_pars is None:
@@ -998,7 +1040,7 @@ class SNSimulation(SNSimu_Params):
         """
         import time
         time_ref = time.time()
-        # print('multiproc simu', j, len(gen_params))
+        print('multiproc simu', j, len(gen_params))
         obs = params['obs']
         lc_coadd = params['lc_coadd']
 
@@ -1255,19 +1297,25 @@ class SNSimulation(SNSimu_Params):
         lc_table: astropy table
           table with LC informations(flux, time, ...)
         """
+       
+        
         sn_par = self.sn_parameters.copy()
-        simulator_par = self.simulator_parameters.copy()
+        #simulator_par = self.simulator_parameters.copy()
 
-        sn_par['sigmaz'] = sn_par['z']['sigmaz']
+        #print('oooo',self.sn_parameters)
+        sn_par['sigmaz'] = self.sn_parameters['z']['sigmaz']
         for name in ['z', 'x1', 'color', 'daymax']:
             if name in gen_params.dtype.names:
                 sn_par[name] = gen_params[name]
 
         SNID = sn_par['Id']
+        
 
+        #print('aoooo',self.sn_parameters)
+        #print(test)
         sn_object = SN_Object(self.simu_config['name'],
                               sn_par,
-                              simulator_par,
+                              self.simulator_parameters,
                               gen_params,
                               self.cosmology,
                               SNID, self.area,
@@ -1283,12 +1331,18 @@ class SNSimulation(SNSimu_Params):
                               frac_flux_seeing=self.frac_flux_seeing,
                               ccd_full_well=self.ccd_full_well)
 
+        
         module = import_module(self.simu_config['name'])
-        simu = module.SN(sn_object, self.simu_config, sncosmo_emul,
-                         self.reference_lc, self.dustcorr)
+        
+        simu = module.SN(sn_object, self.simu_config,self.reference_lc, self.dustcorr)
         # simulation - this is supposed to be a list of astropytables
-        lc_table = simu(obs, self.display_lc, self.time_display, lc_coadd)
+        for i in range(30000):
+            for j in range(30000):
+                k = i+j
 
+        print('outf')
+        lc_table = simu(obs, self.display_lc, self.time_display, lc_coadd)
+        
         seds = []
         nspectra = self.sn_parameters['nspectra']
         if nspectra > 0:
@@ -1535,7 +1589,7 @@ class SNSimulation(SNSimu_Params):
         None.
 
         """
-
+        import sncosmo
         for i, row in data.iterrows():
             bandname = row['band_cosmo']
             band = row[self.filterCol]
@@ -1543,7 +1597,7 @@ class SNSimulation(SNSimu_Params):
             pwv = row['pwv']
             ozone = row['ozone']
             aerosol = row['aerosol']
-            register_bands_sncosmo(sncosmo_emul, telescope,
+            register_bands_sncosmo(sncosmo, telescope,
                                    bandname, band,
                                    airmass, pwv, ozone, aerosol)
 
