@@ -572,9 +572,10 @@ class SN(SN_Object):
         ebvofMW = self.sn_parameters['ebvofMW']
         # apply dust here since Ra, Dec is known
 
+        """
         if ebvofMW < 0.:
             ebvofMW = self.ebvofMW_calc(pix['pixRA'], pix['pixDec'])
-
+        """
         print('go for outk')
         for i in range(30000):
             for j in range(30000):
@@ -582,6 +583,7 @@ class SN(SN_Object):
 
         print('outk')
         
+        ebvofMW = 0.02
         self.SN.set(mwebv=ebvofMW)
 
         # add atmospheric parameters here
