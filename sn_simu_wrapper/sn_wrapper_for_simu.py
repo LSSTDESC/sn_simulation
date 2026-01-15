@@ -798,45 +798,63 @@ class SimInfoFitWrapper:
             from sn_tools.sn_obs import season as seasoncalc
             obs = seasoncalc(obs, season_gap=50., force_calc=True)
 
-        from sn_tools.sn_utils import simu_params
         for i, seas in enumerate(self.seasons):
             idx = obs['season'] == seas
             obs_seas = obs[idx]
             if not self.obs_quality(obs_seas):
-                print('bad obs quality',seas,len(obs_seas))
+                print('bad obs quality', seas, len(obs_seas))
                 continue
-
-           
 
             # update config for simu
             self.config_simu['Observations']['season'] = '{}'.format(seas)
 
             # instances
-            print('instances')
+
             self.instances()
 
-            #grab SNe Ia simulation parameters
-            gen_simu_params = simu_params(obs,[seas],
+            # grab SNe Ia simulation parameters
+            """
+            gen_simu_params = simu_params(obs, [seas],
                                           self.simu_wrapper.simuParamsFile,
-                                          self.simu_wrapper.gen_par) 
+                                          self.simu_wrapper.gen_par)
+            """
+            gen_simu_params = self.simu_wrapper.simu_par_gen(obs, seas)
 
-            print('allo',gen_simu_params)
-
+            print('Number of LC to generate', len(gen_simu_params))
             # run
-            print('run_season new')
-            
             params = {}
             params['obs'] = obs_seas
-            params['verbose'] = True
+            params['verbose'] = False
             params['imulti'] = imulti
-            #self.run_season_new(obs_seas, gen_simu_params,imulti)
+            # self.run_season_new(obs_seas, gen_simu_params,imulti)
             from sn_tools.sn_utils import multiproc
-            lc_list = multiproc(gen_simu_params,params,self.run_season_new,8)
-            
-            print('finished',len(lc_list))
-            
-    def run_season_new(self,gen_params, params, j=0, output_q=None):
-        
+            # simulate LCs
+            import time
+            time_ref = time.time()
+            light_curves = multiproc(gen_simu_params, params,
+                                     self.run_season_simulc, 8)
+
+            if verbose:
+                print('finished', len(light_curves), time.time()-time_ref)
+                print('LC analysis')
+
+            light_curves_ana = self.info_wrapper(light_curves)
+
+            # fitting here
+            if verbose:
+                print('lc fitting', len(light_curves_ana))
+
+            for rr in self.fit_remove_sat:
+                fitlc = self.fit_wrapper(light_curves_ana, remove_sat=rr)
+                if len(fitlc) > 0:
+                    fitlc['remove_sat'] = rr
+                    self.myconcat(fitlc)
+
+            if verbose:
+                print('end of fitting', time.time()-time_ref)
+
+    def run_season_simulc(self, gen_params, params, j=0, output_q=None):
+
         obs = params['obs']
         verbose = params['verbose']
         imulti = params['imulti']
@@ -845,16 +863,16 @@ class SimInfoFitWrapper:
             time_ref = time.time()
             print('simulation')
 
-        light_curves = self.simu_wrapper(obs, gen_params,imulti)
-        
+        light_curves = self.simu_wrapper(obs, gen_params, j)
+
         # print('done', j, time.time()-time_ref)
-        
+
         if output_q is not None:
             return output_q.put({j: light_curves})
         else:
             return light_curves
-        
-    def run_season(self, obs, imulti=0, verbose=True):
+
+    def run_season_deprecated(self, obs, imulti=0, verbose=True):
         """
 
         Parameters
@@ -883,7 +901,7 @@ class SimInfoFitWrapper:
         light_curves = self.simu_wrapper(obs, imulti)
 
         if verbose:
-            print('after simulation',light_curves)
+            print('after simulation', light_curves)
         # analyze these LC + flag for selection
         if light_curves is None:
             return None
@@ -982,7 +1000,6 @@ class SimInfoFitWrapper:
             return False
 
         return True
-        
 
     def myanatest(self, lightcurves):
         """
@@ -1155,7 +1172,7 @@ class SimuWrapper:
 
     """
 
-    def __init__(self, config, zp_airmass,mjdCol='observationStartMJD'):
+    def __init__(self, config, zp_airmass, mjdCol='observationStartMJD'):
 
         # config = load_config(yaml_config)
 
@@ -1201,20 +1218,65 @@ class SimuWrapper:
         self.prodid = config['ProductionIDSimu']
         self.outlc = []
 
-        #gen simu parameters instance
-        
+        # gen simu parameters instance
+
         import healpy as hp
         nside = config['Pixelisation']['nside']
         area = hp.nside2pixarea(nside, degrees=True)
-        from sn_tools.sn_utils import SimuParameters
-        self.gen_par = SimuParameters(config['SN'], config['Cosmology'],
-                                      mjdCol=mjdCol, area=area,
-                                      web_path=config['WebPathSimu'])
+        from sn_tools.sn_utils import SN_simu_params
+        self.simu_par_gen = SN_simu_params(config['SN'], config['Cosmology'],
+                                           mjdCol=mjdCol, area=area,
+                                           web_path=config['WebPathSimu'])
 
+        # check if the dust map is available in reference_files
+        # if not: load it from web
+        # if not available: consider producing it!
+        fName = 'reference_files/dustmap_{}.hdf5'.format(nside)
+        if not os.path.isfile(fName):
+            self.getRefFile(
+                config['WebPathSimu'], 'reference_files', 'dustmap_{}.hdf5'.format(nside))
+
+        dust_map = pd.DataFrame()
+        if not os.path.isfile(fName):
+            print('File', fName, 'not found')
+            print('You should consider using the following script to gen it')
+            print('python run_scripts/dust_for_fast/gen_disp_dustmap.py')
+        else:
+            dust_map = pd.read_hdf(fName)
+        self.metric = SNSimulation(
+            config=config, dust_map=dust_map, zp_airmass=zp_airmass)
+        """
         # simu params from file
         from sn_tools.sn_utils import simu_params_from_file
         self.simuParamsFile = simu_params_from_file(config['SN'])
+        """
 
+    def getRefFile(self, web_path, refdir, fname):
+        """
+        Method to get a file from the web
+
+        Parameters
+        ----------
+        web_path : str
+            web path.
+        refdir : str
+            Dir of reference (whre the file is supposed to be).
+        fname : str
+            File name.
+
+        Returns
+        -------
+        None.
+
+        """
+        fullname = '{}/dust_maps/{}'.format(web_path, fname)
+
+        # check whether the file is available; if not-> get it!
+        if not os.path.isfile(fname):
+            print('wget path:', fullname)
+            cmd = 'wget --no-clobber --no-verbose {} --directory-prefix {}'.format(
+                fullname, refdir)
+            os.system(cmd)
 
     def x0(self, config):
         """
@@ -1264,8 +1326,7 @@ class SimuWrapper:
 
         """
 
-
-        light_curves = self.metric.run(obs, gen_simu_params,imulti=imulti)
+        light_curves = self.metric.run(obs, gen_simu_params, imulti=imulti)
 
         if light_curves is None:
             return None
