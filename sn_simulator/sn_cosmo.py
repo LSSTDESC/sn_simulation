@@ -7,12 +7,13 @@ import time
 from sn_tools.sn_utils import SNTimer
 import pandas as pd
 import os
+# from dustmaps.sfd import SFDQuery
 # from random import gauss
 
 
 class SN(SN_Object):
     def __init__(self, param, simu_param,
-                 reference_lc=None, dustcorr=None):
+                 reference_lc=None, dustcorr=None, dust_map=None):
         super().__init__(param.name,
                          param.sn_parameters,
                          param.simulator_parameters,
@@ -53,7 +54,7 @@ class SN(SN_Object):
 
         """
 
-        #self.sncosmo = sncosmo_emul
+        # self.sncosmo = sncosmo_emul
 
         self.error_model = self.simulator_parameters['errorModel']
         # self.error_model_cut = self.simulator_parameters['errorModelCut']
@@ -150,6 +151,9 @@ class SN(SN_Object):
         from random import gauss
         self.zmeas = z+gauss(0, sigmaz*(1.+z))
 
+        # dustmap
+        self.dust_map = dust_map
+
     def source(self, model, version):
         """
         method to instantiate a source from sncosmo
@@ -172,7 +176,7 @@ class SN(SN_Object):
                                 effects=[self.dustmap, self.dustmap],
                                 effect_names=['host', 'mw'],
                                 effect_frames=['rest', 'obs'])
-        
+
         self.model = model
         # set cosmology here
         self.SN.cosmo = self.cosmology
@@ -236,9 +240,9 @@ class SN(SN_Object):
         # self.source(self.sn_model, self.sn_version)
         source = sncosmo.get_source(sn_model, sn_version)
         self.SN = sncosmo.Model(source=source,
-                                     effects=[self.dustmap, self.dustmap],
-                                     effect_names=['host', 'mw'],
-                                     effect_frames=['rest', 'obs'])
+                                effects=[self.dustmap, self.dustmap],
+                                effect_names=['host', 'mw'],
+                                effect_frames=['rest', 'obs'])
         self.SN.set(z=self.sn_parameters['z'])
 
         """
@@ -541,12 +545,7 @@ class SN(SN_Object):
 
         # start timer
         ti = SNTimer(time.time())
-        print('go for outi')
-        for i in range(30000):
-            for j in range(30000):
-                k = i+j
 
-        print('outi')
         if len(obs) == 0:
             pix = {}
             for vv in ['healpixID', 'pixRA', 'pixDec']:
@@ -570,20 +569,12 @@ class SN(SN_Object):
                 pix[vv] = np.mean(obs[self.defname[vv]])
 
         ebvofMW = self.sn_parameters['ebvofMW']
-        # apply dust here since Ra, Dec is known
 
-        """
-        if ebvofMW < 0.:
-            ebvofMW = self.ebvofMW_calc(pix['pixRA'], pix['pixDec'])
-        """
-        print('go for outk')
-        for i in range(30000):
-            for j in range(30000):
-                k = i+j
+        if ebvofMW < 0:
+            idx = self.dust_map['healpixID'] == pix['healpixID']
+            sel = self.dust_map[idx]
+            ebvofMW = sel['ebvofMW'].mean()
 
-        print('outk')
-        
-        ebvofMW = 0.02
         self.SN.set(mwebv=ebvofMW)
 
         # add atmospheric parameters here
@@ -600,18 +591,14 @@ class SN(SN_Object):
         else:
             obs = self.add_zp_meanwave_from_obs(obs)
         """
-     
 
-        
-        
         # filter cutoffs
-        
+
         obs = self.select_filter_cutoff(obs,
                                         ra, dec, pix, area, season,
                                         season_length,
                                         ti, ebvofMW)
-        
-       
+
         lsst_start = -1
         mjd_max = -1.0
         if len(obs) == 0:
@@ -1445,7 +1432,7 @@ class SN(SN_Object):
 
         return self.mean_wavelength[band[0]]
 
-    def ebvofMW_calc(self, RA, Dec):
+    def ebvofMW_calc_deprecated(self, healpixID):
         """
         Method to estimate E(B-V)
 
@@ -1461,10 +1448,13 @@ class SN(SN_Object):
         E(B-V)
 
         """
+
         # in that case ebvofMW value is taken from a map
         from astropy.coordinates import SkyCoord
-        from dustmaps.sfd import SFDQuery
+
         coords = SkyCoord(RA, Dec, unit='deg')
+
+        """
         try:
             sfd = SFDQuery()
         except Exception:
@@ -1473,6 +1463,7 @@ class SN(SN_Object):
             import dustmaps.sfd
             dustmaps.sfd.fetch()
             # dustmaps('dustmaps')
+        """
         sfd = SFDQuery()
         ebvofMW = sfd(coords)
 
