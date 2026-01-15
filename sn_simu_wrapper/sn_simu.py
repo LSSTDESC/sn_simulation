@@ -2,7 +2,7 @@ import numpy as np
 import healpy as hp
 import os
 import time
-#import multiprocessing
+# import multiprocessing
 import astropy
 from astropy.table import Table, vstack, unique
 from astropy.cosmology import w0waCDM
@@ -16,7 +16,7 @@ from sn_telmodel.sn_throughputs import load_throughputs_from_config
 import numpy.lib.recfunctions as rf
 import pandas as pd
 from sn_tools.sn_utils import register_bands_sncosmo
-#import sncosmo as sncosmo_emul
+# import sncosmo as sncosmo_emul
 from sn_tools.sn_obs import load_season
 # import tracemalloc
 
@@ -31,7 +31,7 @@ class SNSimu_Params:
                  vistimeCol, seeingEffCol,
                  airmassCol,
                  skyCol, moonCol,
-                 seeingGeomCol, config, x0_norm, zp_airmass=None):
+                 seeingGeomCol, config, dust_map, zp_airmass=None):
         """
         Class to load simulation parameters
 
@@ -157,7 +157,7 @@ class SNSimu_Params:
         self.type = 'simulation'
 
         # get the x0_norm values to be put on a 2D(x1,color) griddata
-        self.x0_grid = x0_norm
+        # self.x0_grid = x0_norm
 
         # SALT2DIR
         self.salt2Dir = self.sn_parameters['salt2Dir']
@@ -204,6 +204,9 @@ class SNSimu_Params:
             self.zp_atmos = zp_from_config(config['InstrumentSimu'])
         else:
             self.zp_atmos = zp_airmass
+
+        # load dust_map
+        self.dust_map = dust_map
 
     def simu_params_from_file_deprecated(self, simuFile):
         """
@@ -551,7 +554,7 @@ class SNSimulation(SNSimu_Params):
                  airmassCol='airmass',
                  skyCol='sky', moonCol='moonPhase',
                  seeingGeomCol='seeingFwhmGeom',
-                 uniqueBlocks=False, config=None, x0_norm=None,
+                 uniqueBlocks=False, config=None, dust_map=None,
                  zp_airmass=None, **kwargs):
         super().__init__(mjdCol=mjdCol,
                          RACol=RACol, DecCol=DecCol,
@@ -563,42 +566,34 @@ class SNSimulation(SNSimu_Params):
                          airmassCol=airmassCol,
                          skyCol=skyCol, moonCol=moonCol,
                          seeingGeomCol=seeingGeomCol,
-                         config=config, x0_norm=x0_norm, zp_airmass=zp_airmass)
- 
-    def run(self, obs, gen_simu_params,slicePoint=None, imulti=0):
-     """ LC simulations
+                         config=config, dust_map=dust_map, zp_airmass=zp_airmass)
 
-     Parameters
-     --------------
-     obs: array
-       array of observations
+    def run(self, obs, gen_simu_params, slicePoint=None, imulti=0):
+        """ LC simulations
 
-     """       
-     # set atmos params and throughputs
-     obs = self.set_atmos_and_throughput(obs)
-     par = {}
-     par['obs'] = obs
-     par['nspectra'] = self.sn_parameters['nspectra']
-     par['lc_coadd'] = self.lc_coadd
-     
-     """
-     list_lc = []
-     for vv in gen_simu_params:
-         lca = self.simuLoop(vv,par)
-         list_lc += lca
-         print('aooo',lca)
-     """
-     
-     list_lc = self.simuLoop(gen_simu_params,par)
-     
-     print('simu',list_lc)
-     
-     if list_lc:
-         return list_lc
-    
-     return None
-         
-         
+        Parameters
+        --------------
+        obs: array
+          array of observations
+
+        """
+
+        if self.stacker is not None:
+            obs = self.stacker._run(obs, atmosType=self.atmosType)
+        # set atmos params and throughputs
+        obs = self.set_atmos_and_throughput(obs)
+
+        par = {}
+        par['obs'] = obs
+        par['nspectra'] = self.sn_parameters['nspectra']
+        par['lc_coadd'] = self.lc_coadd
+
+        list_lc = self.simuLoop(gen_simu_params, par, imulti)
+
+        if list_lc:
+            return list_lc
+
+        return None
 
     def run_deprecated(self, obs, slicePoint=None, imulti=0):
         """ LC simulations
@@ -694,7 +689,7 @@ class SNSimulation(SNSimu_Params):
              list_lc += ll
         """
         list_lc = self.run_season(obs, seasons[0])
-       
+
         if list_lc:
             return list_lc
 
@@ -1005,7 +1000,6 @@ class SNSimulation(SNSimu_Params):
 
         idxa = obs[self.seasonCol] == seas
         obs_season = obs[idxa]
-        print('gen params')
         gen_pars = self.gen_par.simuparams(obs_season)
 
         if gen_pars is None:
@@ -1040,7 +1034,7 @@ class SNSimulation(SNSimu_Params):
         """
         import time
         time_ref = time.time()
-        print('multiproc simu', j, len(gen_params))
+        # print('multiproc simu', j, len(gen_params))
         obs = params['obs']
         lc_coadd = params['lc_coadd']
 
@@ -1297,29 +1291,27 @@ class SNSimulation(SNSimu_Params):
         lc_table: astropy table
           table with LC informations(flux, time, ...)
         """
-       
-        
-        sn_par = self.sn_parameters.copy()
-        #simulator_par = self.simulator_parameters.copy()
 
-        #print('oooo',self.sn_parameters)
+        sn_par = self.sn_parameters.copy()
+        # simulator_par = self.simulator_parameters.copy()
+
+        # print('oooo',self.sn_parameters)
         sn_par['sigmaz'] = self.sn_parameters['z']['sigmaz']
         for name in ['z', 'x1', 'color', 'daymax']:
             if name in gen_params.dtype.names:
                 sn_par[name] = gen_params[name]
 
         SNID = sn_par['Id']
-        
 
-        #print('aoooo',self.sn_parameters)
-        #print(test)
+        # print('aoooo',self.sn_parameters)
+        # print(test)
         sn_object = SN_Object(self.simu_config['name'],
                               sn_par,
                               self.simulator_parameters,
                               gen_params,
                               self.cosmology,
                               SNID, self.area,
-                              x0_grid=self.x0_grid,
+                              x0_grid=None,
                               salt2Dir=self.salt2Dir,
                               mjdCol=self.mjdCol,
                               RACol=self.RACol,
@@ -1331,18 +1323,14 @@ class SNSimulation(SNSimu_Params):
                               frac_flux_seeing=self.frac_flux_seeing,
                               ccd_full_well=self.ccd_full_well)
 
-        
         module = import_module(self.simu_config['name'])
-        
-        simu = module.SN(sn_object, self.simu_config,self.reference_lc, self.dustcorr)
-        # simulation - this is supposed to be a list of astropytables
-        for i in range(30000):
-            for j in range(30000):
-                k = i+j
 
-        print('outf')
+        simu = module.SN(sn_object, self.simu_config,
+                         self.reference_lc, self.dustcorr,
+                         dust_map=self.dust_map)
+        # simulation - this is supposed to be a list of astropytables
         lc_table = simu(obs, self.display_lc, self.time_display, lc_coadd)
-        
+
         seds = []
         nspectra = self.sn_parameters['nspectra']
         if nspectra > 0:
