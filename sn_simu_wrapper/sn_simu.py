@@ -577,9 +577,11 @@ class SNSimulation(SNSimu_Params):
           array of observations
 
         """
-
+        # np.save('obs_orig.npy', obs)
         if self.stacker is not None:
             obs = self.stacker._run(obs, atmosType=self.atmosType)
+        # np.save('obs_coadd.npy', obs)
+
         # set atmos params and throughputs
         obs = self.set_atmos_and_throughput(obs)
 
