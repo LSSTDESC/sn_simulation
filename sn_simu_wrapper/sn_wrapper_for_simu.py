@@ -820,6 +820,9 @@ class SimInfoFitWrapper:
             """
             gen_simu_params = self.simu_wrapper.simu_par_gen(obs, seas)
 
+            if gen_simu_params is None:
+                continue
+
             print('Number of LC to generate', len(gen_simu_params))
             # run
             params = {}
@@ -832,7 +835,8 @@ class SimInfoFitWrapper:
             import time
             time_ref = time.time()
             light_curves = multiproc(gen_simu_params, params,
-                                     self.run_season_simulc, 8)
+                                     self.run_season_simulc,
+                                     self.simu_wrapper.nproc)
 
             if verbose:
                 print('finished', len(light_curves), time.time()-time_ref)
@@ -1250,6 +1254,8 @@ class SimuWrapper:
         from sn_tools.sn_utils import simu_params_from_file
         self.simuParamsFile = simu_params_from_file(config['SN'])
         """
+
+        self.nproc = config['MultiprocessingSimu']['nproc']
 
     def getRefFile(self, web_path, refdir, fname):
         """
