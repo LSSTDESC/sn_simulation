@@ -485,7 +485,7 @@ class SN(SN_Object):
             np.savetxt('{}/{}.dat'.format(SALT2Dir, vv),
                        data, fmt=['%1.2f', '%4d', '%.7e', ])
 
-    def __call__(self, obs, display=False, time_display=0., lc_coadd=0):
+    def __call__(self, obs, display=False, time_display=0., lc_coadd=0, snr_min=1):
         """ Simulation of the light curve
 
         Parameters
@@ -500,6 +500,8 @@ class SN(SN_Object):
           default: 0
          lc_coadd: int, opt
            to coadd lc fluxes
+         snr_min: float, opt. The default is 0.
+           min snr required for LC points (before smearing). The default is 1.
 
         Returns
         -----------
@@ -728,6 +730,9 @@ class SN(SN_Object):
 
         # smear lc fluxes
         if self.sn_smearFlux:
+            idx = lcdf['snr'] >= snr_min
+            lcdf = lcdf[idx]
+
             lcdf['flux'] = lcdf['flux']+np.random.normal(0., lcdf['fluxerr'])
             lcdf.loc[lcdf.flux < 0, 'flux'] = 0.
             lcdf['snr'] = lcdf['flux']/lcdf['fluxerr']

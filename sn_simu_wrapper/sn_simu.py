@@ -64,6 +64,7 @@ class SNSimu_Params:
         self.moonCol = moonCol
         self.obs_coadd = config['Observations']['coadd']
         self.lc_coadd = config['LC']['coadd']
+        self.lc_snrmin = config['LC']['snrmin']
 
         # load stacker
         self.stacker = self.load_stacker(config['Observations']['coadd'])
@@ -589,6 +590,7 @@ class SNSimulation(SNSimu_Params):
         par['obs'] = obs
         par['nspectra'] = self.sn_parameters['nspectra']
         par['lc_coadd'] = self.lc_coadd
+        par['lc_snrmin'] = self.lc_snrmin
 
         list_lc = self.simuLoop(gen_simu_params, par, imulti)
 
@@ -736,6 +738,7 @@ class SNSimulation(SNSimu_Params):
             par['obs'] = obs
             par['nspectra'] = self.sn_parameters['nspectra']
             par['lc_coadd'] = self.lc_coadd
+            par['lc_snrmin'] = self.lc_snrmin
             """
             import matplotlib.pyplot as plt
             fig, ax = plt.subplots()
@@ -1039,6 +1042,7 @@ class SNSimulation(SNSimu_Params):
         # print('multiproc simu', j, len(gen_params))
         obs = params['obs']
         lc_coadd = params['lc_coadd']
+        lc_snrmin = params['lc_snrmin']
 
         lsst_start = -1
         if 'lsst_start' in obs.dtype.names:
@@ -1053,9 +1057,9 @@ class SNSimulation(SNSimu_Params):
 
         if 'sn_fast' not in self.simu_config['name']:
             lc_list, lc_list_keep, tab_meta, sed_list = self.loop_gen(
-                obs, gen_params, lc_coadd, j, lc_out)
+                obs, gen_params, lc_coadd, lc_snrmin, j, lc_out)
         else:
-            lc_list = self.simuLCs(obs, gen_params, lc_coadd)
+            lc_list = self.simuLCs(obs, gen_params, lc_coadd, lc_snrmin)
             if not self.throwafterdump:
                 import copy
                 lc_list_keep = copy.deepcopy(lc_list)
@@ -1147,7 +1151,7 @@ class SNSimulation(SNSimu_Params):
 
         df_spectra.to_hdf(sed_out, key='spec_data')
 
-    def loop_gen(self, obs, gen_params, lc_coadd, j, lc_out):
+    def loop_gen(self, obs, gen_params, lc_coadd, lc_snrmin, j, lc_out):
         """
         Method to generate LCs by looping on genparams
 
@@ -1159,6 +1163,8 @@ class SNSimulation(SNSimu_Params):
             simulation parameters.
         lc_coadd: int
            to coadd lc fluxes.
+        lc_snrmin: float
+           min SNR required befoe flux smearing
         j : int
             tag for SNID and output file.
         lc_out : str
@@ -1186,7 +1192,7 @@ class SNSimulation(SNSimu_Params):
             season = genpar['season']
             idx = obs['season'] == season
             obs_season = obs[idx]
-            lc, sed = self.simuLCs(obs_season, genpar, lc_coadd)
+            lc, sed = self.simuLCs(obs_season, genpar, lc_coadd, lc_snrmin)
             if len(lc) == 0:
                 continue
 
@@ -1276,7 +1282,7 @@ class SNSimulation(SNSimu_Params):
         if os.path.exists(fileName):
             os.remove(fileName)
 
-    def simuLCs(self, obs, gen_params, lc_coadd):
+    def simuLCs(self, obs, gen_params, lc_coadd, lc_snrmin):
         """ Generate LC for one season and a set of simu parameters
 
         Parameters
@@ -1287,6 +1293,8 @@ class SNSimulation(SNSimu_Params):
            generation parameters
         lc_coadd: int.
            to coadd lc fluxes.
+        lc_snrmin: float.
+           Min snr required before flux smearing.
 
         Returns
         ----------
@@ -1331,7 +1339,8 @@ class SNSimulation(SNSimu_Params):
                          self.reference_lc, self.dustcorr,
                          dust_map=self.dust_map)
         # simulation - this is supposed to be a list of astropytables
-        lc_table = simu(obs, self.display_lc, self.time_display, lc_coadd)
+        lc_table = simu(obs, self.display_lc,
+                        self.time_display, lc_coadd, lc_snrmin)
 
         seds = []
         nspectra = self.sn_parameters['nspectra']
