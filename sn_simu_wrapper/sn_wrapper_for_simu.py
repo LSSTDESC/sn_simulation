@@ -802,7 +802,7 @@ class SimInfoFitWrapper:
             idx = obs['season'] == seas
             obs_seas = obs[idx]
             if not self.obs_quality(obs_seas):
-                print('bad obs quality', seas, len(obs_seas))
+                # print('bad obs quality', seas, len(obs_seas))
                 continue
 
             # update config for simu
