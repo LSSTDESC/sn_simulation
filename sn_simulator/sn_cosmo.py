@@ -730,12 +730,14 @@ class SN(SN_Object):
 
         # smear lc fluxes
         if self.sn_smearFlux:
+            """
             idx = lcdf['snr'] >= snr_min
             lcdf = lcdf[idx]
-
+            """
             lcdf['flux'] = lcdf['flux']+np.random.normal(0., lcdf['fluxerr'])
-            lcdf.loc[lcdf.flux < 0, 'flux'] = 0.
-            lcdf['snr'] = lcdf['flux']/lcdf['fluxerr']
+            if self.lc_coadd != 1:
+                lcdf.loc[lcdf.flux < 0, 'flux'] = 0.
+                lcdf['snr'] = lcdf['flux']/lcdf['fluxerr']
 
         # smear atmos parameters
         # print('before', lcdf[['airmass', 'pwv', 'ozone', 'aerosol']])

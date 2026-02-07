@@ -80,7 +80,7 @@ Cosmology wa 0.0 float #cosmology wa
 
 #Light curve
 LC coadd 1 int #to coadd LC fluxes
-LC snrmin 1. float #min SNR before flux smearing
+LC snrmin 0. float #min SNR before flux smearing
 
 ## Instrument
 InstrumentSimu name LSST str #instrument name
