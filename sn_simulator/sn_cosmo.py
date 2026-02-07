@@ -735,7 +735,7 @@ class SN(SN_Object):
             lcdf = lcdf[idx]
             """
             lcdf['flux'] = lcdf['flux']+np.random.normal(0., lcdf['fluxerr'])
-            if self.lc_coadd != 1:
+            if lc_coadd != 1:
                 lcdf.loc[lcdf.flux < 0, 'flux'] = 0.
                 lcdf['snr'] = lcdf['flux']/lcdf['fluxerr']
 
