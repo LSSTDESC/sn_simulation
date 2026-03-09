@@ -361,6 +361,7 @@ class SN(SN_Object):
         if self.sn_parameters['x0']['griddata']:
             self.X0 = self.get_x0_from_grid(self.dL)
         else:
+            print('loading x0 from sncosmo: are you sure?')
             self.X0 = self.get_x0()
 
         # set X0

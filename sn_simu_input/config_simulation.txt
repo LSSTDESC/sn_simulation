@@ -66,7 +66,9 @@ SN nspectra 0 int #Number of spectra to generate
 SN smearFlux 1 int #LC flux smearing
 SN alpha 0.13 float #nuisance parameter (alpha)
 SN beta 3.1 float #nuisance parameter (beta)
-SN x0 griddata 0 int #to extract x0 from griddata
+SN x0 griddata 1 int #to extract x0 from griddata
+SN x0 normfile x0_norm_-19.0906_salt3.npy str #x0 norm file
+SN x0 filedir reference_files str #x0 norm file dir
 ##Simulation parameters(from file)
 SN simuFile None str # simulation parameter file
 
@@ -115,9 +117,6 @@ InstrumentSimu min_ozone 0.0 float #ozone min after smearing
 InstrumentSimu max_ozone 600. float #ozone max after smearing
 #number of trial to estimate zp
 InstrumentSimu ntrial_zp 1 int #ntrial to estimate zp vs airmass
-
-
-
 
 
 ##Observations

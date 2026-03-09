@@ -31,7 +31,9 @@ class SNSimu_Params:
                  vistimeCol, seeingEffCol,
                  airmassCol,
                  skyCol, moonCol,
-                 seeingGeomCol, config, dust_map, zp_airmass=None):
+                 seeingGeomCol, config, dust_map, 
+                 x0_norm=None,
+                 zp_airmass=None):
         """
         Class to load simulation parameters
 
@@ -158,7 +160,7 @@ class SNSimu_Params:
         self.type = 'simulation'
 
         # get the x0_norm values to be put on a 2D(x1,color) griddata
-        # self.x0_grid = x0_norm
+        self.x0_grid = x0_norm
 
         # SALT2DIR
         self.salt2Dir = self.sn_parameters['salt2Dir']
@@ -556,6 +558,7 @@ class SNSimulation(SNSimu_Params):
                  skyCol='sky', moonCol='moonPhase',
                  seeingGeomCol='seeingFwhmGeom',
                  uniqueBlocks=False, config=None, dust_map=None,
+                 x0_norm=None,
                  zp_airmass=None, **kwargs):
         super().__init__(mjdCol=mjdCol,
                          RACol=RACol, DecCol=DecCol,
@@ -567,7 +570,10 @@ class SNSimulation(SNSimu_Params):
                          airmassCol=airmassCol,
                          skyCol=skyCol, moonCol=moonCol,
                          seeingGeomCol=seeingGeomCol,
-                         config=config, dust_map=dust_map, zp_airmass=zp_airmass)
+                         config=config, 
+                         dust_map=dust_map, 
+                         x0_norm=x0_norm,
+                         zp_airmass=zp_airmass)
 
     def run(self, obs, gen_simu_params, slicePoint=None, imulti=0):
         """ LC simulations
@@ -1313,15 +1319,13 @@ class SNSimulation(SNSimu_Params):
 
         SNID = sn_par['Id']
 
-        # print('aoooo',self.sn_parameters)
-        # print(test)
         sn_object = SN_Object(self.simu_config['name'],
                               sn_par,
                               self.simulator_parameters,
                               gen_params,
                               self.cosmology,
                               SNID, self.area,
-                              x0_grid=None,
+                              x0_grid=self.x0_grid,
                               salt2Dir=self.salt2Dir,
                               mjdCol=self.mjdCol,
                               RACol=self.RACol,

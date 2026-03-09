@@ -750,6 +750,7 @@ class SimInfoFitWrapper:
         self.seasons = load_season(config_simu['Observations']['season'])
 
         # getting zeropoints vs airmass
+        print('aooo',config_simu['InstrumentSimu'])
         self.zp_atmos = zp_from_config(config_simu['InstrumentSimu'])
 
         # info required for obs_quality
@@ -1215,10 +1216,11 @@ class SimuWrapper:
         # self.metric = SNMAFSimulation(config=config, x0_norm=x0_tab,
         #                              reference_lc=reference_lc,
         #                              coadd=config['Observations']['coadd'])
-
+        
+        """
         self.metric = SNSimulation(
             config=config, x0_norm=x0_tab, zp_airmass=zp_airmass)
-
+        """
         self.prodid = config['ProductionIDSimu']
         self.outlc = []
 
@@ -1248,7 +1250,8 @@ class SimuWrapper:
         else:
             dust_map = pd.read_hdf(fName)
         self.metric = SNSimulation(
-            config=config, dust_map=dust_map, zp_airmass=zp_airmass)
+            config=config, dust_map=dust_map, 
+            x0_norm=x0_tab,zp_airmass=zp_airmass)
         """
         # simu params from file
         from sn_tools.sn_utils import simu_params_from_file
@@ -1299,12 +1302,15 @@ class SimuWrapper:
         """
         # check whether X0_norm file exist or not
         # (and generate it if necessary)
-        absMag = config['SN']['absmag']
-        x0normFile = 'reference_files/X0_norm_{}.npy'.format(absMag)
-        if not os.path.isfile(x0normFile):
+        #absMag = config['SN']['absmag']
+        #x0normFile = 'reference_files/X0_norm_{}.npy'.format(absMag)
+        x0normFile = config['SN']['x0']['normfile']
+        x0normDir = config['SN']['x0']['filedir']
+        x0fullpath = '{}/{}'.format(x0normDir,x0normFile)
+        
+        if not os.path.isfile(x0fullpath):
             # if this file does not exist, grab it from a web server
-            check_get_file(config['WebPathSimu'], 'reference_files',
-                           'X0_norm_{}.npy'.format(absMag))
+            check_get_file(config['WebPathSimu'], x0normDir,x0normFile)
 
         if not os.path.isfile(x0normFile):
             # if the file could not be found, then have to generate it!
