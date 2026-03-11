@@ -1311,6 +1311,7 @@ class SimuWrapper:
             # if this file does not exist, grab it from a web server
             check_get_file(config['WebPathSimu'], x0normDir,x0normFile)
 
+        """
         if not os.path.isfile(x0normFile):
             # if the file could not be found, then have to generate it!
             salt2Dir = config['SN']['salt2Dir']
@@ -1323,8 +1324,8 @@ class SimuWrapper:
             from sn_tools.sn_utils import X0_norm
             X0_norm(salt2Dir=salt2Dir, model=model, version=version,
                     absmag=absMag, outfile=x0normFile)
-
-        return np.load(x0normFile)
+        """
+        return np.load(x0fullpath)
 
     def run(self, obs, gen_simu_params, imulti=0):
         """
