@@ -750,7 +750,6 @@ class SimInfoFitWrapper:
         self.seasons = load_season(config_simu['Observations']['season'])
 
         # getting zeropoints vs airmass
-        print('aooo',config_simu['InstrumentSimu'])
         self.zp_atmos = zp_from_config(config_simu['InstrumentSimu'])
 
         # info required for obs_quality
