@@ -372,10 +372,32 @@ class SNSimu_Params:
 
         """
 
+        """
         cosmology = w0waCDM(H0=cosmo_par['H0'],
                             Om0=cosmo_par['Om'],
                             Ode0=cosmo_par['Ol'],
                             w0=cosmo_par['w0'], wa=cosmo_par['wa'])
+        """
+        
+        de_values = cosmo_par['devalues'].split(',')
+        de_params = cosmo_par['deparams'].split(',')
+
+        de_values = list(map(float,de_values))
+        
+        params = {}
+        params['de_params'] = dict(zip(de_params,de_values))
+        params['de_class'] = cosmo_par['declass']
+        params['class_loc'] = cosmo_par['classloc']
+        params['de_model'] = cosmo_par['demodel']  
+        params['de_eos'] = cosmo_par['deeos']
+        params['H0'] = cosmo_par['H0']
+        params['Om0'] = cosmo_par['Om0']
+        params['Ode0'] = cosmo_par['Ode0']
+
+        from sn_tools.sn_cosmo_model import cosmo_wrapper
+        
+        cosmology = cosmo_wrapper(params)
+        
         return cosmology
 
     def loadReference(self, templateDir, lcname, gammaDir,
