@@ -824,7 +824,7 @@ class SNSimulation(SNSimu_Params):
         obs = self.set_atmos_params(obs)
 
         # register throughputs for sn_cosmo
-        idx = obs['airmass'] <= 3.0
+        idx = obs['airmass'] <= 2.5
         obs = obs[idx]
 
         if len(obs) < 2:
