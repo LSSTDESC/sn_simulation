@@ -31,6 +31,7 @@ SN z weight sn_rate str #SN z weight(sn_rate/flat)
 SN z maxsimu 1.1 float # SN max z for rate
 SN z minsimu 0.01 float # SN max z for rate
 SN z sigmaz 1.e-5 float # redshift error to be propagated to zsim
+SN z nbins 10 int #number of z-bins for simulation
 # daymax
 SN daymax type unique str #SN daymax type
 SN daymax step 1. float #SN daymax step
