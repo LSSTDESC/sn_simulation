@@ -1236,16 +1236,18 @@ class SimuWrapper:
         # check if the dust map is available in reference_files
         # if not: load it from web
         # if not available: consider producing it!
-        fName = 'reference_files/dustmap_{}.hdf5'.format(nside)
+        dustName = 'dustmap_{}_delta_mag_dust.hdf5'.format(nside)
+        fName = 'reference_files/{}'.format(dustName)
         if not os.path.isfile(fName):
             self.getRefFile(
-                config['WebPathSimu'], 'reference_files', 'dustmap_{}.hdf5'.format(nside))
+                config['WebPathSimu'], 'reference_files', dustName)
 
         dust_map = pd.DataFrame()
         if not os.path.isfile(fName):
             print('File', fName, 'not found')
             print('You should consider using the following script to gen it')
             print('python run_scripts/dust_for_fast/gen_disp_dustmap.py')
+            print('followed by python run_scripts/dust_for_fast/dust_rx.py')
         else:
             dust_map = pd.read_hdf(fName)
         self.metric = SNSimulation(

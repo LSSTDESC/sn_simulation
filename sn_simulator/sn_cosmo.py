@@ -573,10 +573,14 @@ class SN(SN_Object):
 
         ebvofMW = self.sn_parameters['ebvofMW']
 
+        idx = self.dust_map['healpixID'] == pix['healpixID']
+        sel = self.dust_map[idx]
         if ebvofMW < 0:
-            idx = self.dust_map['healpixID'] == pix['healpixID']
-            sel = self.dust_map[idx]
             ebvofMW = sel['ebvofMW'].mean()
+
+        #grab delta_mag values due to dust
+        #these values have to be **subtracted** from mag_no_dust
+        
 
         self.SN.set(mwebv=ebvofMW)
 
