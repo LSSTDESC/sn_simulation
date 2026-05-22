@@ -1239,9 +1239,9 @@ class SimuWrapper:
         dustName = 'dustmap_{}_delta_mag_dust.hdf5'.format(nside)
         fName = 'reference_files/{}'.format(dustName)
         if not os.path.isfile(fName):
-            self.getRefFile(
-                config['WebPathSimu'], 'reference_files', dustName)
-
+            path = '{}'.format(config['WebPathSimu'])
+            self.getRefFile(path, 'reference_files', dustName)
+            
         dust_map = pd.DataFrame()
         if not os.path.isfile(fName):
             print('File', fName, 'not found')
@@ -1280,14 +1280,20 @@ class SimuWrapper:
 
         """
         fullname = '{}/dust_maps/{}'.format(web_path, fname)
-
+        print('wget path:', fullname)
+        cmd = 'wget --no-clobber --no-verbose {} --directory-prefix {}'.format(
+                fullname, refdir)
+        os.system(cmd)
+        
+        """
+        print('alllllllllll',fullname)
         # check whether the file is available; if not-> get it!
         if not os.path.isfile(fname):
             print('wget path:', fullname)
             cmd = 'wget --no-clobber --no-verbose {} --directory-prefix {}'.format(
                 fullname, refdir)
             os.system(cmd)
-
+        """
     def x0(self, config):
         """
         Method to load x0 data

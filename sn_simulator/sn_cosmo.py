@@ -574,13 +574,26 @@ class SN(SN_Object):
         ebvofMW = self.sn_parameters['ebvofMW']
 
         idx = self.dust_map['healpixID'] == pix['healpixID']
-        sel = self.dust_map[idx]
+        sel_dust = self.dust_map[idx]
         if ebvofMW < 0:
-            ebvofMW = sel['ebvofMW'].mean()
+            ebvofMW = sel_dust['ebvofMW'].mean()
 
         #grab delta_mag values due to dust
-        #these values have to be **subtracted** from mag_no_dust
+        #these values have to be added to  mag_no_dust
         
+        bands = 'grizy'
+        prefix = 'delta_mag'
+        cols = []
+        for b in bands:
+            cols.append('{}_{}'.format(prefix,b))
+        
+        dd = sel_dust[cols].to_dict('list')
+        
+        ro = []
+        for key,vals in dd.items():
+            ro.append((key.split('delta_mag_')[1],vals[0]))
+            
+        self.delta_mag = pd.DataFrame(ro,columns=['filter','delta_mag_ism'])
 
         self.SN.set(mwebv=ebvofMW)
 
@@ -605,6 +618,7 @@ class SN(SN_Object):
                                         ra, dec, pix, area, season,
                                         season_length,
                                         ti, ebvofMW)
+
 
         lsst_start = -1
         mjd_max = -1.0
@@ -693,7 +707,10 @@ class SN(SN_Object):
         lcdf['mag'] = lcdf['mag'].replace([np.inf, -np.inf], self.mag_inf)
 
         # flux error
-        flux5 = 10**(-0.4*(lcdf[self.m5Col]-lcdf['zp']))
+        #correct m5 for galactic extinction
+        lcdf = lcdf.merge(self.delta_mag,left_on=['filter'],right_on=['filter'])
+        
+        flux5 = 10**(-0.4*(lcdf[self.m5Col]+lcdf['delta_mag_ism']-lcdf['zp']))
         sigma_5 = flux5/5.
         shot_noise = np.sqrt(lcdf['flux']/lcdf[self.exptimeCol])
         # shot_noise = 0.0
