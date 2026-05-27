@@ -718,7 +718,8 @@ class SimInfoFitWrapper:
         # self.config_instr = config_simu['InstrumentSimu']
         self.config_simu = config_simu
         self.infoDict = infoDict
-        self.yaml_config_fit = yaml_config_fit
+        #self.yaml_config_fit = yaml_config_fit
+        self.config_fit = load_config(yaml_config_fit)
         self.fit_remove_sat_str = fit_remove_sat = fit_remove_sat
         """
         self.simu_wrapper = SimuWrapper(yaml_config_simu)
@@ -729,19 +730,19 @@ class SimInfoFitWrapper:
         self.outName = ''
 
         self.ccolref = []
-        fw = load_config(self.yaml_config_fit)
+        #fw = load_config(self.yaml_config_fit)
 
-        if fw['OutputFit']['save']:
+        if self.config_fit['OutputFit']['save']:
             simu_wrapper = load_config(self.config_simu)
             outFile = 'SN_{}.hdf5'.format(simu_wrapper['ProductionIDSimu'])
-            self.outName = '{}/{}'.format(fw['OutputFit']
+            self.outName = '{}/{}'.format(self.config_fit['OutputFit']
                                           ['directory'], outFile)
             # check wether this file already exist and remove it
             # import os
             if os.path.isfile(self.outName):
                 os.system('rm {}'.format(self.outName))
             del simu_wrapper
-        del fw
+        #del fw
         self.outdf = pd.DataFrame()
 
         # grab seasons
@@ -774,9 +775,100 @@ class SimInfoFitWrapper:
 
         self.simu_wrapper = SimuWrapper(self.config_simu, self.zp_atmos)
         self.info_wrapper = InfoWrapper(self.infoDict)
-        self.fit_wrapper = FitWrapper(self.yaml_config_fit)
+        self.fit_wrapper = FitWrapper(self.config_fit)
         self.fit_remove_sat = list(
             map(int, self.fit_remove_sat_str.split(',')))
+
+    def run_old(self, obs, imulti=0, verbose=True):
+        """
+        Parameters
+        ----------
+        obs : array
+            array of observations
+        imulti : int, optional
+            internal tag. The default is 0.
+        verbose : bool, optional
+            To print infos. The default is False.
+
+        Returns
+        -------
+        None.
+
+        """
+        
+        df_fi = pd.DataFrame()
+        
+        for i, seas in enumerate(self.seasons):
+
+            obs_seas, gen_simu_params = self.get_obs_seasons(obs,seas)
+        
+            if gen_simu_params is None:
+                continue
+            
+            print('number of LC to simulate',len(gen_simu_params))
+            #print(gen_simu_params)
+            # update config for simu
+            self.config_simu['Observations']['season'] = '{}'.format(seas)
+            self.config_fit['MultiprocessingFit']['nproc']=1
+            #instances 
+            
+            self.instances()
+
+            #add obs params (atmos, zp, ...)
+            obs_seas = self.simu_wrapper.set_atmos_and_throughput(obs_seas)
+
+            #sim info fit using multiproc
+            from sn_tools.sn_utils import multiproc
+              
+            params = {}
+            params['obs'] = obs_seas
+            self.outdf = multiproc(gen_simu_params, params,
+                                 self.sim_info_fit_multi,
+                                 self.simu_wrapper.nproc)
+            
+        
+    def sim_info_fit_multi(self,gen_params, params, j=0, output_q=None):
+        """
+        Method to perform the sim-info-fit stages using multiprocessing
+
+        Parameters
+        ----------
+        gen_params : array
+            simulation parameters
+        params : dict
+            parameters.
+        j : int, optional
+            internal tag for multiprocessing. The default is 0.
+        output_q : multiprocessing queue, optional
+            where to put the results. The default is None.
+
+        Returns
+        -------
+        pandas df
+            result.
+
+        """
+        
+        obs = params['obs']
+        
+        df_sn = pd.DataFrame()
+        for gg in gen_params:
+            
+            light_curves = self.simu_wrapper(obs, [gg], j)
+            light_curves_ana = self.info_wrapper(light_curves)
+            # fitting her
+            for rr in self.fit_remove_sat:
+                fitlc = self.fit_wrapper(light_curves_ana, remove_sat=rr)
+                if len(fitlc) > 0:
+                    fitlc['remove_sat'] = rr
+                    df = self.myconcat(fitlc)
+                    df_sn = pd.concat((df_sn,df))
+                    
+        if output_q is not None:
+            return output_q.put({j: df_sn})
+        else:
+            return df_sn    
+        
 
     def run(self, obs, imulti=0, verbose=False):
         """
@@ -799,12 +891,12 @@ class SimInfoFitWrapper:
             obs = seasoncalc(obs, season_gap=50., force_calc=True)
 
         for i, seas in enumerate(self.seasons):
-            idx = obs['season'] == seas
-            obs_seas = obs[idx]
-            if not self.obs_quality(obs_seas):
-                # print('bad obs quality', seas, len(obs_seas))
+           
+            obs_seas, gen_simu_params = self.get_obs_seasons(obs,seas)
+           
+            if gen_simu_params is None:
                 continue
-
+            
             # update config for simu
             self.config_simu['Observations']['season'] = '{}'.format(seas)
 
@@ -812,13 +904,15 @@ class SimInfoFitWrapper:
 
             self.instances()
 
+            #add obs params (atmos, zp, ...)
+            obs_seas = self.simu_wrapper.set_atmos_and_throughput(obs_seas)
             # grab SNe Ia simulation parameters
             """
             gen_simu_params = simu_params(obs, [seas],
                                           self.simu_wrapper.simuParamsFile,
                                           self.simu_wrapper.gen_par)
             """
-            gen_simu_params = self.simu_wrapper.simu_par_gen(obs, seas)
+            #gen_simu_params = self.simu_wrapper.simu_par_gen(obs, seas)
 
             if gen_simu_params is None:
                 continue
@@ -827,7 +921,7 @@ class SimInfoFitWrapper:
             # run
             params = {}
             params['obs'] = obs_seas
-            params['verbose'] = False
+            params['verbose'] = verbose
             params['imulti'] = imulti
             # self.run_season_new(obs_seas, gen_simu_params,imulti)
             from sn_tools.sn_utils import multiproc
@@ -852,20 +946,98 @@ class SimInfoFitWrapper:
                 fitlc = self.fit_wrapper(light_curves_ana, remove_sat=rr)
                 if len(fitlc) > 0:
                     fitlc['remove_sat'] = rr
-                    self.myconcat(fitlc)
+                    self.myconcat_deprecated(fitlc)
 
             if verbose:
                 print('end of fitting', time.time()-time_ref)
 
-    def run_season_simulc(self, gen_params, params, j=0, output_q=None):
+    def get_obs_seasons(self,obs,seas):
+        """
+        Method to select seasons of good quality and to 
 
+        Parameters
+        ----------
+        obs : numpy array
+            obseervations.
+
+        Returns
+        -------
+        obs_seas : numpy array
+            obs/season of "good quality".
+        gen_simu_params : numpy array
+            parameters for the simulation
+
+        """
+        if 'season' not in obs.dtype.names:
+            from sn_tools.sn_obs import season as seasoncalc
+            obs = seasoncalc(obs, season_gap=50., force_calc=True)
+
+        gen_simu_params = None
+        
+        idx = obs['season'] == seas
+        obs_seas = obs[idx]
+        if not self.obs_quality(obs_seas):
+            return obs_seas,gen_simu_params
+
+        simu_par = self.simu_par_gen()
+        gen_simu_params = simu_par(obs_seas, seas)
+                
+        
+        return obs_seas,gen_simu_params
+
+    def simu_par_gen(self,mjdCol='observationStartMJD'):
+        """
+        Method to get an instance of the  SN_simu_params class
+
+        Parameters
+        ----------
+        mjdCol : str, optional
+            mjd col name. The default is 'observationStartMJD'.
+
+        Returns
+        -------
+        res : SN_simu_params instance
+
+        """
+        
+        # gen simu parameters instance
+        
+        import healpy as hp
+        nside = self.config_simu['Pixelisation']['nside']
+        area = hp.nside2pixarea(nside, degrees=True)
+        from sn_tools.sn_utils import SN_simu_params
+        res = SN_simu_params(self.config_simu['SN'], 
+                             self.config_simu['Cosmology'],
+                             mjdCol=mjdCol, area=area,
+                             web_path=self.config_simu['WebPathSimu'])
+        
+        return res
+        
+    def run_season_simulc(self, gen_params, params, j=0, output_q=None):
+        """
+        LC simulation per season using multiproc
+
+        Parameters
+        ----------
+        gen_params : numpy array
+            simulation parameters.
+        params : dict
+            parameters.
+        j : int, optional
+            internal tag for multiprocessing. The default is 0.
+        output_q : multiprocessing queue, optional
+            where to put the results. The default is None.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
+        
         obs = params['obs']
         verbose = params['verbose']
         imulti = params['imulti']
-        if verbose:
-            import time
-            time_ref = time.time()
-            print('simulation')
 
         light_curves = self.simu_wrapper(obs, gen_params, j)
 
@@ -1122,8 +1294,38 @@ class SimInfoFitWrapper:
 
         # print('dumping df', len(self.outdf))
         self.outdf.to_hdf(self.outName, key='SN', append=True)
-
+        
     def myconcat(self, fitlc):
+        """
+        Method to concat a set of astropy tables with a pandas df
+
+        Parameters
+        ----------
+        fitlc : astropy table
+            Data to concat.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        fitlc.convert_bytestring_to_unicode()
+        df = pd.DataFrame(fitlc.to_pandas())
+
+        if 'selected' in df.columns:
+            df = df.drop(columns=['selected'])
+
+        if not self.ccolref:
+            self.ccolref = df.columns.to_list()
+        else:
+            df = df.reindex(columns=self.ccolref)
+
+        #self.outdf = pd.concat((self.outdf, df))
+        #print('alllll',len(self.outdf))
+        return df
+        
+    def myconcat_deprecated(self, fitlc):
         """
         Method to concat a set of astropy tables with a pandas df
 
@@ -1161,6 +1363,7 @@ class SimInfoFitWrapper:
 
         """
 
+        print('finishing and dumping',len(self.outdf))
         if len(self.outdf) > 0:
             self.dump_df()
 
@@ -1193,6 +1396,7 @@ class SimuWrapper:
             metapath = '{}/{}.hdf5'.format(outDir,
                                            prodid.replace('LC', 'Simu'))
             self.lc_out = lcpath
+            print('there man',self.lc_out)
             self.meta_out = metapath
             self.outDir = outDir
 
@@ -1224,18 +1428,20 @@ class SimuWrapper:
         self.outlc = []
 
         # gen simu parameters instance
-
+        """
         import healpy as hp
         nside = config['Pixelisation']['nside']
         area = hp.nside2pixarea(nside, degrees=True)
+        
         from sn_tools.sn_utils import SN_simu_params
         self.simu_par_gen = SN_simu_params(config['SN'], config['Cosmology'],
                                            mjdCol=mjdCol, area=area,
                                            web_path=config['WebPathSimu'])
-
+        """
         # check if the dust map is available in reference_files
         # if not: load it from web
         # if not available: consider producing it!
+        nside = config['Pixelisation']['nside']
         dustName = 'dustmap_{}_delta_mag_dust.hdf5'.format(nside)
         fName = 'reference_files/{}'.format(dustName)
         if not os.path.isfile(fName):
@@ -1347,7 +1553,7 @@ class SimuWrapper:
         """
 
         light_curves = self.metric.run(obs, gen_simu_params, imulti=imulti)
-
+        
         if light_curves is None:
             return None
 
@@ -1424,6 +1630,11 @@ class SimuWrapper:
                 self.meta_table, self.meta_out, path='metadata',
                 append=True, serialize_meta=True)
 
+    def set_atmos_and_throughput(self,obs):
+
+        obs = self.metric.set_atmos_and_throughput(obs)
+    
+        return obs
 
 class InfoFitWrapper:
     def __init__(self, infoDict, yaml_config_fit):

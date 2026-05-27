@@ -5,7 +5,7 @@ import time
 # import multiprocessing
 import astropy
 from astropy.table import Table, vstack, unique
-from astropy.cosmology import w0waCDM
+#from astropy.cosmology import w0waCDM
 from importlib import import_module
 from sn_simu_wrapper.sn_object import SN_Object
 from sn_tools.sn_utils import SimuParameters, multiproc
@@ -611,8 +611,11 @@ class SNSimulation(SNSimu_Params):
             obs = self.stacker._run(obs, atmosType=self.atmosType)
         # np.save('obs_coadd.npy', obs)
 
+        import time
+        time_ref = time.time()
+
         # set atmos params and throughputs
-        obs = self.set_atmos_and_throughput(obs)
+        #obs = self.set_atmos_and_throughput(obs)
 
         par = {}
         par['obs'] = obs
@@ -1167,6 +1170,7 @@ class SNSimulation(SNSimu_Params):
         df_lc = df_lc.rename(columns=rename_dict)
         cols = ['sn', 'mjd', 'flux', 'fluxerr', 'band', 'magsys', 'exptime',
                 'valid', 'lc', 'zp', 'mag_sky', 'seeing']
+        
         df_lc[cols].to_hdf(lc_out, key='lc_data')
 
         # spectra
