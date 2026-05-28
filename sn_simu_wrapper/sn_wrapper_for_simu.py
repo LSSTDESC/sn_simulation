@@ -779,7 +779,7 @@ class SimInfoFitWrapper:
         self.fit_remove_sat = list(
             map(int, self.fit_remove_sat_str.split(',')))
 
-    def run_old(self, obs, imulti=0, verbose=True):
+    def run_test(self, obs, imulti=0, verbose=True):
         """
         Parameters
         ----------
@@ -796,7 +796,7 @@ class SimInfoFitWrapper:
 
         """
         
-        df_fi = pd.DataFrame()
+        #df_fi = pd.DataFrame()
         
         for i, seas in enumerate(self.seasons):
 
@@ -825,7 +825,9 @@ class SimInfoFitWrapper:
             self.outdf = multiproc(gen_simu_params, params,
                                  self.sim_info_fit_multi,
                                  self.simu_wrapper.nproc)
-            
+            #dump the data here - to avoid mem pbs?
+            self.dump_df()
+            self.outdf = pd.DataFrame()
         
     def sim_info_fit_multi(self,gen_params, params, j=0, output_q=None):
         """
@@ -950,6 +952,9 @@ class SimInfoFitWrapper:
 
             if verbose:
                 print('end of fitting', time.time()-time_ref)
+            #dump the data here - to avoid mem pbs?
+            self.dump_df()
+            self.outdf = pd.DataFrame()
 
     def get_obs_seasons(self,obs,seas):
         """
