@@ -983,6 +983,12 @@ class SimInfoFitWrapper:
         
         idx = obs['season'] == seas
         obs_seas = obs[idx]
+        
+        nepochs = len(np.unique(obs_seas['night']))
+        
+        if nepochs < 10:
+            return obs_seas,None
+        
         if not self.obs_quality(obs_seas):
             return obs_seas,gen_simu_params
 
