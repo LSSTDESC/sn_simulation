@@ -988,7 +988,7 @@ class SimInfoFitWrapper:
         
         nepochs = len(np.unique(obs_seas['night']))
         
-        if nepochs < 10 or season_length<=100:
+        if nepochs < 10 or season_length<=50:
             return obs_seas,None
         
         if not self.obs_quality(obs_seas):
