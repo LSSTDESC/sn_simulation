@@ -958,7 +958,7 @@ class SimInfoFitWrapper:
             self.dump_df()
             self.outdf = pd.DataFrame()
 
-    def get_obs_seasons(self,obs,seas):
+    def get_obs_seasons(self,obs,seas,mjdCol='observationStartMJD'):
         """
         Method to select seasons of good quality and to 
 
@@ -984,9 +984,11 @@ class SimInfoFitWrapper:
         idx = obs['season'] == seas
         obs_seas = obs[idx]
         
+        season_length = np.max(obs_seas[mjdCol])-np.min(obs_seas[mjdCol])
+        
         nepochs = len(np.unique(obs_seas['night']))
         
-        if nepochs < 10:
+        if nepochs < 10 or season_length<=100:
             return obs_seas,None
         
         if not self.obs_quality(obs_seas):
@@ -1400,6 +1402,7 @@ class SimuWrapper:
         self.lc_out = None
         self.meta_table = Table()
         self.meta_out = None
+        self.mjdCol = mjdCol
         if self.saveData_simu:
             from sn_tools.sn_io import checkDir
             outDir = config['OutputSimu']['directory']
