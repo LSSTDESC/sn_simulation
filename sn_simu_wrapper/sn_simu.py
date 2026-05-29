@@ -816,12 +816,14 @@ class SNSimulation(SNSimu_Params):
                   'pixRA', 'pixDec',
                   'healpixID', 'season', 'sky', 'moonPhase',
                   'seeingFwhmEff', 'seeingFwhmGeom', 'note',
-                  'filter', 'night', 'visitExposureTime',
+                  'filter', 'band','night', 'visitExposureTime',
                   'fiveSigmaDepth', 'visitExposureTime',
                   'airmass', 'pwv', 'ozone', 'aerosol', 'lsst_start']
 
         ccols_ = list(set(ccolsa) & set(ccolsb))
         obs = obs[ccols_]
+
+        obs['filter'] = obs['band']
 
         # add atmospheric parameters here
         obs = self.set_atmos_params(obs)

@@ -801,7 +801,6 @@ class SimInfoFitWrapper:
         for i, seas in enumerate(self.seasons):
 
             obs_seas, gen_simu_params = self.get_obs_seasons(obs,seas)
-        
             if gen_simu_params is None:
                 continue
             
@@ -888,6 +887,8 @@ class SimInfoFitWrapper:
         None.
 
         """
+        
+        
         if 'season' not in obs.dtype.names:
             from sn_tools.sn_obs import season as seasoncalc
             obs = seasoncalc(obs, season_gap=50., force_calc=True)
@@ -895,7 +896,8 @@ class SimInfoFitWrapper:
         for i, seas in enumerate(self.seasons):
            
             obs_seas, gen_simu_params = self.get_obs_seasons(obs,seas)
-           
+            
+            
             if gen_simu_params is None:
                 continue
             
@@ -903,11 +905,11 @@ class SimInfoFitWrapper:
             self.config_simu['Observations']['season'] = '{}'.format(seas)
 
             # instances
-
             self.instances()
-
+            
             #add obs params (atmos, zp, ...)
             obs_seas = self.simu_wrapper.set_atmos_and_throughput(obs_seas)
+            
             # grab SNe Ia simulation parameters
             """
             gen_simu_params = simu_params(obs, [seas],
