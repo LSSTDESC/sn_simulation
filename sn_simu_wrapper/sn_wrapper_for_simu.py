@@ -984,11 +984,17 @@ class SimInfoFitWrapper:
         idx = obs['season'] == seas
         obs_seas = obs[idx]
         
-        season_length = np.max(obs_seas[mjdCol])-np.min(obs_seas[mjdCol])
+        if len(obs_seas) <=10:
+            return obs_seas,None
         
         nepochs = len(np.unique(obs_seas['night']))
+       
+        if nepochs < 10:
+            return obs_seas,None
         
-        if nepochs < 10 or season_length<=50:
+        season_length = np.max(obs_seas[mjdCol])-np.min(obs_seas[mjdCol])
+        
+        if season_length<=50:
             return obs_seas,None
         
         if not self.obs_quality(obs_seas):
