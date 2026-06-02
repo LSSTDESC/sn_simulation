@@ -804,7 +804,7 @@ class SimInfoFitWrapper:
             if gen_simu_params is None:
                 continue
             
-            print('number of LC to simulate',len(gen_simu_params))
+            print('number of LC to simulate',seas,len(gen_simu_params))
             #print(gen_simu_params)
             # update config for simu
             self.config_simu['Observations']['season'] = '{}'.format(seas)
@@ -921,7 +921,7 @@ class SimInfoFitWrapper:
             if gen_simu_params is None:
                 continue
 
-            print('Number of LC to generate', len(gen_simu_params))
+            print('Number of LC to generate', seas,len(gen_simu_params))
             # run
             params = {}
             params['obs'] = obs_seas
@@ -985,17 +985,17 @@ class SimInfoFitWrapper:
         obs_seas = obs[idx]
         
         if len(obs_seas) <=10:
-            return obs_seas,None
+            return obs_seas,gen_simu_params
         
         nepochs = len(np.unique(obs_seas['night']))
        
         if nepochs < 10:
-            return obs_seas,None
+            return obs_seas,gen_simu_params
         
         season_length = np.max(obs_seas[mjdCol])-np.min(obs_seas[mjdCol])
         
         if season_length<=50:
-            return obs_seas,None
+            return obs_seas,gen_simu_params
         
         if not self.obs_quality(obs_seas):
             return obs_seas,gen_simu_params
@@ -1193,7 +1193,7 @@ class SimInfoFitWrapper:
         zlim = (duration-duration_min_z)/self.diff_rf
         zlim -= 1
 
-        if zlim < self.zmin:
+        if zlim <= np.max([0.01,self.zmin]):
             return False
 
         return True
