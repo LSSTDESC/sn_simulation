@@ -367,6 +367,11 @@ class InfoWrapper:
 
         self.selparams = selpars
 
+        #some parameters
+        self.snr_max = [2, 5, 10, 15, 20]
+        self.nobs_snr = [1,2,3,4,5,10]
+        self.snr_min = [1,2,3]
+
     def __call__(self, light_curves):
         """
         Main method to estimate LC shepe params
@@ -445,34 +450,32 @@ class InfoWrapper:
         # selParams = params['selParams']
 
         lc_list = []
-        snr_max = [2, 5, 10, 15, 20]
-        nobs_snr = [1,2,3,4,5,10]
-        snr_min = [1,2,3]
+       
         
         for lc in light_curves:
             T0 = lc.meta['daymax']
             z = lc.meta['z']
 
             if len(lc) == 0:
-                resdict = self.calc_dummy(getInfos, snr_max)
+                resdict = self.calc_dummy(getInfos)
             else:
                 # apply SNR selection
                 idx = self.snr_min_op(lc['snr'], self.snr_min_value)
                 lc_sel = lc[idx]
                 if len(lc_sel) == 0:
-                    resdict = self.calc_dummy(getInfos, snr_max)
+                    resdict = self.calc_dummy(getInfos)
                 else:
                     resdict = self.calc_infos(lc_sel, T0, z,
                                               getInfos, selParams={})
-                    for vval in snr_max:
+                    for vval in self.snr_max:
                         vc = 'Nfilt_{}'.format(vval)
                         resdict[vc] = self.nfilt_snrmax(lc_sel, snr_max=vval)
                         
-                    tab_snr = self.nfilt_snr(lc_sel,snr_min)
+                    tab_snr = self.nfilt_snr(lc_sel,self.snr_min)
                     
-                    for snrv in snr_min:
+                    for snrv in self.snr_min:
                         idx = tab_snr['snr'] == snrv
-                        for nn in nobs_snr:
+                        for nn in self.nobs_snr:
                             idx &= tab_snr['nobs'] >=nn
                             sel = tab_snr[idx]
                             vc = 'Nfilt_{}_snr{}'.format(nn,snrv)
@@ -488,7 +491,7 @@ class InfoWrapper:
         else:
             return lc_list
 
-    def calc_dummy(self, getInfos, snr_max):
+    def calc_dummy(self, getInfos):
         """
         Method returning dummy infos
 
@@ -496,8 +499,6 @@ class InfoWrapper:
         ----------
         getInfos :  dict
             dict of selection criteria to measure.
-        snr_max: list(int).
-             snr_max values for Nfilt estimation
 
         Returns
         -------
@@ -514,8 +515,14 @@ class InfoWrapper:
 
         resdict['SNR'] = -1.0
         resdict['selected'] = 0
-        for vv in snr_max:
+        for vv in self.snr_max:
             resdict['Nfilt_{}'.format(vv)] = 0
+        
+        for snrv in self.snr_min:
+             for nn in self.nobs_snr:
+                 vc = 'Nfilt_{}_snr{}'.format(nn,snrv)
+                 resdict[vc] = 0
+
 
         return resdict
 
