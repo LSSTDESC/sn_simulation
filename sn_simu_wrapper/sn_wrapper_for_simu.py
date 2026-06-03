@@ -1188,7 +1188,7 @@ class SimInfoFitWrapper:
         else:
             return light_curves
 
-    def add_dust(self,obs,filterCol='filter',m5Col='fiveSigmaDepth'):
+    def add_dust(self,obs,filterCol='band',m5Col='fiveSigmaDepth'):
         """
         Method to add dust info (ebvofmw)+correction of m5Col for dust
 
