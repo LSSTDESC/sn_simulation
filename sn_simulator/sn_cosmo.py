@@ -13,7 +13,7 @@ import os
 
 class SN(SN_Object):
     def __init__(self, param, simu_param,
-                 reference_lc=None, dustcorr=None, dust_map=None):
+                 reference_lc=None, ebvofMW=0.0):
         super().__init__(param.name,
                          param.sn_parameters,
                          param.simulator_parameters,
@@ -151,8 +151,8 @@ class SN(SN_Object):
         from random import gauss
         self.zmeas = z+gauss(0, sigmaz*(1.+z))
 
-        # dustmap
-        self.dust_map = dust_map
+        #ebvofMW
+        self.ebvofMW = ebvofMW
 
     def source(self, model, version):
         """
@@ -571,16 +571,10 @@ class SN(SN_Object):
             else:
                 pix[vv] = np.mean(obs[self.defname[vv]])
 
-        ebvofMW = self.sn_parameters['ebvofMW']
-
-        idx = self.dust_map['healpixID'] == pix['healpixID']
-        sel_dust = self.dust_map[idx]
-        if ebvofMW < 0:
-            ebvofMW = sel_dust['ebvofMW'].mean()
-
         #grab delta_mag values due to dust
         #these values have to be added to  mag_no_dust
         
+        """
         bands = 'grizy'
         prefix = 'delta_mag'
         cols = []
@@ -594,8 +588,9 @@ class SN(SN_Object):
             ro.append((key.split('delta_mag_')[1],vals[0]))
             
         self.delta_mag = pd.DataFrame(ro,columns=['filter','delta_mag_ism'])
-
-        self.SN.set(mwebv=ebvofMW)
+        """
+        
+        self.SN.set(mwebv=self.ebvofMW)
 
         # add atmospheric parameters here
         # obs = self.set_atmos_params(obs)
@@ -617,14 +612,14 @@ class SN(SN_Object):
         obs = self.select_filter_cutoff(obs,
                                         ra, dec, pix, area, season,
                                         season_length,
-                                        ti, ebvofMW)
+                                        ti, self.ebvofMW)
 
 
         lsst_start = -1
         mjd_max = -1.0
         if len(obs) == 0:
             return [self.nosim(ra, dec, pix, area, season, season_length,
-                               ti, -1, ebvofMW, lsst_start, mjd_max,
+                               ti, -1, self.ebvofMW, lsst_start, mjd_max,
                                self.psf_flux, self.ccd_full_well, -1.)]
 
         # preparing the results : stored in lcdf pandas DataFrame
@@ -707,10 +702,8 @@ class SN(SN_Object):
         lcdf['mag'] = lcdf['mag'].replace([np.inf, -np.inf], self.mag_inf)
 
         # flux error
-        #correct m5 for galactic extinction
-        lcdf = lcdf.merge(self.delta_mag,left_on=['filter'],right_on=['filter'])
         
-        flux5 = 10**(-0.4*(lcdf[self.m5Col]+lcdf['delta_mag_ism']-lcdf['zp']))
+        flux5 = 10**(-0.4*(lcdf[self.m5Col]-lcdf['zp']))
         sigma_5 = flux5/5.
         shot_noise = np.sqrt(lcdf['flux']/lcdf[self.exptimeCol])
         # shot_noise = 0.0
@@ -805,7 +798,7 @@ class SN(SN_Object):
 
         table_lc.meta = self.metadata(
             ra, dec, pix, area, season, season_length, ptime,
-            1, ebvofMW, lsst_start, mjd_max,
+            1, self.ebvofMW, lsst_start, mjd_max,
             self.psf_flux, self.ccd_full_well, self.zmeas)
 
         if len(table_lc) == 0:

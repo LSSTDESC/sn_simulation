@@ -31,7 +31,7 @@ class SNSimu_Params:
                  vistimeCol, seeingEffCol,
                  airmassCol,
                  skyCol, moonCol,
-                 seeingGeomCol, config, dust_map, 
+                 seeingGeomCol, config, ebvofMW, 
                  x0_norm=None,
                  zp_airmass=None):
         """
@@ -208,8 +208,8 @@ class SNSimu_Params:
         else:
             self.zp_atmos = zp_airmass
 
-        # load dust_map
-        self.dust_map = dust_map
+        # ebvofMW
+        self.ebvofMW = ebvofMW
 
     def simu_params_from_file_deprecated(self, simuFile):
         """
@@ -579,7 +579,7 @@ class SNSimulation(SNSimu_Params):
                  airmassCol='airmass',
                  skyCol='sky', moonCol='moonPhase',
                  seeingGeomCol='seeingFwhmGeom',
-                 uniqueBlocks=False, config=None, dust_map=None,
+                 uniqueBlocks=False, config=None, ebvofMW=0,
                  x0_norm=None,
                  zp_airmass=None, **kwargs):
         super().__init__(mjdCol=mjdCol,
@@ -593,7 +593,7 @@ class SNSimulation(SNSimu_Params):
                          skyCol=skyCol, moonCol=moonCol,
                          seeingGeomCol=seeingGeomCol,
                          config=config, 
-                         dust_map=dust_map, 
+                         ebvofMW=ebvofMW, 
                          x0_norm=x0_norm,
                          zp_airmass=zp_airmass)
 
@@ -1368,8 +1368,7 @@ class SNSimulation(SNSimu_Params):
         module = import_module(self.simu_config['name'])
 
         simu = module.SN(sn_object, self.simu_config,
-                         self.reference_lc, self.dustcorr,
-                         dust_map=self.dust_map)
+                         self.reference_lc, ebvofMW=self.ebvofMW)
         # simulation - this is supposed to be a list of astropytables
         lc_table = simu(obs, self.display_lc,
                         self.time_display, lc_coadd, lc_snrmin)

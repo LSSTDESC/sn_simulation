@@ -414,7 +414,8 @@ class InfoWrapper:
         params['getInfos'] = getInfos
         # params['selParams'] = selParams
 
-        lc_list = multiproc(light_curves, params, self.run_list, self.nproc)
+        nproc=self.nproc
+        lc_list = multiproc(light_curves, params, self.run_list, nproc)
 
         return lc_list
 
@@ -445,7 +446,9 @@ class InfoWrapper:
 
         lc_list = []
         snr_max = [2, 5, 10, 15, 20]
-
+        nobs_snr = [1,2,3,4,5,10]
+        snr_min = [1,2,3]
+        
         for lc in light_curves:
             T0 = lc.meta['daymax']
             z = lc.meta['z']
@@ -464,7 +467,17 @@ class InfoWrapper:
                     for vval in snr_max:
                         vc = 'Nfilt_{}'.format(vval)
                         resdict[vc] = self.nfilt_snrmax(lc_sel, snr_max=vval)
-
+                        
+                    tab_snr = self.nfilt_snr(lc_sel,snr_min)
+                    
+                    for snrv in snr_min:
+                        idx = tab_snr['snr'] == snrv
+                        for nn in nobs_snr:
+                            idx &= tab_snr['nobs'] >=nn
+                            sel = tab_snr[idx]
+                            vc = 'Nfilt_{}_snr{}'.format(nn,snrv)
+                            resdict[vc] = len(sel)
+                    
             # update meta data
 
             lc.meta.update(resdict)
@@ -657,18 +670,80 @@ class InfoWrapper:
 
         """
 
-        bands = np.unique(lc['band'])
+        bands = np.unique(lc['filter'])
 
         r = []
         for b in bands:
-            idx = lc['band'] == b
+            idx = lc['filter'] == b
             sel = lc[idx]
             lc_snr_max = np.max(sel['snr_m5'])
             if lc_snr_max >= snr_max:
                 r.append(b)
 
         return len(r)
+    
+    def nfilt_snr_deprecated(self, lc, nobs=10,snr_min=1):
+           """
+           Method to estimate the number of bands with nobs having SNR>=nobs
+       
+           Parameters
+           ----------
+           lc : astropy table
+               data to process.
+           nobs : int, optional
+               number of obs. The default is 10.
+       
+           Returns
+           -------
+           int
+               number of filters.
+       
+           """
+       
+           bands = np.unique(lc['band'])
+       
+           r = []
+           for b in bands:
+               idx = lc['band'] == b
+               idx &= lc['snr_m5']>=snr_min
+               sel = lc[idx]
+               if len(sel) >= nobs:
+                   r.append(b)
+       
+           return len(r)
+       
+    def nfilt_snr(self,lc,snr_vals):
+        """
+        estimate the number of bands with the number of obs with minimal snr
 
+        Parameters
+        ----------
+        lc : astropy table
+            Data to process.
+        snr_vals : int
+            min snr value.
+
+        Returns
+        -------
+        res : record array
+            Result.
+
+        """
+        
+        bands = np.unique(lc['filter'])
+       
+        r = []
+        for b in bands:
+            idx = lc['filter'] == b
+            for snr in snr_vals:
+                idx &= lc['snr_m5']>=snr
+                sel = lc[idx]
+                r.append((b,snr,len(sel)))
+        
+        res = np.rec.fromrecords(r,names=['band','snr','nobs'])
+        
+        return res
+        
     def plotLC(self, tab):
         """
         Method to plot LC for cross-checks
@@ -759,7 +834,11 @@ class SimInfoFitWrapper:
         self.diff_rf = max_rf_phase_qual-min_rf_phase_qual
         self.zmin = self.config_simu['SN']['z']['min']
 
-    def instances(self):
+        #loading dust map
+        self.dust_map = self.load_dust_map(config_simu['Pixelisation']['nside'],
+                                           config_simu['WebPathSimu'])
+        
+    def instances(self,ebvofMW):
         """
         Method to instantiate necessary classes
 
@@ -773,7 +852,7 @@ class SimInfoFitWrapper:
 
         """
 
-        self.simu_wrapper = SimuWrapper(self.config_simu, self.zp_atmos)
+        self.simu_wrapper = SimuWrapper(self.config_simu, self.zp_atmos,ebvofMW)
         self.info_wrapper = InfoWrapper(self.infoDict)
         self.fit_wrapper = FitWrapper(self.config_fit)
         self.fit_remove_sat = list(
@@ -856,6 +935,7 @@ class SimInfoFitWrapper:
         for gg in gen_params:
             
             light_curves = self.simu_wrapper(obs, [gg], j)
+            print('light curve analysis')
             light_curves_ana = self.info_wrapper(light_curves)
             # fitting her
             for rr in self.fit_remove_sat:
@@ -887,7 +967,8 @@ class SimInfoFitWrapper:
         None.
 
         """
-        
+        #get ebvofMw and correct m5 for dust
+        ebvofMW, obs = self.add_dust(obs)
         
         if 'season' not in obs.dtype.names:
             from sn_tools.sn_obs import season as seasoncalc
@@ -905,7 +986,8 @@ class SimInfoFitWrapper:
             self.config_simu['Observations']['season'] = '{}'.format(seas)
 
             # instances
-            self.instances()
+            self.instances(ebvofMW)
+            
             
             #add obs params (atmos, zp, ...)
             obs_seas = self.simu_wrapper.set_atmos_and_throughput(obs_seas)
@@ -958,6 +1040,44 @@ class SimInfoFitWrapper:
             self.dump_df()
             self.outdf = pd.DataFrame()
 
+    def load_dust_map(self,nside,webpathsimu):
+        """
+        Method to load the dust map
+
+        Parameters
+        ----------
+        nside : int
+            nside healpy param.
+        webpathsimu : str
+            path to load the dust map from.
+
+        Returns
+        -------
+        dust_map : pandas df
+            dust map.
+
+        """
+        
+        # check if the dust map is available in reference_files
+        # if not: load it from web
+        # if not available: consider producing it!
+        dustName = 'dustmap_{}_delta_mag_dust.hdf5'.format(nside)
+        fName = 'reference_files/{}'.format(dustName)
+        if not os.path.isfile(fName):
+            path = '{}'.format(webpathsimu)
+            self.getRefFile(path, 'reference_files', dustName)
+            
+        dust_map = pd.DataFrame()
+        if not os.path.isfile(fName):
+            print('File', fName, 'not found')
+            print('You should consider using the following script to gen it')
+            print('python run_scripts/dust_for_fast/gen_disp_dustmap.py')
+            print('followed by python run_scripts/dust_for_fast/dust_rx.py')
+        else:
+            dust_map = pd.read_hdf(fName)
+            
+        return dust_map
+
     def get_obs_seasons(self,obs,seas,mjdCol='observationStartMJD'):
         """
         Method to select seasons of good quality and to 
@@ -1002,7 +1122,6 @@ class SimInfoFitWrapper:
 
         simu_par = self.simu_par_gen()
         gen_simu_params = simu_par(obs_seas, seas)
-                
         
         return obs_seas,gen_simu_params
 
@@ -1068,6 +1187,56 @@ class SimInfoFitWrapper:
             return output_q.put({j: light_curves})
         else:
             return light_curves
+
+    def add_dust(self,obs,filterCol='filter',m5Col='fiveSigmaDepth'):
+        """
+        Method to add dust info (ebvofmw)+correction of m5Col for dust
+
+        Parameters
+        ----------
+        obs : numpy array
+            Observations.
+        filterCol : str, optional
+            filter column name. The default is 'filter'.
+        m5Col : str, optional
+            5-sigma depth column name. The default is 'fiveSigmaDepth'.
+
+        Returns
+        -------
+        ebvofMW: float
+          E(B-V) of MW
+        res : numpy array
+            output array.
+
+        """
+        
+        
+        # grab dust values
+        hpix = np.unique(obs['healpixID'])[0]
+        
+        idx = self.dust_map['healpixID'] == hpix
+        
+        sel_dust = self.dust_map[idx]
+        
+        # add ebvofMW
+        ebvofMW = sel_dust['ebvofMW'].values[0] 
+        
+        #correct for 5-sigma depth
+        bands = np.unique(obs[filterCol])
+        
+        res = None
+        for b in bands:
+            idx = obs[filterCol] == b
+            sel = obs[idx]
+            delta_mag = sel_dust['delta_mag_{}'.format(b)].values[0]
+            sel[m5Col] += delta_mag
+            if res is None:
+                res = sel
+            else:
+                res = np.concatenate((res,sel))
+            
+        return ebvofMW,res
+        
 
     def run_season_deprecated(self, obs, imulti=0, verbose=True):
         """
@@ -1400,7 +1569,7 @@ class SimuWrapper:
 
     """
 
-    def __init__(self, config, zp_airmass, mjdCol='observationStartMJD'):
+    def __init__(self, config, zp_airmass, ebvofMW,mjdCol='observationStartMJD'):
 
         # config = load_config(yaml_config)
 
@@ -1409,6 +1578,7 @@ class SimuWrapper:
         self.meta_table = Table()
         self.meta_out = None
         self.mjdCol = mjdCol
+        
         if self.saveData_simu:
             from sn_tools.sn_io import checkDir
             outDir = config['OutputSimu']['directory']
@@ -1418,7 +1588,7 @@ class SimuWrapper:
             metapath = '{}/{}.hdf5'.format(outDir,
                                            prodid.replace('LC', 'Simu'))
             self.lc_out = lcpath
-            print('there man',self.lc_out)
+            #print('there man',self.lc_out)
             self.meta_out = metapath
             self.outDir = outDir
 
@@ -1460,26 +1630,9 @@ class SimuWrapper:
                                            mjdCol=mjdCol, area=area,
                                            web_path=config['WebPathSimu'])
         """
-        # check if the dust map is available in reference_files
-        # if not: load it from web
-        # if not available: consider producing it!
-        nside = config['Pixelisation']['nside']
-        dustName = 'dustmap_{}_delta_mag_dust.hdf5'.format(nside)
-        fName = 'reference_files/{}'.format(dustName)
-        if not os.path.isfile(fName):
-            path = '{}'.format(config['WebPathSimu'])
-            self.getRefFile(path, 'reference_files', dustName)
-            
-        dust_map = pd.DataFrame()
-        if not os.path.isfile(fName):
-            print('File', fName, 'not found')
-            print('You should consider using the following script to gen it')
-            print('python run_scripts/dust_for_fast/gen_disp_dustmap.py')
-            print('followed by python run_scripts/dust_for_fast/dust_rx.py')
-        else:
-            dust_map = pd.read_hdf(fName)
+        
         self.metric = SNSimulation(
-            config=config, dust_map=dust_map, 
+            config=config, ebvofMW=ebvofMW, 
             x0_norm=x0_tab,zp_airmass=zp_airmass)
         """
         # simu params from file
