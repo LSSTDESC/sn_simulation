@@ -347,7 +347,7 @@ class SNSimu_Params:
                                              self.RACol, self.DecCol,
                                              'pixRA',
                                              'pixDec', 'healpixID',
-                                             'season', 'airmass'],
+                                             'season', 'airmass','mean_wave','zp','sigma_zp'],
                                    col_median=[
                                        'sky', 'moonPhase', 'seeingFwhmEff',
                                        'lsst_start'],
