@@ -243,6 +243,7 @@ class SN(SN_Object):
                                 effects=[self.dustmap, self.dustmap],
                                 effect_names=['host', 'mw'],
                                 effect_frames=['rest', 'obs'])
+        
         self.SN.set(z=self.sn_parameters['z'])
 
         """
@@ -642,6 +643,7 @@ class SN(SN_Object):
         lcdf = pd.DataFrame(np.copy(obs[outvals]))
 
         # smear zp here
+        
         lcdf['zp'] += np.random.normal(0, lcdf['sigma_zp'])
         lcdf['zpsys'] = 'ab'
 
@@ -744,16 +746,16 @@ class SN(SN_Object):
         lcdf.loc[lcdf.fluxerr_model < 0, 'fluxerr_model'] = 10.
 
         # smear lc fluxes
+        """
         if self.sn_smearFlux:
-            """
-            idx = lcdf['snr'] >= snr_min
-            lcdf = lcdf[idx]
-            """
+            #idx = lcdf['snr'] >= snr_min
+            #lcdf = lcdf[idx]
+            
             lcdf['flux'] = lcdf['flux']+np.random.normal(0., lcdf['fluxerr'])
             if lc_coadd != 1:
                 lcdf.loc[lcdf.flux < 0, 'flux'] = 0.
                 lcdf['snr'] = lcdf['flux']/lcdf['fluxerr']
-
+        """
         # smear atmos parameters
         # print('before', lcdf[['airmass', 'pwv', 'ozone', 'aerosol']])
         lcdf = self.smear_atmos(lcdf)
@@ -836,6 +838,27 @@ class SN(SN_Object):
         if lc_coadd:
             from sn_tools.sn_lcana import coadd_lc
             table_lc = coadd_lc(table_lc)
+
+        # smear lc fluxes
+        if self.sn_smearFlux:
+             """
+             idx = lcdf['snr'] >= snr_min
+             lcdf = lcdf[idx]
+             """
+             df = table_lc.to_pandas()
+             df['flux'] = df['flux']+np.random.normal(0., df['fluxerr'])
+             #if lc_coadd != 1:
+             df.loc[df.flux < 0, 'flux'] = 0.
+             df['snr'] = df['flux']/df['fluxerr']
+             table_lc_n = Table.from_pandas(df)
+             table_lc_n.meta = table_lc.meta
+             table_lc = Table(table_lc_n)
+
+         # smear atmos parameters
+         # print('before', lcdf[['airmass', 'pwv', 'ozone', 'aerosol']])
+         #lcdf = self.smear_atmos(lcdf)
+         # print('after', lcdf[['airmass', 'pwv', 'ozone', 'aerosol']])
+
 
         return [table_lc]
 
