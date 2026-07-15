@@ -347,7 +347,16 @@ class SNSimu_Params:
                                              self.RACol, self.DecCol,
                                              'pixRA',
                                              'pixDec', 'healpixID',
-                                             'season', 'airmass','mean_wave','zp','sigma_zp'],
+                                             'season', 'airmass','mean_wave',
+                                             'zp','sigma_zp',
+                                             'airmass','sigma_airmass',
+                                             'ozone','sigma_ozone',
+                                             'aerosol','sigma_aerosol',
+                                             'pwv','sigma_pwv',
+                                             'min_airmass','max_airmass',
+                                             'min_ozone','max_ozone',
+                                             'min_pwv','max_pwv',
+                                             'min_aerosol','max_aerosol'],
                                    col_median=[
                                        'sky', 'moonPhase', 'seeingFwhmEff',
                                        'lsst_start'],
@@ -609,6 +618,7 @@ class SNSimulation(SNSimu_Params):
         # np.save('obs_orig.npy', obs)
         if self.stacker is not None:
             obs = self.stacker._run(obs, atmosType=self.atmosType)
+            obs = self.register_bands_from_atmos(obs)
         # np.save('obs_coadd.npy', obs)
 
         import time

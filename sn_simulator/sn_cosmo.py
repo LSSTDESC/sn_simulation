@@ -710,6 +710,8 @@ class SN(SN_Object):
         shot_noise = np.sqrt(lcdf['flux']/lcdf[self.exptimeCol])
         # shot_noise = 0.0
         lcdf['fluxerr'] = np.sqrt(sigma_5**2+shot_noise**2)
+        lcdf['sigma_5'] = sigma_5
+        lcdf['sigma_shot'] = shot_noise
         lcdf['snr_m5'] = lcdf['flux']/lcdf['fluxerr']
         # lcdf['fluxerr'] = lcdf['flux']/lcdf['snr_m5']
 
