@@ -842,6 +842,7 @@ class SN(SN_Object):
             table_lc = coadd_lc(table_lc)
 
         # smear lc fluxes
+        table_lc['flux_orig'] = table_lc['flux']
         if self.sn_smearFlux:
              """
              idx = lcdf['snr'] >= snr_min
