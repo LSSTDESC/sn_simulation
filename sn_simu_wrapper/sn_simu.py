@@ -207,9 +207,41 @@ class SNSimu_Params:
             self.zp_atmos = zp_from_config(config['InstrumentSimu'])
         else:
             self.zp_atmos = zp_airmass
+            #grab some ref values
+            self.get_ref_zp_sigma_zp()
 
         # ebvofMW
         self.ebvofMW = ebvofMW
+
+    def get_ref_zp_sigma_zp(self):
+        """
+        Method to grab some ref (zp, sigma_zp) values
+
+        Returns
+        -------
+        None.
+
+        """
+       
+        
+        filters = 'ugrizy'
+        airmass = [1.2,2.0]
+        cols = ['zp','sigma_zp']
+        fact = [1,1000] #sigma_zp in mmag
+        units = [' [mag]',' [mmag]']
+        ff=dict(zip(cols,fact))
+        fu=dict(zip(cols,units))
+        
+        
+        dd = {}
+        for co in cols:
+            for fi in filters:
+                for airm in airmass:
+                    vv = '{}_{}_{} {}'.format(co,fi,np.round(airm,1),fu[co])
+                    dd[vv] = np.round(ff[co]*self.zp_atmos[co][fi](airm),2)
+                    
+        self.ref_zp_sigma_zp = dd
+        
 
     def simu_params_from_file_deprecated(self, simuFile):
         """
@@ -1381,7 +1413,8 @@ class SNSimulation(SNSimu_Params):
                          self.reference_lc, ebvofMW=self.ebvofMW)
         # simulation - this is supposed to be a list of astropytables
         lc_table = simu(obs, self.display_lc,
-                        self.time_display, lc_coadd, lc_snrmin)
+                        self.time_display, lc_coadd, lc_snrmin,
+                        self.ref_zp_sigma_zp)
 
         seds = []
         nspectra = self.sn_parameters['nspectra']
@@ -1515,6 +1548,7 @@ class SNSimulation(SNSimu_Params):
         obs = rf.append_fields(obs, 'sigma_mean_wave', sigma_mean_wave)
         obs = rf.append_fields(obs, 'tel_site_name', [
                                self.telescope.site_name]*len(obs))
+
 
         return obs
 

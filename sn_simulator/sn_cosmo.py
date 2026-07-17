@@ -487,7 +487,8 @@ class SN(SN_Object):
             np.savetxt('{}/{}.dat'.format(SALT2Dir, vv),
                        data, fmt=['%1.2f', '%4d', '%.7e', ])
 
-    def __call__(self, obs, display=False, time_display=0., lc_coadd=0, snr_min=1):
+    def __call__(self, obs, display=False, time_display=0., 
+                 lc_coadd=0, snr_min=1,ref_zp_sigma_zp={}):
         """ Simulation of the light curve
 
         Parameters
@@ -800,11 +801,14 @@ class SN(SN_Object):
         if len(table_lc) > 0:
             mjd_max = np.max(table_lc['time'])
 
+        
         table_lc.meta = self.metadata(
             ra, dec, pix, area, season, season_length, ptime,
             1, self.ebvofMW, lsst_start, mjd_max,
             self.psf_flux, self.ccd_full_well, self.zmeas)
 
+        table_lc.meta.update(ref_zp_sigma_zp)
+        
         if len(table_lc) == 0:
             return [table_lc]
 
