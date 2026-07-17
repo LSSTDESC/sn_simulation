@@ -778,7 +778,7 @@ class SimInfoFitWrapper:
     def __init__(self, yaml_config_simu,
                  infoDict,
                  yaml_config_fit,
-                 fit_remove_sat):
+                 fit_remove_sat,fit_lc=1):
         """
 
 
@@ -844,6 +844,9 @@ class SimInfoFitWrapper:
         #loading dust map
         self.dust_map = self.load_dust_map(config_simu['Pixelisation']['nside'],
                                            config_simu['WebPathSimu'])
+        
+        #to fit lcs or not
+        self.fit_lc = fit_lc
         
     def instances(self,ebvofMW):
         """
@@ -942,7 +945,12 @@ class SimInfoFitWrapper:
         for gg in gen_params:
             
             light_curves = self.simu_wrapper(obs, [gg], j)
+            
+            if not self.fit_lc:
+                continue
+            
             print('light curve analysis')
+            
             light_curves_ana = self.info_wrapper(light_curves)
             # fitting her
             for rr in self.fit_remove_sat:
@@ -1016,6 +1024,7 @@ class SimInfoFitWrapper:
             params['obs'] = obs_seas
             params['verbose'] = verbose
             params['imulti'] = imulti
+            
             # self.run_season_new(obs_seas, gen_simu_params,imulti)
             from sn_tools.sn_utils import multiproc
             # simulate LCs
@@ -1024,7 +1033,8 @@ class SimInfoFitWrapper:
             light_curves = multiproc(gen_simu_params, params,
                                      self.run_season_simulc,
                                      self.simu_wrapper.nproc)
-
+            if not self.fit_lc:
+                continue
             if verbose:
                 print('finished', len(light_curves), time.time()-time_ref)
                 print('LC analysis')
