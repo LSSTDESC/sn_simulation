@@ -707,11 +707,11 @@ class SN(SN_Object):
         # flux error
         
         flux5 = 10**(-0.4*(lcdf[self.m5Col]-lcdf['zp']))
-        sigma_5 = flux5/5.
+        sigma_f5 = flux5/5.
         shot_noise = np.sqrt(lcdf['flux']/lcdf[self.exptimeCol])
         # shot_noise = 0.0
-        lcdf['fluxerr'] = np.sqrt(sigma_5**2+shot_noise**2)
-        lcdf['sigma_5'] = sigma_5
+        lcdf['fluxerr'] = np.sqrt(sigma_f5**2+shot_noise**2)
+        lcdf['sigma_f5'] = sigma_f5
         lcdf['sigma_shot'] = shot_noise
         lcdf['snr_m5'] = lcdf['flux']/lcdf['fluxerr']
         # lcdf['fluxerr'] = lcdf['flux']/lcdf['snr_m5']
@@ -841,9 +841,9 @@ class SN(SN_Object):
 
         # table_lc.remove_columns(toremove)
 
-        if lc_coadd:
-            from sn_tools.sn_lcana import coadd_lc
-            table_lc = coadd_lc(table_lc)
+        # lc coadd before flux smearing
+        if lc_coadd==1:
+            table_lc = self.coadd_lc(table_lc)
 
         # smear lc fluxes
         table_lc['flux_orig'] = table_lc['flux']
@@ -854,20 +854,46 @@ class SN(SN_Object):
              """
              df = table_lc.to_pandas()
              df['flux'] = df['flux']+np.random.normal(0., df['fluxerr'])
-             #if lc_coadd != 1:
-             df.loc[df.flux < 0, 'flux'] = 0.
-             df['snr'] = df['flux']/df['fluxerr']
+             if lc_coadd != 1:
+                 df.loc[df.flux < 0, 'flux'] = 0.
+                 df['snr'] = df['flux']/df['fluxerr']
              table_lc_n = Table.from_pandas(df)
              table_lc_n.meta = table_lc.meta
              table_lc = Table(table_lc_n)
+            
+        # lc coadd after flux smearing
+        if lc_coadd==2:
+            table_lc = self.coadd_lc(table_lc)
 
          # smear atmos parameters
          # print('before', lcdf[['airmass', 'pwv', 'ozone', 'aerosol']])
          #lcdf = self.smear_atmos(lcdf)
          # print('after', lcdf[['airmass', 'pwv', 'ozone', 'aerosol']])
 
-
         return [table_lc]
+
+    def coadd_lc(self, table_lc):
+        """
+        Method to coadd lc
+
+        Parameters
+        ----------
+        table_lc : astropy table
+            orig lc.
+
+        Returns
+        -------
+        table_lc : astropy table
+            coadded lc.
+
+        """
+        
+        from sn_tools.sn_lcana import coadd_lc
+        table_lc = coadd_lc(table_lc)
+        
+        return table_lc
+        
+        
 
     def smear_atmos(self, lcdfa):
         """
