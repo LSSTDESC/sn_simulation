@@ -154,6 +154,41 @@ class SN(SN_Object):
         #ebvofMW
         self.ebvofMW = ebvofMW
 
+
+        #lc columns
+        # preparing the results : stored in lcdf pandas DataFrame
+        self.lc_cols = [self.m5Col, self.mjdCol,
+             self.exptimeCol, self.nexpCol,
+             self.filterCol, self.nightCol]
+        self.lc_cols += [self.airmassCol, self.skyCol, self.moonCol,
+              self.seeingEffCol, self.seeingGeomCol,
+              'zp', 'mean_wave', 'pwv', 'ozone',
+              'aerosol', 'band_cosmo',
+              'sigma_zp', 'tel_site_name']
+        for vv in ['airmass', 'pwv', 'ozone', 'aerosol']:
+            for vvb in ['sigma', 'min', 'max', 'round']:
+                self.lc_cols.append('{}_{}'.format(vvb, vv))
+        
+        
+        #remove some lc columns
+        
+        toremove = ['m5', 'exptime', 'numExposures', 'filter_cosmo',
+                    'airmass', 'moonPhase',
+                    'seeingFwhmEff', 'seeingFwhmGeom', 'gamma', 'mag',
+                    'magerr', 'flux_e_sec', 'magerr_phot']
+
+        toremove = ['m5', 'exptime', 'numExposures', 'filter_cosmo',
+                    'airmass', 'moonPhase',
+                    'seeingFwhmEff', 'seeingFwhmGeom', 'gamma', 'mag',
+                    'magerr', 'magerr_phot']
+
+        toremove = ['filter_cosmo', 'airmass', 'moonPhase',
+                    'gamma', 'mag', 'magerr', 'magerr_phot']
+        
+        toremove = []
+        
+        self.toremove = toremove
+
     def source(self, model, version):
         """
         method to instantiate a source from sncosmo
@@ -552,12 +587,7 @@ class SN(SN_Object):
         ti = SNTimer(time.time())
 
         if len(obs) == 0:
-            pix = {}
-            for vv in ['healpixID', 'pixRA', 'pixDec']:
-                pix[vv] = -1
-            return [self.nosim(-1., -1., pix, -1., -1., -1.,
-                               ti, -1, -1., -1., -1.,
-                               self.psf_flux, self.ccd_full_well, -1.)]
+            return [Table()]
 
         ra = np.mean(obs[self.RACol])
         dec = np.mean(obs[self.DecCol])
@@ -566,51 +596,13 @@ class SN(SN_Object):
         season = np.unique(obs['season'])[0]
         season_length = np.max(obs[self.mjdCol])-np.min(obs[self.mjdCol])
 
-        pix = {}
-        for vv in ['healpixID', 'pixRA', 'pixDec']:
-            if vv in obs.dtype.names:
-                pix[vv] = np.unique(obs[vv])[0]
-            else:
-                pix[vv] = np.mean(obs[self.defname[vv]])
-
-        #grab delta_mag values due to dust
-        #these values have to be added to  mag_no_dust
-        
-        """
-        bands = 'grizy'
-        prefix = 'delta_mag'
-        cols = []
-        for b in bands:
-            cols.append('{}_{}'.format(prefix,b))
-        
-        dd = sel_dust[cols].to_dict('list')
-        
-        ro = []
-        for key,vals in dd.items():
-            ro.append((key.split('delta_mag_')[1],vals[0]))
-            
-        self.delta_mag = pd.DataFrame(ro,columns=['filter','delta_mag_ism'])
-        """
-        
+        #set E(B-V) of MW
         self.SN.set(mwebv=self.ebvofMW)
 
-        # add atmospheric parameters here
-        # obs = self.set_atmos_params(obs)
-
-        # register throughputs for sn_cosmo
-
-        # obs = self.register_bands_from_atmos(obs)
-
-        # estimate zp and mean_wavelength corresponding to obs
-        """
-        if self.atmosType == 'const':
-            obs = self.add_zp_meanwave_from_interp(obs)
-        else:
-            obs = self.add_zp_meanwave_from_obs(obs)
-        """
+        #get pixel info
+        pix = self.pixel_info(obs)
 
         # filter cutoffs
-
         obs = self.select_filter_cutoff(obs,
                                         ra, dec, pix, area, season,
                                         season_length,
@@ -619,27 +611,10 @@ class SN(SN_Object):
 
         lsst_start = -1
         mjd_max = -1.0
-        if len(obs) == 0:
-            return [self.nosim(ra, dec, pix, area, season, season_length,
-                               ti, -1, self.ebvofMW, lsst_start, mjd_max,
-                               self.psf_flux, self.ccd_full_well, -1.)]
-
-        # preparing the results : stored in lcdf pandas DataFrame
-        a = [self.m5Col, self.mjdCol,
-             self.exptimeCol, self.nexpCol,
-             self.filterCol, self.nightCol]
-        a += [self.airmassCol, self.skyCol, self.moonCol,
-              self.seeingEffCol, self.seeingGeomCol,
-              'zp', 'mean_wave', 'pwv', 'ozone',
-              'aerosol', 'band_cosmo',
-              'sigma_zp', 'tel_site_name']
-        for vv in ['airmass', 'pwv', 'ozone', 'aerosol']:
-            for vvb in ['sigma', 'min', 'max', 'round']:
-                a.append('{}_{}'.format(vvb, vv))
 
         b = obs.dtype.names
 
-        outvals = list(set(a) & set(b))
+        outvals = list(set(self.lc_cols) & set(b))
 
         lcdf = pd.DataFrame(np.copy(obs[outvals]))
 
@@ -679,24 +654,6 @@ class SN(SN_Object):
                 lcdf['band_cosmo'], lcdf[self.mjdCol], zpsys='ab',
                 zp=2.5*np.log10(3631))
             lcdf['fluxerr_model'] = np.sqrt(np.diag(fluxcov_cosmo[1]))
-
-        """
-        lcdf.loc[lcdf.flux <= 0., 'fluxerr_photo'] = -1.
-        lcdf.loc[lcdf.flux <= 0., 'fluxerr_model'] = -1.
-        lcdf.loc[lcdf.flux <= 0., 'flux'] = 9999.
-        lcdf.loc[lcdf.flux_old <= 0., 'flux'] = 9999.
-        """
-        # positive flux only
-        """
-        idx = lcdf['flux'] > 0.
-        lcdf = lcdf[idx]
-        """
-
-        if len(lcdf) == 0:
-            return [self.nosim(ra, dec, pix, area, season, season_length,
-                               ti, -1, ebvofMW, -1., -1.,
-                               self.psf_flux, self.ccd_full_well, -1.)]
-        # ti(time.time(), 'fluxes_b')
 
         # magnitudes - fluxes are in ADU/s
         lcdf['mag'] = -2.5 * np.log10(lcdf['flux'])+lcdf['zp']
@@ -748,21 +705,8 @@ class SN(SN_Object):
         lcdf.loc[lcdf.fluxerr_model < 0, 'snr_m5'] = 0.
         lcdf.loc[lcdf.fluxerr_model < 0, 'fluxerr_model'] = 10.
 
-        # smear lc fluxes
-        """
-        if self.sn_smearFlux:
-            #idx = lcdf['snr'] >= snr_min
-            #lcdf = lcdf[idx]
-            
-            lcdf['flux'] = lcdf['flux']+np.random.normal(0., lcdf['fluxerr'])
-            if lc_coadd != 1:
-                lcdf.loc[lcdf.flux < 0, 'flux'] = 0.
-                lcdf['snr'] = lcdf['flux']/lcdf['fluxerr']
-        """
         # smear atmos parameters
-        # print('before', lcdf[['airmass', 'pwv', 'ozone', 'aerosol']])
         lcdf = self.smear_atmos(lcdf)
-        # print('after', lcdf[['airmass', 'pwv', 'ozone', 'aerosol']])
 
         """
         filters = np.array(lcdf['filter'])
@@ -771,18 +715,8 @@ class SN(SN_Object):
         lcdf['lambdabar'] = np.apply_along_axis(self.lambdabar, 1, filters)
         """
 
-        if len(lcdf) == 0:
-            return [self.nosim(ra, dec, pix, area, season, season_length,
-                               ti, -1, ebvofMW, -1., -1.,
-                               self.psf_flux, self.ccd_full_well, -1.)]
-
         # get the processing time
         ptime = ti.finish(time.time())['ptime'].item()
-
-        """
-        print('kkkkk', lcdf[['mag', 'mag_old', 'flux',
-               'flux_old', 'snr_m5', 'm5', 'band', 'filter']], len(lcdf))
-        """
 
         # include saturation effects here
         if self.frac_flux_seeing is not None:
@@ -819,58 +753,448 @@ class SN(SN_Object):
                         time_display)
 
         # remove LC points with too high error model value
-        """
-        if self.error_model:
-            if self.error_model_cut >0:
-                idx = table_lc['fluxerr_model']/ \
-                    table_lc['flux']<= self.error_model_cut
-                table_lc = table_lc[idx]
-        """
-        toremove = ['m5', 'exptime', 'numExposures', 'filter_cosmo',
-                    'airmass', 'moonPhase',
-                    'seeingFwhmEff', 'seeingFwhmGeom', 'gamma', 'mag',
-                    'magerr', 'flux_e_sec', 'magerr_phot']
+        
 
-        toremove = ['m5', 'exptime', 'numExposures', 'filter_cosmo',
-                    'airmass', 'moonPhase',
-                    'seeingFwhmEff', 'seeingFwhmGeom', 'gamma', 'mag',
-                    'magerr', 'magerr_phot']
-
-        toremove = ['filter_cosmo', 'airmass', 'moonPhase',
-                    'gamma', 'mag', 'magerr', 'magerr_phot']
-
-        # table_lc.remove_columns(toremove)
+        # table_lc.remove_columns(self.toremove)
 
         # lc coadd before flux smearing
         if lc_coadd==1:
             table_lc = self.coadd_lc(table_lc)
 
-        # smear lc fluxes
+        #grab original flux (before smearing)
         table_lc['flux_orig'] = table_lc['flux']
+        
+        # smear lc fluxes
         if self.sn_smearFlux:
-             """
-             idx = lcdf['snr'] >= snr_min
-             lcdf = lcdf[idx]
-             """
              df = table_lc.to_pandas()
              df['flux'] = df['flux']+np.random.normal(0., df['fluxerr'])
-             if lc_coadd != 1:
+             if lc_coadd ==0:
                  df.loc[df.flux < 0, 'flux'] = 0.
                  df['snr'] = df['flux']/df['fluxerr']
              table_lc_n = Table.from_pandas(df)
              table_lc_n.meta = table_lc.meta
              table_lc = Table(table_lc_n)
             
+            
         # lc coadd after flux smearing
         if lc_coadd==2:
             table_lc = self.coadd_lc(table_lc)
 
+        return [table_lc]
+
+
+    def pixel_info(self,obs,cols=['healpixID', 'pixRA', 'pixDec']):
+        """
+        Method to grab pixel info
+
+        Parameters
+        ----------
+        obs : numpy array
+            observations.
+        cols: list(str), optional.
+             list of columns to consider. the default is 
+             ['healpixID', 'pixRA', 'pixDec']
+
+        Returns
+        -------
+        pix : dict
+            pixel infos.
+
+        """
+        
+        pix = {}
+        for vv in cols:
+            if vv in obs.dtype.names:
+                pix[vv] = np.unique(obs[vv])[0]
+            else:
+                pix[vv] = np.mean(obs[self.defname[vv]])
+        
+        return pix
+
+    def call_old(self, obs, display=False, time_display=0., 
+                  lc_coadd=0, snr_min=1,ref_zp_sigma_zp={}):
+         """ Simulation of the light curve
+
+         Parameters
+         --------------
+         obs: array
+           a set of observations
+         display: bool, opt
+           if True: the simulated LC is displayed
+           default: False
+         time_display: float
+           duration(sec) for which the display is visible
+           default: 0
+          lc_coadd: int, opt
+            to coadd lc fluxes
+          snr_min: float, opt. The default is 0.
+            min snr required for LC points (before smearing). The default is 1.
+
+         Returns
+         -----------
+         astropy table:
+         metadata:
+           # SNID: ID of the supernova(int)
+           RA: SN RA(float)
+           Dec: SN Dec(float)
+           daymax: day of the max luminosity(float)
+           epsilon_daymax: epsilon added to daymax for simulation(float)
+           x0: SN x0(float)
+           epsilon_x0: epsilon added to x0 for simulation(float)
+           x1: SN x1(float)
+           epsilon_x1: epsilon added to x1 for simulation(float)
+           color: SN color(float)
+           epsilon_color: epsilon added to color for simulation(float)
+           z: SN redshift(float)
+           survey_area: survey area for this SN(float)
+           pixID: pixel ID
+           pixRA: pixel RA
+           pixDec: pixel Dec
+           season: season
+           dL: luminosity distance
+         fields:
+           flux: SN flux(Jy)
+           fluxerr: EN error flux(Jy)
+           snr_m5: Signal-to-Noise Ratio(float)
+           gamma: gamma parameter(see LSST:
+                 From Science...data products eq. 5)(float)
+           m5: five-sigma depth(float)
+           seeingFwhmEff: seeing eff(float)
+           seeingFwhmGeom: seeing geom(float)
+           flux_e_sec: flux in pe.s-1 (float)
+           mag: magnitude(float)
+           exptime: exposure time(float)
+           magerr: magg error(float)
+           band: filter(str)
+           zp: zeropoint(float)
+           zpsys: zeropoint system(float)
+           time: time(days)(float)
+           phase: phase(float)
+         """
+
+         # start timer
+         ti = SNTimer(time.time())
+
+         if len(obs) == 0:
+             pix = {}
+             for vv in ['healpixID', 'pixRA', 'pixDec']:
+                 pix[vv] = -1
+             return [self.nosim(-1., -1., pix, -1., -1., -1.,
+                                ti, -1, -1., -1., -1.,
+                                self.psf_flux, self.ccd_full_well, -1.)]
+
+         ra = np.mean(obs[self.RACol])
+         dec = np.mean(obs[self.DecCol])
+         area = self.area
+
+         season = np.unique(obs['season'])[0]
+         season_length = np.max(obs[self.mjdCol])-np.min(obs[self.mjdCol])
+
+         pix = {}
+         for vv in ['healpixID', 'pixRA', 'pixDec']:
+             if vv in obs.dtype.names:
+                 pix[vv] = np.unique(obs[vv])[0]
+             else:
+                 pix[vv] = np.mean(obs[self.defname[vv]])
+
+         #grab delta_mag values due to dust
+         #these values have to be added to  mag_no_dust
+         
+         """
+         bands = 'grizy'
+         prefix = 'delta_mag'
+         cols = []
+         for b in bands:
+             cols.append('{}_{}'.format(prefix,b))
+         
+         dd = sel_dust[cols].to_dict('list')
+         
+         ro = []
+         for key,vals in dd.items():
+             ro.append((key.split('delta_mag_')[1],vals[0]))
+             
+         self.delta_mag = pd.DataFrame(ro,columns=['filter','delta_mag_ism'])
+         """
+         
+         self.SN.set(mwebv=self.ebvofMW)
+
+         # add atmospheric parameters here
+         # obs = self.set_atmos_params(obs)
+
+         # register throughputs for sn_cosmo
+
+         # obs = self.register_bands_from_atmos(obs)
+
+         # estimate zp and mean_wavelength corresponding to obs
+         """
+         if self.atmosType == 'const':
+             obs = self.add_zp_meanwave_from_interp(obs)
+         else:
+             obs = self.add_zp_meanwave_from_obs(obs)
+         """
+
+         # filter cutoffs
+
+         obs = self.select_filter_cutoff(obs,
+                                         ra, dec, pix, area, season,
+                                         season_length,
+                                         ti, self.ebvofMW)
+
+
+         lsst_start = -1
+         mjd_max = -1.0
+         if len(obs) == 0:
+             return [self.nosim(ra, dec, pix, area, season, season_length,
+                                ti, -1, self.ebvofMW, lsst_start, mjd_max,
+                                self.psf_flux, self.ccd_full_well, -1.)]
+
+         # preparing the results : stored in lcdf pandas DataFrame
+         a = [self.m5Col, self.mjdCol,
+              self.exptimeCol, self.nexpCol,
+              self.filterCol, self.nightCol]
+         a += [self.airmassCol, self.skyCol, self.moonCol,
+               self.seeingEffCol, self.seeingGeomCol,
+               'zp', 'mean_wave', 'pwv', 'ozone',
+               'aerosol', 'band_cosmo',
+               'sigma_zp', 'tel_site_name']
+         for vv in ['airmass', 'pwv', 'ozone', 'aerosol']:
+             for vvb in ['sigma', 'min', 'max', 'round']:
+                 a.append('{}_{}'.format(vvb, vv))
+
+         b = obs.dtype.names
+
+         outvals = list(set(a) & set(b))
+
+         lcdf = pd.DataFrame(np.copy(obs[outvals]))
+
+         # smear zp here
+         
+         lcdf['zp'] += np.random.normal(0, lcdf['sigma_zp'])
+         lcdf['zpsys'] = 'ab'
+
+         # get band flux
+         # lcdf = self.get_register_throughput(lcdf)
+
+         # lcdf['zp'] = lcdf['zp_e_sec']
+         # get band flux
+         lcdf['flux'] = self.SN.bandflux(
+             lcdf['band_cosmo'], lcdf[self.mjdCol], zpsys=lcdf['zpsys'],
+             zp=lcdf['zp'])
+
+         """
+         lcdf['flux'] = self.SN.bandflux(
+             lcdf[band_cosmo], lcdf[self.mjdCol], zpsys='ab',
+             zp=2.5*np.log10(3631))
+         lcdf['zp'] = 2.5*np.log10(3631)
+         """
+
+         """
+         # flux in JY
+         lcdf['flux_old'] = self.SN.bandflux(
+             lcdf[band_cosmo], lcdf[self.mjdCol], zpsys='ab', zp=2.5*np.log10(3631))
+         lcdf['mag_old'] = -2.5 * np.log10(lcdf['flux_old'] / 3631.0)
+         """
+
+         # estimate error model (if necessary)
+
+         lcdf['fluxerr_model'] = 0.
+         if self.error_model and self.sn_type == 'SN_Ia':
+             fluxcov_cosmo = self.SN.bandfluxcov(
+                 lcdf['band_cosmo'], lcdf[self.mjdCol], zpsys='ab',
+                 zp=2.5*np.log10(3631))
+             lcdf['fluxerr_model'] = np.sqrt(np.diag(fluxcov_cosmo[1]))
+
+         """
+         lcdf.loc[lcdf.flux <= 0., 'fluxerr_photo'] = -1.
+         lcdf.loc[lcdf.flux <= 0., 'fluxerr_model'] = -1.
+         lcdf.loc[lcdf.flux <= 0., 'flux'] = 9999.
+         lcdf.loc[lcdf.flux_old <= 0., 'flux'] = 9999.
+         """
+         # positive flux only
+         """
+         idx = lcdf['flux'] > 0.
+         lcdf = lcdf[idx]
+         """
+
+         if len(lcdf) == 0:
+             return [self.nosim(ra, dec, pix, area, season, season_length,
+                                ti, -1, ebvofMW, -1., -1.,
+                                self.psf_flux, self.ccd_full_well, -1.)]
+         # ti(time.time(), 'fluxes_b')
+
+         # magnitudes - fluxes are in ADU/s
+         lcdf['mag'] = -2.5 * np.log10(lcdf['flux'])+lcdf['zp']
+
+         # if mag have inf values -> set to 50.
+         lcdf['mag'] = lcdf['mag'].replace([np.inf, -np.inf], self.mag_inf)
+
+         # flux error
+         
+         flux5 = 10**(-0.4*(lcdf[self.m5Col]-lcdf['zp']))
+         sigma_f5 = flux5/5.
+         shot_noise = np.sqrt(lcdf['flux']/lcdf[self.exptimeCol])
+         # shot_noise = 0.0
+         lcdf['fluxerr'] = np.sqrt(sigma_f5**2+shot_noise**2)
+         lcdf['sigma_f5'] = sigma_f5
+         lcdf['sigma_shot'] = shot_noise
+         lcdf['snr_m5'] = lcdf['flux']/lcdf['fluxerr']
+         # lcdf['fluxerr'] = lcdf['flux']/lcdf['snr_m5']
+
+         # complete the LC
+         lcdf['magerr_phot'] = (2.5/np.log(10.))/lcdf['snr_m5']  # mag error
+         lcdf['fluxerr_photo'] = lcdf['fluxerr']
+
+         lcdf['fluxerr'] = np.sqrt(
+             lcdf['fluxerr_model']**2+lcdf['fluxerr_photo']**2)  # flux error
+         lcdf['snr'] = lcdf['flux']/lcdf['fluxerr']  # snr
+         lcdf['magerr'] = (2.5/np.log(10.))/lcdf['snr']  # mag error
+         # lcdf['zpsys'] = 'ab'  # zpsys
+         lcdf['phase'] = (lcdf[self.mjdCol]-self.sn_parameters['daymax']
+                          )/(1.+self.sn_parameters['z'])  # phase
+
+         # rename some of the columns
+         lcdf = lcdf.rename(
+             columns={self.mjdCol: 'time', self.filterCol: 'band',
+                      self.m5Col: 'm5', self.exptimeCol: 'exptime'})
+
+         lcdf['filter'] = lcdf['band']
+         lcdf['band'] = lcdf['band_cosmo']
+
+         # remove rows with mag_inf values
+         """
+         idf = lcdf['mag'] < self.mag_inf
+         lcdf = lcdf[idf]
+         """
+
+         lcdf.loc[lcdf.fluxerr_model < 0, 'flux'] = 0.
+         lcdf.loc[lcdf.fluxerr_model < 0, 'fluxerr_photo'] = 10.
+         lcdf.loc[lcdf.fluxerr_model < 0, 'fluxerr'] = 10.
+         lcdf.loc[lcdf.fluxerr_model < 0, 'snr_m5'] = 0.
+         lcdf.loc[lcdf.fluxerr_model < 0, 'fluxerr_model'] = 10.
+
+         # smear lc fluxes
+         """
+         if self.sn_smearFlux:
+             #idx = lcdf['snr'] >= snr_min
+             #lcdf = lcdf[idx]
+             
+             lcdf['flux'] = lcdf['flux']+np.random.normal(0., lcdf['fluxerr'])
+             if lc_coadd != 1:
+                 lcdf.loc[lcdf.flux < 0, 'flux'] = 0.
+                 lcdf['snr'] = lcdf['flux']/lcdf['fluxerr']
+         """
          # smear atmos parameters
          # print('before', lcdf[['airmass', 'pwv', 'ozone', 'aerosol']])
-         #lcdf = self.smear_atmos(lcdf)
+         lcdf = self.smear_atmos(lcdf)
          # print('after', lcdf[['airmass', 'pwv', 'ozone', 'aerosol']])
 
-        return [table_lc]
+         """
+         filters = np.array(lcdf['filter'])
+         filters = filters.reshape((len(filters), 1))
+
+         lcdf['lambdabar'] = np.apply_along_axis(self.lambdabar, 1, filters)
+         """
+
+         if len(lcdf) == 0:
+             return [self.nosim(ra, dec, pix, area, season, season_length,
+                                ti, -1, ebvofMW, -1., -1.,
+                                self.psf_flux, self.ccd_full_well, -1.)]
+
+         # get the processing time
+         ptime = ti.finish(time.time())['ptime'].item()
+
+         """
+         print('kkkkk', lcdf[['mag', 'mag_old', 'flux',
+                'flux_old', 'snr_m5', 'm5', 'band', 'filter']], len(lcdf))
+         """
+
+         # include saturation effects here
+         if self.frac_flux_seeing is not None:
+             lcdf = self.estimate_satured_flux(lcdf)
+         else:
+             lcdf['sat'] = 0
+             # transform pandas df to astropy Table
+
+         table_lc = Table.from_pandas(lcdf)
+
+         # set metadata
+         if 'lsst_start' in obs.dtype.names:
+             lsst_start = np.median(obs['lsst_start'])
+
+         mjd_max = -1
+         if len(table_lc) > 0:
+             mjd_max = np.max(table_lc['time'])
+
+         
+         table_lc.meta = self.metadata(
+             ra, dec, pix, area, season, season_length, ptime,
+             1, self.ebvofMW, lsst_start, mjd_max,
+             self.psf_flux, self.ccd_full_well, self.zmeas)
+
+         table_lc.meta.update(ref_zp_sigma_zp)
+         
+         if len(table_lc) == 0:
+             return [table_lc]
+
+         # if the user chooses to display the results...
+         if display:
+             self.plotLC(table_lc['time', 'band',
+                                  'flux', 'fluxerr', 'zp', 'zpsys'],
+                         time_display)
+
+         # remove LC points with too high error model value
+         """
+         if self.error_model:
+             if self.error_model_cut >0:
+                 idx = table_lc['fluxerr_model']/ \
+                     table_lc['flux']<= self.error_model_cut
+                 table_lc = table_lc[idx]
+         """
+         toremove = ['m5', 'exptime', 'numExposures', 'filter_cosmo',
+                     'airmass', 'moonPhase',
+                     'seeingFwhmEff', 'seeingFwhmGeom', 'gamma', 'mag',
+                     'magerr', 'flux_e_sec', 'magerr_phot']
+
+         toremove = ['m5', 'exptime', 'numExposures', 'filter_cosmo',
+                     'airmass', 'moonPhase',
+                     'seeingFwhmEff', 'seeingFwhmGeom', 'gamma', 'mag',
+                     'magerr', 'magerr_phot']
+
+         toremove = ['filter_cosmo', 'airmass', 'moonPhase',
+                     'gamma', 'mag', 'magerr', 'magerr_phot']
+
+         # table_lc.remove_columns(toremove)
+
+         # lc coadd before flux smearing
+         if lc_coadd==1:
+             table_lc = self.coadd_lc(table_lc)
+
+         # smear lc fluxes
+         table_lc['flux_orig'] = table_lc['flux']
+         if self.sn_smearFlux:
+              """
+              idx = lcdf['snr'] >= snr_min
+              lcdf = lcdf[idx]
+              """
+              df = table_lc.to_pandas()
+              df['flux'] = df['flux']+np.random.normal(0., df['fluxerr'])
+              if lc_coadd != 1:
+                  df.loc[df.flux < 0, 'flux'] = 0.
+                  df['snr'] = df['flux']/df['fluxerr']
+              table_lc_n = Table.from_pandas(df)
+              table_lc_n.meta = table_lc.meta
+              table_lc = Table(table_lc_n)
+             
+         # lc coadd after flux smearing
+         if lc_coadd==2:
+             table_lc = self.coadd_lc(table_lc)
+
+          # smear atmos parameters
+          # print('before', lcdf[['airmass', 'pwv', 'ozone', 'aerosol']])
+          #lcdf = self.smear_atmos(lcdf)
+          # print('after', lcdf[['airmass', 'pwv', 'ozone', 'aerosol']])
+
+         return [table_lc]
 
     def coadd_lc(self, table_lc):
         """
