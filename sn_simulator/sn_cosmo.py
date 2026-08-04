@@ -755,12 +755,12 @@ class SN(SN_Object):
         # remove LC columns
         # table_lc.remove_columns(self.toremove)
 
-        # lc coadd before flux smearing
-        if lc_coadd==1:
-            table_lc = self.coadd_lc(table_lc)
-
         #grab original flux (before smearing)
         table_lc['flux_orig'] = table_lc['flux']
+
+        # lc coadd before flux smearing
+        if lc_coadd==1:
+            table_lc = self.coadd_lc(table_lc)       
         
         # smear lc fluxes
         if self.sn_smearFlux:
