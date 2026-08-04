@@ -752,9 +752,7 @@ class SN(SN_Object):
                                  'flux', 'fluxerr', 'zp', 'zpsys'],
                         time_display)
 
-        # remove LC points with too high error model value
-        
-
+        # remove LC columns
         # table_lc.remove_columns(self.toremove)
 
         # lc coadd before flux smearing
