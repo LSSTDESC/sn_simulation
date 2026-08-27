@@ -631,6 +631,10 @@ class SN(SN_Object):
         lcdf['flux'] = self.SN.bandflux(
             lcdf['band_cosmo'], lcdf[self.mjdCol], zpsys=lcdf['zpsys'],
             zp=lcdf['zp'])
+       
+        #set error model
+        lcdf  = self.set_error_model(lcdf)
+       
 
         """
         lcdf['flux'] = self.SN.bandflux(
@@ -646,64 +650,17 @@ class SN(SN_Object):
         lcdf['mag_old'] = -2.5 * np.log10(lcdf['flux_old'] / 3631.0)
         """
 
-        # estimate error model (if necessary)
-
-        lcdf['fluxerr_model'] = 0.
-        if self.error_model and self.sn_type == 'SN_Ia':
-            fluxcov_cosmo = self.SN.bandfluxcov(
-                lcdf['band_cosmo'], lcdf[self.mjdCol], zpsys='ab',
-                zp=2.5*np.log10(3631))
-            lcdf['fluxerr_model'] = np.sqrt(np.diag(fluxcov_cosmo[1]))
-
-        # magnitudes - fluxes are in ADU/s
-        lcdf['mag'] = -2.5 * np.log10(lcdf['flux'])+lcdf['zp']
-
-        # if mag have inf values -> set to 50.
-        lcdf['mag'] = lcdf['mag'].replace([np.inf, -np.inf], self.mag_inf)
-
-        # flux error
-        
+        # flux error - sky background
         flux5 = 10**(-0.4*(lcdf[self.m5Col]-lcdf['zp']))
-        sigma_f5 = flux5/5.
-        shot_noise = np.sqrt(lcdf['flux']/lcdf[self.exptimeCol])
-        # shot_noise = 0.0
-        lcdf['fluxerr'] = np.sqrt(sigma_f5**2+shot_noise**2)
-        lcdf['sigma_f5'] = sigma_f5
-        lcdf['sigma_shot'] = shot_noise
-        lcdf['snr_m5'] = lcdf['flux']/lcdf['fluxerr']
-        # lcdf['fluxerr'] = lcdf['flux']/lcdf['snr_m5']
-
-        # complete the LC
-        lcdf['magerr_phot'] = (2.5/np.log(10.))/lcdf['snr_m5']  # mag error
-        lcdf['fluxerr_photo'] = lcdf['fluxerr']
-
-        lcdf['fluxerr'] = np.sqrt(
-            lcdf['fluxerr_model']**2+lcdf['fluxerr_photo']**2)  # flux error
-        lcdf['snr'] = lcdf['flux']/lcdf['fluxerr']  # snr
-        lcdf['magerr'] = (2.5/np.log(10.))/lcdf['snr']  # mag error
-        # lcdf['zpsys'] = 'ab'  # zpsys
-        lcdf['phase'] = (lcdf[self.mjdCol]-self.sn_parameters['daymax']
-                         )/(1.+self.sn_parameters['z'])  # phase
-
+        lcdf['sigma_f5'] = flux5/5.
+        
         # rename some of the columns
         lcdf = lcdf.rename(
             columns={self.mjdCol: 'time', self.filterCol: 'band',
                      self.m5Col: 'm5', self.exptimeCol: 'exptime'})
-
         lcdf['filter'] = lcdf['band']
         lcdf['band'] = lcdf['band_cosmo']
-
-        # remove rows with mag_inf values
-        """
-        idf = lcdf['mag'] < self.mag_inf
-        lcdf = lcdf[idf]
-        """
-
-        lcdf.loc[lcdf.fluxerr_model < 0, 'flux'] = 0.
-        lcdf.loc[lcdf.fluxerr_model < 0, 'fluxerr_photo'] = 10.
-        lcdf.loc[lcdf.fluxerr_model < 0, 'fluxerr'] = 10.
-        lcdf.loc[lcdf.fluxerr_model < 0, 'snr_m5'] = 0.
-        lcdf.loc[lcdf.fluxerr_model < 0, 'fluxerr_model'] = 10.
+       
 
         # smear atmos parameters
         lcdf = self.smear_atmos(lcdf)
@@ -717,13 +674,7 @@ class SN(SN_Object):
 
         # get the processing time
         ptime = ti.finish(time.time())['ptime'].item()
-
-        # include saturation effects here
-        if self.frac_flux_seeing is not None:
-            lcdf = self.estimate_satured_flux(lcdf)
-        else:
-            lcdf['sat'] = 0
-            # transform pandas df to astropy Table
+        # transform pandas df to astropy Table
 
         table_lc = Table.from_pandas(lcdf)
 
@@ -746,40 +697,146 @@ class SN(SN_Object):
         if len(table_lc) == 0:
             return [table_lc]
 
+       
+
+        #grab original flux (before smearing)
+        table_lc['flux_orig'] = table_lc['flux']
+        # lc coadd before flux smearing
+        if lc_coadd==1:
+            table_lc = self.coadd_lc(table_lc)
+        
+        # smear lc fluxes
+        if self.sn_smearFlux:
+            table_lc = self.smear_flux(table_lc)
+            
+        # lc coadd after flux smearing
+        if lc_coadd==2:
+            table_lc = self.coadd_lc(table_lc)
+  
+        table_lc = self.complete_lc(table_lc)
+
         # if the user chooses to display the results...
         if display:
             self.plotLC(table_lc['time', 'band',
                                  'flux', 'fluxerr', 'zp', 'zpsys'],
                         time_display)
 
-        # remove LC columns
-        # table_lc.remove_columns(self.toremove)
-
-        #grab original flux (before smearing)
-        table_lc['flux_orig'] = table_lc['flux']
-
-        # lc coadd before flux smearing
-        if lc_coadd==1:
-            table_lc = self.coadd_lc(table_lc)       
-        
-        # smear lc fluxes
-        if self.sn_smearFlux:
-             df = table_lc.to_pandas()
-             df['flux'] = df['flux']+np.random.normal(0., df['fluxerr'])
-             if lc_coadd ==0:
-                 df.loc[df.flux < 0, 'flux'] = 0.
-                 df['snr'] = df['flux']/df['fluxerr']
-             table_lc_n = Table.from_pandas(df)
-             table_lc_n.meta = table_lc.meta
-             table_lc = Table(table_lc_n)
-            
-            
-        # lc coadd after flux smearing
-        if lc_coadd==2:
-            table_lc = self.coadd_lc(table_lc)
 
         return [table_lc]
 
+    def set_error_model(self,lcdf):
+        """
+        Method to estimate error model
+
+        Parameters
+        ----------
+        lcdf : pandas df
+            Data to ptocess.
+
+        Returns
+        -------
+        lcdf : pandas df
+            original df plus fluxerr_model column.
+
+        """
+        
+        # estimate error model (if necessary)
+
+        lcdf['fluxerr_model'] = 0.
+        if self.error_model and self.sn_type == 'SN_Ia':
+            fluxcov_cosmo = self.SN.bandfluxcov(
+                lcdf['band_cosmo'], lcdf[self.mjdCol], zpsys='ab',
+                zp=2.5*np.log10(3631))
+            lcdf['fluxerr_model'] = np.sqrt(np.diag(fluxcov_cosmo[1]))
+        
+        return lcdf
+
+    def smear_flux(self,table_lc):
+        """
+        Method to smear SN fluxes
+
+        Parameters
+        ----------
+        table_lc : astropy table
+            data to process.
+
+        Returns
+        -------
+        table_lc : astropy table
+            Data with smeared fluxes.
+
+        """
+        
+        df = table_lc.to_pandas() 
+        
+        df = self.clean_lc(df)
+        
+        
+        df['flux'] = df['flux']+np.random.normal(0., df['sigma_f5'])
+        idx = df['flux'] > 0
+        sel = pd.DataFrame(df[idx])
+        
+        table_lc_n = Table.from_pandas(sel)
+        table_lc_n.meta = table_lc.meta
+        table_lc = Table(table_lc_n)
+        
+        return table_lc
+
+    def complete_lc(self,lcdf):
+        """
+        Method to add usefull columns to LC
+
+        Parameters
+        ----------
+        lcdf : astropy table
+            original LC.
+
+        Returns
+        -------
+        lcdf : astropy table
+            completed LC.
+
+        """
+        
+        
+        # complete the LC
+        # magnitudes - fluxes are in ADU/s
+        lcdf['mag'] = -2.5 * np.log10(lcdf['flux'])+lcdf['zp']
+
+        # if mag have inf values -> set to 50.
+        #lcdf['mag'] = lcdf['mag'].replace([np.inf, -np.inf], self.mag_inf)
+        
+        shot_noise = np.sqrt(lcdf['flux']/lcdf['exptime'])
+        # shot_noise = 0.0
+        lcdf['fluxerr_photo'] = np.sqrt(lcdf['sigma_f5']**2+shot_noise**2)
+        lcdf['fluxerr'] = np.sqrt(
+            lcdf['fluxerr_model']**2+lcdf['fluxerr_photo']**2)  # flux error
+        
+        lcdf['snr'] = lcdf['flux']/lcdf['fluxerr']  # snr
+        lcdf['snr_m5'] = lcdf['flux']/lcdf['sigma_f5']
+        lcdf['magerr'] = (2.5/np.log(10.))/lcdf['snr']  # mag error
+        lcdf['magerr_phot'] = (2.5/np.log(10.))/lcdf['snr_m5']
+        # lcdf['zpsys'] = 'ab'  # zpsys
+        lcdf['phase'] = (lcdf['time']-self.sn_parameters['daymax']
+                         )/(1.+self.sn_parameters['z'])  # phase        
+        
+        # include saturation effects here
+        if self.frac_flux_seeing is not None:
+            lcdf = self.estimate_satured_flux(lcdf)
+        else:
+            lcdf['sat'] = 0
+            
+        return lcdf
+    
+    def clean_lc(self, lcdf):
+        
+        lcdf.loc[lcdf.fluxerr_model < 0, 'flux'] = 0.
+        lcdf.loc[lcdf.fluxerr_model < 0, 'fluxerr_photo'] = 10.
+        lcdf.loc[lcdf.fluxerr_model < 0, 'fluxerr'] = 10.
+        lcdf.loc[lcdf.fluxerr_model < 0, 'snr_m5'] = 0.
+        lcdf.loc[lcdf.fluxerr_model < 0, 'fluxerr_model'] = 10.
+        
+        return lcdf
 
     def pixel_info(self,obs,cols=['healpixID', 'pixRA', 'pixDec']):
         """
@@ -1122,7 +1179,6 @@ class SN(SN_Object):
          mjd_max = -1
          if len(table_lc) > 0:
              mjd_max = np.max(table_lc['time'])
-
          
          table_lc.meta = self.metadata(
              ra, dec, pix, area, season, season_length, ptime,
