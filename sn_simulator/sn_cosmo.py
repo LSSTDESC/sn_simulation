@@ -607,8 +607,6 @@ class SN(SN_Object):
                                         ra, dec, pix, area, season,
                                         season_length,
                                         ti, self.ebvofMW)
-
-
         lsst_start = -1
         mjd_max = -1.0
 
@@ -806,19 +804,28 @@ class SN(SN_Object):
         # if mag have inf values -> set to 50.
         #lcdf['mag'] = lcdf['mag'].replace([np.inf, -np.inf], self.mag_inf)
         
-        shot_noise = np.sqrt(lcdf['flux']/lcdf['exptime'])
-        # shot_noise = 0.0
-        lcdf['fluxerr_photo'] = np.sqrt(lcdf['sigma_f5']**2+shot_noise**2)
-        lcdf['fluxerr'] = np.sqrt(
-            lcdf['fluxerr_model']**2+lcdf['fluxerr_photo']**2)  # flux error
-        
-        lcdf['snr'] = lcdf['flux']/lcdf['fluxerr']  # snr
         lcdf['snr_m5'] = lcdf['flux']/lcdf['sigma_f5']
-        lcdf['magerr'] = (2.5/np.log(10.))/lcdf['snr']  # mag error
-        lcdf['magerr_phot'] = (2.5/np.log(10.))/lcdf['snr_m5']
+      
         # lcdf['zpsys'] = 'ab'  # zpsys
         lcdf['phase'] = (lcdf['time']-self.sn_parameters['daymax']
                          )/(1.+self.sn_parameters['z'])  # phase        
+        
+        lcdf['sigma_shot'] = np.sqrt(lcdf['flux']*self.tel_gain/lcdf['exptime'])
+        # shot_noise = 0.0
+        lcdf['fluxerr_photo'] = np.sqrt(lcdf['sigma_f5']**2+lcdf['sigma_shot']**2)
+        lcdf['fluxerr'] = np.sqrt(
+            lcdf['fluxerr_model']**2+lcdf['fluxerr_photo']**2)  # flux error
+        
+
+        lcdf['flux_noshot'] = lcdf['flux']
+        lcdf['flux'] = lcdf['flux']+np.random.normal(0., lcdf['sigma_shot'])
+        lcdf['snr'] = lcdf['flux']/lcdf['fluxerr']  # snr
+        lcdf['magerr'] = (2.5/np.log(10.))/lcdf['snr']  # mag error
+        lcdf['magerr_phot'] = (2.5/np.log(10.))/lcdf['snr_m5']
+        
+        idx = lcdf['flux'] > 0
+        
+        lcdf = Table(lcdf[idx])
         
         # include saturation effects here
         if self.frac_flux_seeing is not None:

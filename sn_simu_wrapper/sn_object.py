@@ -16,7 +16,8 @@ class SN_Object:
                  nightCol='night', m5Col='fiveSigmaDepth', seasonCol='season',
                  seeingEffCol='seeingFwhmEff', seeingGeomCol='seeingFwhmGeom',
                  airmassCol='airmass', skyCol='sky', moonCol='moonPhase',
-                 psf_flux='', frac_flux_seeing=None, ccd_full_well=-1.):
+                 psf_flux='', frac_flux_seeing=None, 
+                 ccd_full_well=-1.,tel_gain=2.5):
         """ class SN object
         handles sn name, parameters,
         cosmology, snid, telescope...
@@ -67,6 +68,8 @@ class SN_Object:
          moon col name in observations (default:'moonPhase')
         salt2Dir: str,opt
          dir of SALT2 files
+         tel_gain: float, opt
+          telescope gain
     """
         self._name = name
         self._sn_parameters = sn_parameters
@@ -97,6 +100,7 @@ class SN_Object:
         self.psf_flux = psf_flux
         self.frac_flux_seeing = frac_flux_seeing
         self.ccd_full_well = ccd_full_well
+        self.tel_gain = tel_gain
 
     @ property
     def name(self):

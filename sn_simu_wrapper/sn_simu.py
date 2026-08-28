@@ -198,6 +198,8 @@ class SNSimu_Params:
         # load the instrument(telescope)
         self.telescope = load_throughputs_from_config(config['InstrumentSimu'])
 
+        self.tel_gain = self.telescope.gain
+        
         self.config_instr = config['InstrumentSimu']
         self.atmosType = self.config_instr['atmosType']
 
@@ -1405,7 +1407,8 @@ class SNSimulation(SNSimu_Params):
                               m5Col=self.m5Col,
                               psf_flux=self.psf_flux,
                               frac_flux_seeing=self.frac_flux_seeing,
-                              ccd_full_well=self.ccd_full_well)
+                              ccd_full_well=self.ccd_full_well,
+                              tel_gain=self.tel_gain)
 
         module = import_module(self.simu_config['name'])
 
