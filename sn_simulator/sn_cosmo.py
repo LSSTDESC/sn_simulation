@@ -695,22 +695,25 @@ class SN(SN_Object):
         if len(table_lc) == 0:
             return [table_lc]
 
-       
-
         #grab original flux (before smearing)
         table_lc['flux_orig'] = table_lc['flux']
         # lc coadd before flux smearing
         if lc_coadd==1:
             table_lc = self.coadd_lc(table_lc)
-        
+        """
+        if lc_coadd==2:
+            table_lc = self.coadd_lc_new(table_lc)
+        """
+    
         # smear lc fluxes
         if self.sn_smearFlux:
             table_lc = self.smear_flux(table_lc)
             
         # lc coadd after flux smearing
+        """
         if lc_coadd==2:
             table_lc = self.coadd_lc(table_lc)
-  
+        """
         table_lc = self.complete_lc(table_lc)
 
         # if the user chooses to display the results...
@@ -809,8 +812,9 @@ class SN(SN_Object):
         # lcdf['zpsys'] = 'ab'  # zpsys
         lcdf['phase'] = (lcdf['time']-self.sn_parameters['daymax']
                          )/(1.+self.sn_parameters['z'])  # phase        
-        
-        lcdf['sigma_shot'] = np.sqrt(lcdf['flux']*self.tel_gain/lcdf['exptime'])
+        #shot noise - pe
+        #lcdf['sigma_shot'] = np.sqrt(lcdf['flux']*self.tel_gain/lcdf['exptime'])
+        lcdf['sigma_shot'] = np.sqrt(lcdf['flux_orig']/lcdf['exptime'])
         # shot_noise = 0.0
         lcdf['fluxerr_photo'] = np.sqrt(lcdf['sigma_f5']**2+lcdf['sigma_shot']**2)
         lcdf['fluxerr'] = np.sqrt(
@@ -823,7 +827,8 @@ class SN(SN_Object):
         lcdf['magerr'] = (2.5/np.log(10.))/lcdf['snr']  # mag error
         lcdf['magerr_phot'] = (2.5/np.log(10.))/lcdf['snr_m5']
         
-        idx = lcdf['flux'] > 0
+        idx = lcdf['flux_orig'] > 0
+        idx &= lcdf['flux'] > 0
         
         lcdf = Table(lcdf[idx])
         
@@ -1278,7 +1283,26 @@ class SN(SN_Object):
         
         return table_lc
         
+    def coadd_lc_new(self, table_lc):
+        """
+        Method to coadd lc
+
+        Parameters
+        ----------
+        table_lc : astropy table
+            orig lc.
+
+        Returns
+        -------
+        table_lc : astropy table
+            coadded lc.
+
+        """
         
+        from sn_tools.sn_lcana import coadd_lc_new
+        table_lc = coadd_lc_new(table_lc)
+        
+        return table_lc        
 
     def smear_atmos(self, lcdfa):
         """
