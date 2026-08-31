@@ -1,17 +1,23 @@
 import numpy as np
-import astropy.units as u
-from astropy.table import Table
-from collections import OrderedDict as odict
+# import astropy.units as u
+# from astropy.table import Table
+# from collections import OrderedDict as odict
 
 
 class SN_Object:
-    def __init__(self, name, sn_parameters, gen_parameters, cosmology,
-                 telescope, snid, area, x0_grid, salt2Dir='SALT2_Files',
+    def __init__(self, name, sn_parameters, simulator_parameters,
+                 gen_parameters, cosmology,
+                 snid, area, x0_grid=None,
+                 salt2Dir='SALT2_Files',
                  mjdCol='mjd', RACol='pixRa', DecCol='pixDec',
-                 filterCol='band', exptimeCol='exptime', nexpCol='numExposures',
-                 m5Col='fiveSigmaDepth', seasonCol='season',
+                 filterCol='band',
+                 exptimeCol='exptime',
+                 nexpCol='numExposures',
+                 nightCol='night', m5Col='fiveSigmaDepth', seasonCol='season',
                  seeingEffCol='seeingFwhmEff', seeingGeomCol='seeingFwhmGeom',
-                 airmassCol='airmass', skyCol='sky', moonCol='moonPhase'):
+                 airmassCol='airmass', skyCol='sky', moonCol='moonPhase',
+                 psf_flux='', frac_flux_seeing=None, 
+                 ccd_full_well=-1.,tel_gain=2.5):
         """ class SN object
         handles sn name, parameters,
         cosmology, snid, telescope...
@@ -28,7 +34,6 @@ class SN_Object:
          simulation parameters
         cosmology: dict
          cosmological parameters used for simulation
-        telescope: sn_tools.Telescope
         snid: int
          supernova identifier
         area: float
@@ -63,20 +68,23 @@ class SN_Object:
          moon col name in observations (default:'moonPhase')
         salt2Dir: str,opt
          dir of SALT2 files
+         tel_gain: float, opt
+          telescope gain
     """
         self._name = name
         self._sn_parameters = sn_parameters
+        self._simulator_parameters = simulator_parameters
         self._gen_parameters = gen_parameters
         self._cosmology = cosmology
-        self._telescope = telescope
         self._SNID = snid
-
         self.mjdCol = mjdCol
         self.RACol = RACol
         self.DecCol = DecCol
+
         self.filterCol = filterCol
         self.exptimeCol = exptimeCol
         self.nexpCol = nexpCol
+        self.nightCol = nightCol
         self.m5Col = m5Col
         self.seasonCol = seasonCol
         self.seeingEffCol = seeingEffCol
@@ -89,35 +97,40 @@ class SN_Object:
         self.salt2Dir = salt2Dir
         self.x0_grid = x0_grid
 
-    @property
+        self.psf_flux = psf_flux
+        self.frac_flux_seeing = frac_flux_seeing
+        self.ccd_full_well = ccd_full_well
+        self.tel_gain = tel_gain
+
+    @ property
     def name(self):
         return self._name
 
-    @property
+    @ property
     def sn_parameters(self):
         """SN parameters
         """
         return self._sn_parameters
 
-    @property
+    @ property
+    def simulator_parameters(self):
+        """SN parameters
+        """
+        return self._simulator_parameters
+
+    @ property
     def gen_parameters(self):
         """ Simulation parameters
         """
         return self._gen_parameters
 
-    @property
+    @ property
     def cosmology(self):
         """ Cosmology
         """
         return self._cosmology
 
-    @property
-    def telescope(self):
-        """ Telescope
-        """
-        return self._telescope
-
-    @property
+    @ property
     def SNID(self):
         """ SN identifier
         """
@@ -125,7 +138,10 @@ class SN_Object:
 
     def cutoff(self, obs, T0, z,
                min_rf_phase, max_rf_phase,
-               blue_cutoff=350., red_cutoff=800.):
+               blue_cutoffs=dict(
+                   zip('ugrizy', [380., 380., 380., 360., 380., 380.])),
+               red_cutoffs=dict(zip('ugrizy',
+                                    [700., 700., 700., 700., 700., 700.]))):
         """ select observations depending on phases
 
         Parameters
@@ -146,18 +162,117 @@ class SN_Object:
         array of obs passing the selection
         """
 
-        mean_restframe_wavelength = np.asarray(
-            [self.telescope.mean_wavelength[obser[self.filterCol][-1]] /
-             (1. + z) for obser in obs])
+        self.blue_cutoffs = blue_cutoffs
+        self.red_cutoffs = red_cutoffs
+
+        filters = np.array(obs[self.filterCol].tolist())
+        # airmass = np.array(obs['airmass'].tolist())
+
+        # filt_air = list(zip(filters,airmass))
+        filters = filters.reshape((len(filters), 1))
+
+        blue_values = np.apply_along_axis(self.blues, 1, filters)
+        red_values = np.apply_along_axis(self.reds, 1, filters)
+
+        """
+        mean_restframe_wavelength = \
+            np.apply_along_axis(self.mean_wave, 1, filters,airmass)/(1.+z)
+        mean_restframe_wavelength= mean_restframe_wavelength.reshape((len(filters),1))
+        """
+        # print('jjj',self.mean_wavelength_airmass['g'](1.2))
+
+        # filt_air = np.array([*map(self.mean_wavelength_airmass.get, filters)])
+        # res = list(map(lambda x:self.mean_wavelength_airmass[x[0]](x[1]),filt_air))
+
+        mean_wavelength = obs['mean_wave']/(1.+z)
 
         p = (obs[self.mjdCol]-T0)/(1.+z)
 
         idx = (p >= 1.000000001*min_rf_phase) & (p <= 1.00001*max_rf_phase)
+        """
         idx &= (mean_restframe_wavelength > blue_cutoff)
         idx &= (mean_restframe_wavelength < red_cutoff)
-        return obs[idx]
+        """
+        idx &= (mean_wavelength - blue_values >= 0.)
+        idx &= (mean_wavelength - red_values <= 0.)
 
-    def plotLC(self, table, time_display):
+        selobs = obs[idx]
+
+        return selobs
+
+    def blues(self, band):
+        """
+        Method to return blue_cutoff value
+
+        Parameters
+        ----------
+        band: str
+          the band to process
+
+        Returns
+        -------
+        the blue cutoff value
+
+        """
+        return self.blue_cutoffs[band[0]]
+
+    def reds(self, band):
+        """
+        Method to return the red_cutoff value
+
+        Parameters
+        ----------
+        band: str
+          the band to process
+
+        Returns
+        -------
+        the red cutoff value
+
+        """
+
+        return self.red_cutoffs[band[0]]
+
+    def mean_wave(self, band):
+        """
+        Method to return the mean_restframe_wavelength
+
+        Parameters
+        ----------
+        band : str
+            the band to process
+
+        Returns
+        -------
+        float
+            the mean restframe wavelength corresponding to band
+
+        """
+
+        # return self.mean_wavelength[band[0]]
+        return self.mean_wavelength_airmass[band[0]]
+
+    def mean_wave_airmass(self, vv):
+        """
+        Method to return the mean_restframe_wavelength
+
+        Parameters
+        ----------
+        band : str
+            the band to process
+
+        Returns
+        -------
+        float
+            the mean restframe wavelength corresponding to band
+
+        """
+
+        print('hello', vv)
+        return self.filt_air(vv)
+
+    @ staticmethod
+    def plotLC(table, time_display, airmass=1.2):
         """ Light curve plot using sncosmo methods
 
         Parameters
@@ -170,7 +285,7 @@ class SN_Object:
 
         import pylab as plt
         import sncosmo
-        prefix = 'LSST::'
+        # prefix = 'LSST::'
         """
         _photdata_aliases = odict([
             ('time', set(['time', 'date', 'jd', 'mjd', 'mjdobs', 'mjd_obs'])),
@@ -182,42 +297,33 @@ class SN_Object:
             ('zpsys', set(['zpsys', 'zpmagsys', 'magsys']))
         ])
         """
-        for band in 'grizy':
-            name_filter = prefix+band
-            if self.telescope.airmass > 0:
-                bandpass = sncosmo.Bandpass(
-                    self.telescope.atmosphere[band].wavelen,
-                    self.telescope.atmosphere[band].sb,
-                    name=name_filter,
-                    wave_unit=u.nm)
-            else:
-                bandpass = sncosmo.Bandpass(
-                    self.telescope.system[band].wavelen,
-                    self.telescope.system[band].sb,
-                    name=name_filter,
-                    wave_unit=u.nm)
-            # print('registering',name_filter)
-            sncosmo.registry.register(bandpass, force=True)
-
         z = table.meta['z']
-        x1 = table.meta['x1']
-        color = table.meta['color']
+        if 'x1' in table.meta.keys():
+            x1 = table.meta['x1']
+            color = table.meta['color']
+            x0 = table.meta['x0']
+        else:
+            x1 = 0.
+            color = 0.
+            x0 = 0.
         daymax = table.meta['daymax']
 
         model = sncosmo.Model('salt2')
         model.set(z=z,
                   c=color,
                   t0=daymax,
-                  # x0=self.X0,
+                  # x0=x0,
                   x1=x1)
         """
-        print('tests',isinstance(table, np.ndarray),isinstance(table,Table),isinstance(table,dict))
+        print('tests',isinstance(table, np.ndarray),
+              isinstance(table,Table),isinstance(table,dict))
         array_tab = np.asarray(table)
         print(array_tab.dtype)
         colnames = array_tab.dtype.names
         # Create mapping from lowercased column names to originals
-        lower_to_orig = dict([(colname.lower(), colname) for colname in colnames])
-        
+        lower_to_orig = dict([(colname.lower(), colname)
+                             for colname in colnames])
+
         # Set of lowercase column names
         lower_colnames = set(lower_to_orig.keys())
         orig_colnames_to_use = []
@@ -228,12 +334,19 @@ class SN_Object:
                                  '(case independent)'.format(', '.join(aliases)))
             orig_colnames_to_use.append(lower_to_orig[i.pop()])
 
-        
+
         new_data = table[orig_colnames_to_use].copy()
         print('bbbb',orig_colnames_to_use,_photdata_aliases.keys(),new_data.dtype.names)
         new_data.dtype.names = _photdata_aliases.keys()
         """
-        sncosmo.plot_lc(data=table, model=model)
+        # display only 1 sigma LC points
+        table = table[table['flux']/table['fluxerr'] >= 1.]
+        """
+        if 'x1' in table.meta.keys():
+            sncosmo.plot_lc(data=table,model=model)
+        else:
+        """
+        sncosmo.plot_lc(data=table)
 
         plt.draw()
         plt.pause(time_display)
