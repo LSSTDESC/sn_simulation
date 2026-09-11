@@ -390,7 +390,9 @@ class SNSimu_Params:
                                              'min_airmass','max_airmass',
                                              'min_ozone','max_ozone',
                                              'min_pwv','max_pwv',
-                                             'min_aerosol','max_aerosol'],
+                                             'min_aerosol','max_aerosol',
+                                             'round_airmass','round_ozone',
+                                             'round_aerosol','round_pwv'],
                                    col_median=[
                                        'sky', 'moonPhase', 'seeingFwhmEff',
                                        'lsst_start'],
@@ -1644,7 +1646,7 @@ class SNSimulation(SNSimu_Params):
         atmos_table = unique(Table(obs[all_cols]))
 
         # register
-
+        
         self.register_bands_on_the_fly(self.telescope,
                                        atmos_table[all_cols].to_pandas())
 

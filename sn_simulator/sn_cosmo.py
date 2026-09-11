@@ -617,7 +617,7 @@ class SN(SN_Object):
         lcdf = pd.DataFrame(np.copy(obs[outvals]))
 
         # smear zp here
-        
+        lcdf['zp_orig'] = lcdf['zp']
         lcdf['zp'] += np.random.normal(0, lcdf['sigma_zp'])
         lcdf['zpsys'] = 'ab'
 
@@ -628,7 +628,7 @@ class SN(SN_Object):
         # get band flux
         lcdf['flux'] = self.SN.bandflux(
             lcdf['band_cosmo'], lcdf[self.mjdCol], zpsys=lcdf['zpsys'],
-            zp=lcdf['zp'])
+            zp=lcdf['zp_orig'])
        
         #set error model
         lcdf  = self.set_error_model(lcdf)
@@ -697,9 +697,11 @@ class SN(SN_Object):
 
         #grab original flux (before smearing)
         table_lc['flux_orig'] = table_lc['flux']
+        
         # lc coadd before flux smearing
         if lc_coadd==1:
             table_lc = self.coadd_lc(table_lc)
+        
         """
         if lc_coadd==2:
             table_lc = self.coadd_lc_new(table_lc)
@@ -708,7 +710,12 @@ class SN(SN_Object):
         # smear lc fluxes
         if self.sn_smearFlux:
             table_lc = self.smear_flux(table_lc)
-            
+        
+        #update band_cosmo
+        if lc_coadd == 0:
+            lcdf = self.update_band_cosmo(lcdf)
+        
+        #print(lcdf['band_cosmo'])
         # lc coadd after flux smearing
         """
         if lc_coadd==2:
@@ -722,8 +729,43 @@ class SN(SN_Object):
                                  'flux', 'fluxerr', 'zp', 'zpsys'],
                         time_display)
 
-
+        #print(table_lc.columns)
         return [table_lc]
+
+    def update_band_cosmo(self,lcdf,cols=['airmass',
+                                        'pwv', 'ozone', 'aerosol']):
+        
+        # round atmos parameters
+        """
+        for i, vv in enumerate(cols):
+            # round_value = eval('self.{}_round'.format(vv))
+            lcdf[vv]
+        """
+        
+        colsb = list(map(lambda x: 'round_' + x, cols))
+        
+        ll = lcdf[colsb].mean().round(0).astype(int).to_dict()
+        for vv in cols:
+            vvb = 'round_{}'.format(vv)
+            ll[vv] = ll[vvb]
+            ll.pop(vvb,None)
+        lcdf = lcdf.round(ll)
+       
+
+        tel_name = lcdf['band_cosmo'].str.split(':').str.get(0).unique()
+        # set band_cosmo column
+        bcols = tel_name+'::' + \
+            lcdf[self.filterCol]+'_' +\
+            lcdf[self.airmassCol].astype(str)+'_' +\
+            lcdf['pwv'].astype(str)+'_' +\
+            lcdf['ozone'].astype(str)+'_' +\
+            lcdf['aerosol'].astype(str)
+        
+        lcdf['band_cosmo'] = bcols
+        lcdf['band'] = lcdf['band_cosmo']
+        
+        return lcdf
+        
 
     def set_error_model(self,lcdf):
         """
@@ -841,6 +883,20 @@ class SN(SN_Object):
         return lcdf
     
     def clean_lc(self, lcdf):
+        """
+        Method to clean LCs
+
+        Parameters
+        ----------
+        lcdf : astropy table
+            Data to clean.
+
+        Returns
+        -------
+        lcdf : astropy table
+            cleaned data.
+
+        """
         
         lcdf.loc[lcdf.fluxerr_model < 0, 'flux'] = 0.
         lcdf.loc[lcdf.fluxerr_model < 0, 'fluxerr_photo'] = 10.
@@ -878,7 +934,7 @@ class SN(SN_Object):
         
         return pix
 
-    def call_old(self, obs, display=False, time_display=0., 
+    def call_deprecated(self, obs, display=False, time_display=0., 
                   lc_coadd=0, snr_min=1,ref_zp_sigma_zp={}):
          """ Simulation of the light curve
 
@@ -1034,9 +1090,7 @@ class SN(SN_Object):
 
          lcdf = pd.DataFrame(np.copy(obs[outvals]))
 
-         # smear zp here
-         
-         lcdf['zp'] += np.random.normal(0, lcdf['sigma_zp'])
+         # zp sys
          lcdf['zpsys'] = 'ab'
 
          # get band flux
@@ -1047,7 +1101,18 @@ class SN(SN_Object):
          lcdf['flux'] = self.SN.bandflux(
              lcdf['band_cosmo'], lcdf[self.mjdCol], zpsys=lcdf['zpsys'],
              zp=lcdf['zp'])
+ 
+         # magnitudes - fluxes are in ADU/s
+         lcdf['mag'] = -2.5 * np.log10(lcdf['flux'])+lcdf['zp']
 
+         # if mag have inf values -> set to 50.
+         
+         lcdf['mag'] = lcdf['mag'].replace([np.inf, -np.inf], self.mag_inf)
+ 
+         # smear zp here
+         
+         lcdf['zp'] += np.random.normal(0, lcdf['sigma_zp'])
+         
          """
          lcdf['flux'] = self.SN.bandflux(
              lcdf[band_cosmo], lcdf[self.mjdCol], zpsys='ab',
@@ -1082,18 +1147,15 @@ class SN(SN_Object):
          idx = lcdf['flux'] > 0.
          lcdf = lcdf[idx]
          """
-
+         """
          if len(lcdf) == 0:
              return [self.nosim(ra, dec, pix, area, season, season_length,
                                 ti, -1, ebvofMW, -1., -1.,
                                 self.psf_flux, self.ccd_full_well, -1.)]
+         """
          # ti(time.time(), 'fluxes_b')
 
-         # magnitudes - fluxes are in ADU/s
-         lcdf['mag'] = -2.5 * np.log10(lcdf['flux'])+lcdf['zp']
-
-         # if mag have inf values -> set to 50.
-         lcdf['mag'] = lcdf['mag'].replace([np.inf, -np.inf], self.mag_inf)
+        
 
          # flux error
          
@@ -1260,6 +1322,7 @@ class SN(SN_Object):
           #lcdf = self.smear_atmos(lcdf)
           # print('after', lcdf[['airmass', 'pwv', 'ozone', 'aerosol']])
 
+         print(table_lc.columns)
          return [table_lc]
 
     def coadd_lc(self, table_lc):

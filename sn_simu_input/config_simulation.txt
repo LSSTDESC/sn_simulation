@@ -101,25 +101,25 @@ InstrumentSimu atmosType const str #instrument atmos/const/dep
 #airmass
 InstrumentSimu airmass 1.2 float #instrument airmass
 InstrumentSimu sigma_airmass 0.0 float #instrument sigma_airmass
-InstrumentSimu round_airmass 1 int #instrument airmass rounding
+InstrumentSimu round_airmass 2 int #instrument airmass rounding
 InstrumentSimu min_airmass 1.0 float #airmass min after smearing
 InstrumentSimu max_airmass 2.9 float #airmass max after smearing
 #aerosol
 InstrumentSimu aerosol 0.05 float #instrument aerosol
 InstrumentSimu sigma_aerosol 0.0 float #instrument sigma_aerosol
-InstrumentSimu round_aerosol 4 int #instrument aerosol rounding
+InstrumentSimu round_aerosol 3 int #instrument aerosol rounding
 InstrumentSimu min_aerosol 0. float #aerosol min after smearing
 InstrumentSimu max_aerosol 0.5 float #aerosol max after smearing
 #pwv
 InstrumentSimu pwv 5.0 float #instrument precipit. water vapor
 InstrumentSimu sigma_pwv 0.0 float #instrument sigma precipit. water vapor
-InstrumentSimu round_pwv 3 int #instrument precipit. water vapor rounding
+InstrumentSimu round_pwv 2 int #instrument precipit. water vapor rounding
 InstrumentSimu min_pwv 0.0 float #pwv min after smearing
 InstrumentSimu max_pwv 25. float #pwv max after smearing
 #ozone
 InstrumentSimu ozone 300. float #ozone
 InstrumentSimu sigma_ozone 0. float #sigma_ozone
-InstrumentSimu round_ozone 3 int #ozone rounding
+InstrumentSimu round_ozone 1 int #ozone rounding
 InstrumentSimu min_ozone 0.0 float #ozone min after smearing
 InstrumentSimu max_ozone 600. float #ozone max after smearing
 #number of trial to estimate zp
