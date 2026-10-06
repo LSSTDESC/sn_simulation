@@ -1,0 +1,121 @@
+name version type subtype subclass reference website notes
+nugent-sn1a 1.2 SN Ia TimeSeriesSource [N02] a
+nugent-sn91t 1.1 SN Ia TimeSeriesSource [S04] a
+nugent-sn91bg 1.1 SN Ia TimeSeriesSource [N02] a
+nugent-sn1bc 1.1 SN Ib/c TimeSeriesSource [L05] a
+nugent-hyper 1.2 SN Ib/c TimeSeriesSource [L05] a
+nugent-sn2p 1.2 SN IIP TimeSeriesSource [G99] a
+nugent-sn2l 1.2 SN IIL TimeSeriesSource [G99] a
+nugent-sn2n 2.1 SN IIn TimeSeriesSource [G99] a
+s11-2004hx 1.0 SN IIL/P TimeSeriesSource [S11] b [1]
+s11-2005lc 1.0 SN IIP TimeSeriesSource [S11] b [1]
+s11-2005hl 1.0 SN Ib TimeSeriesSource [S11] b [1]
+s11-2005hm 1.0 SN Ib TimeSeriesSource [S11] b [1]
+s11-2005gi 1.0 SN IIP TimeSeriesSource [S11] b [1]
+s11-2006fo 1.0 SN Ic TimeSeriesSource [S11] b [1]
+s11-2006jo 1.0 SN Ib TimeSeriesSource [S11] b [1]
+s11-2006jl 1.0 SN IIP TimeSeriesSource [S11] b [1]
+hsiao 1.0 SN Ia TimeSeriesSource [H07] c [2]
+hsiao 2.0 SN Ia TimeSeriesSource [H07] c [2]
+hsiao 3.0 SN Ia TimeSeriesSource [H07] c [2]
+hsiao-subsampled 3.0 SN Ia TimeSeriesSource [H07] c [2]
+salt2 2.0 SN Ia SALT2Source [G10] d
+salt2 2.4 SN Ia SALT2Source [B14b] d
+salt2-extended 1.0 SN Ia SALT2Source b [3]
+salt2-extended 2.0 SN Ia SALT2Source
+salt2-extended-h17 1.0 SN Ia SALT2Source [H17] e [4]
+snf-2011fe 1.0 SN Ia TimeSeriesSource [P13] f
+snana-2004fe 1.0 SN Ic TimeSeriesSource g [5]
+snana-2004gq 1.0 SN Ic TimeSeriesSource g [5]
+snana-sdss004012 1.0 SN Ic TimeSeriesSource g [5]
+snana-2006fo 1.0 SN Ic TimeSeriesSource g [5]
+snana-sdss014475 1.0 SN Ic TimeSeriesSource g [5]
+snana-2006lc 1.0 SN Ic TimeSeriesSource g [5]
+snana-2007ms 1.0 SN II-pec TimeSeriesSource g [5]
+snana-04d1la 1.0 SN Ic TimeSeriesSource g [5]
+snana-04d4jv 1.0 SN Ic TimeSeriesSource g [5]
+snana-2004gv 1.0 SN Ib TimeSeriesSource g [5]
+snana-2006ep 1.0 SN Ib TimeSeriesSource g [5]
+snana-2007y 1.0 SN Ib TimeSeriesSource g [5]
+snana-2004ib 1.0 SN Ib TimeSeriesSource g [5]
+snana-2005hm 1.0 SN Ib TimeSeriesSource g [5]
+snana-2006jo 1.0 SN Ib TimeSeriesSource g [5]
+snana-2007nc 1.0 SN Ib TimeSeriesSource g [5]
+snana-2004hx 1.0 SN IIP TimeSeriesSource g [5]
+snana-2005gi 1.0 SN IIP TimeSeriesSource g [5]
+snana-2006gq 1.0 SN IIP TimeSeriesSource g [5]
+snana-2006kn 1.0 SN IIP TimeSeriesSource g [5]
+snana-2006jl 1.0 SN IIP TimeSeriesSource g [5]
+snana-2006iw 1.0 SN IIP TimeSeriesSource g [5]
+snana-2006kv 1.0 SN IIP TimeSeriesSource g [5]
+snana-2006ns 1.0 SN IIP TimeSeriesSource g [5]
+snana-2007iz 1.0 SN IIP TimeSeriesSource g [5]
+snana-2007nr 1.0 SN IIP TimeSeriesSource g [5]
+snana-2007kw 1.0 SN IIP TimeSeriesSource g [5]
+snana-2007ky 1.0 SN IIP TimeSeriesSource g [5]
+snana-2007lj 1.0 SN IIP TimeSeriesSource g [5]
+snana-2007lb 1.0 SN IIP TimeSeriesSource g [5]
+snana-2007ll 1.0 SN IIP TimeSeriesSource g [5]
+snana-2007nw 1.0 SN IIP TimeSeriesSource g [5]
+snana-2007ld 1.0 SN IIP TimeSeriesSource g [5]
+snana-2007md 1.0 SN IIP TimeSeriesSource g [5]
+snana-2007lz 1.0 SN IIP TimeSeriesSource g [5]
+snana-2007lx 1.0 SN IIP TimeSeriesSource g [5]
+snana-2007og 1.0 SN IIP TimeSeriesSource g [5]
+snana-2007ny 1.0 SN IIP TimeSeriesSource g [5]
+snana-2007nv 1.0 SN IIP TimeSeriesSource g [5]
+snana-2007pg 1.0 SN IIP TimeSeriesSource g [5]
+snana-2006ez 1.0 SN IIn TimeSeriesSource g [5]
+snana-2006ix 1.0 SN IIn TimeSeriesSource g [5]
+snana-2004fe 2.0 SN Ic TimeSeriesSource
+snana-2004gq 2.0 SN Ic TimeSeriesSource
+snana-sdss004012 2.0 SN Ic TimeSeriesSource
+snana-2006fo 2.0 SN Ic TimeSeriesSource
+snana-sdss014475 2.0 SN Ic TimeSeriesSource
+snana-2006lc 2.0 SN Ic TimeSeriesSource
+snana-2007ms 2.0 SN II-pec TimeSeriesSource
+snana-04d1la 2.0 SN Ic TimeSeriesSource
+snana-04d4jv 2.0 SN Ic TimeSeriesSource
+snana-2004gv 2.0 SN Ib TimeSeriesSource
+snana-2006ep 2.0 SN Ib TimeSeriesSource
+snana-2007y 2.0 SN Ib TimeSeriesSource
+snana-2004ib 2.0 SN Ib TimeSeriesSource
+snana-2005hm 2.0 SN Ib TimeSeriesSource
+snana-2006jo 2.0 SN Ib TimeSeriesSource
+snana-2007nc 2.0 SN Ib TimeSeriesSource
+snana-2004hx 2.0 SN IIP TimeSeriesSource
+snana-2005gi 2.0 SN IIP TimeSeriesSource
+snana-2006gq 2.0 SN IIP TimeSeriesSource
+snana-2006kn 2.0 SN IIP TimeSeriesSource
+snana-2006jl 2.0 SN IIP TimeSeriesSource
+snana-2006iw 2.0 SN IIP TimeSeriesSource
+snana-2006kv 2.0 SN IIP TimeSeriesSource
+snana-2006ns 2.0 SN IIP TimeSeriesSource
+snana-2007iz 2.0 SN IIP TimeSeriesSource
+snana-2007nr 2.0 SN IIP TimeSeriesSource
+snana-2007kw 2.0 SN IIP TimeSeriesSource
+snana-2007ky 2.0 SN IIP TimeSeriesSource
+snana-2007lj 2.0 SN IIP TimeSeriesSource
+snana-2007lb 2.0 SN IIP TimeSeriesSource
+snana-2007ll 2.0 SN IIP TimeSeriesSource
+snana-2007nw 2.0 SN IIP TimeSeriesSource
+snana-2007ld 2.0 SN IIP TimeSeriesSource
+snana-2007md 2.0 SN IIP TimeSeriesSource
+snana-2007lz 2.0 SN IIP TimeSeriesSource
+snana-2007lx 2.0 SN IIP TimeSeriesSource
+snana-2007og 2.0 SN IIP TimeSeriesSource
+snana-2007ny 2.0 SN IIP TimeSeriesSource
+snana-2007nv 2.0 SN IIP TimeSeriesSource
+snana-2007pg 2.0 SN IIP TimeSeriesSource
+whalen-z15b 1.0 Pop III TimeSeriesSource [Whalen13] [6]
+whalen-z15d 1.0 Pop III TimeSeriesSource [Whalen13] [6]
+whalen-z15g 1.0 Pop III TimeSeriesSource [Whalen13] [6]
+whalen-z25b 1.0 Pop III TimeSeriesSource [Whalen13] [6]
+whalen-z25d 1.0 Pop III TimeSeriesSource [Whalen13] [6]
+whalen-z25g 1.0 Pop III TimeSeriesSource [Whalen13] [6]
+whalen-z40b 1.0 Pop III TimeSeriesSource [Whalen13] [6]
+whalen-z40g 1.0 Pop III TimeSeriesSource [Whalen13] [6]
+mlcs2k2 1.0 SN Ia MLCS2k2Source [Jha07] [7]
+snemo2 1.0 SN Ia SNEMOSource [Saunders18] h
+snemo7 1.0 SN Ia SNEMOSource [Saunders18] h
+snemo15 1.0 SN Ia SNEMOSource [Saunders18] h

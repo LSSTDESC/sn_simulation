@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sn_simulation"
+version = "1.1.0"
+requires-python = ">=3.5"
+dependencies = ["dustmaps",]
+authors = [
+  {name = "Philippe Gris", email = "philippe.gris@clermont.in2p3.fr"}
+]
+maintainers = [
+  {name = "Philippe Gris", email = "philippe.gris@clermont.in2p3.fr"}
+]
+description = "Simulations for SNe Ia"
+readme = "README.rst"
+license = {file = "LICENSE"}
+classifiers = ["Programming Language :: Python",]
+
+[tool.setuptools.packages.find]
+where = [".","sn_simu_input"]
+include = ['sn_simulator', 'sn_simu_wrapper', 'sn_simu_input']
+
+[tool.setuptools.package-data]
+"*" = ["*.txt"]
+
+[project.urls]
+Homepage = "http://github.com/lsstdesc/sn_simulation"
+Repository = "https://github.com/lsstdesc/sn_simulation"
