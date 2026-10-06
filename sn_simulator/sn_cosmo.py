@@ -874,6 +874,20 @@ class SN(SN_Object):
         
         lcdf = Table(lcdf[idx])
         
+        #estimate SNRs here and put it in a dict
+        
+        snr = {}
+        for b in 'ugrizy':
+            idx = lcdf['filter'] == b
+            sel = lcdf[idx]
+            res = 0
+            if len(sel) > 0:
+                res = np.sqrt(np.sum((sel['flux']/sel['fluxerr'])**2))
+            snr['SNR_{}'.format(b)] = res
+            
+        #update meta data
+        lcdf.meta.update(snr)
+        
         # include saturation effects here
         if self.frac_flux_seeing is not None:
             lcdf = self.estimate_satured_flux(lcdf)
